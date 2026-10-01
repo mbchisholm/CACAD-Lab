@@ -153,11 +153,14 @@ layer is cut plans, screw lengths and where each number came from.
 
 - `projects/tote_rack/`: a lumber rack where totes hang by their rims and slide out like drawers.
 - `projects/raised_bed/`: a cedar fence-picket bed.
-- `projects/nft_rack/`: a three-level hydroponic NFT rack after the AM Hydro
-  Get Growing UP Pro. Every value is tagged as AM Hydro's, inferred, a standard,
-  a substitute part, a design choice or a placeholder.
+- `projects/nft_table/`: a one-level hydroponic NFT table: six Growrilla
+  channels on a 2040/2020 frame, Sch 40 PVC supply and return, an HDX tote, and
+  printed PETG parts wherever a bought part's geometry is unpublished. Every
+  value is tagged as a standard, a vendor sheet, inferred, or a design choice.
+  The first version (an AM Hydro three-level rack and this table, both caliper-
+  gated) is in `archive/nft_rack_v1/`.
 
-![NFT rack, three levels, in FreeCAD](docs/img/nft_rack.png)
+![NFT table, one level](docs/img/nft_table.png)
 
 ## build123d
 
