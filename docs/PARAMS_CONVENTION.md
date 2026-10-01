@@ -29,8 +29,10 @@ the script.
 
 2. **Named clearances, one field each, in COMMON.** `screw_clearance`,
    `nut_pocket_clearance`, `board_air_gap`, `boss_pin_margin`: mm, each with a
-   comment saying which two surfaces it separates. A clearance folded into a
-   diameter cannot be audited or measured on the printed part.
+   comment saying which two surfaces it separates, and where its number comes
+   from (ISO 273 plus the FDM allowance, an insert vendor's hole size, a
+   published FDM fit guideline: `cacad.registries.materials`). A clearance
+   folded into a diameter cannot be audited.
 
 3. **`derive(size, **overrides)`.** Overrides replace SIZES/COMMON entries for
    what-if tables and never appear in build code. A trade-off table generated
@@ -45,10 +47,27 @@ the script.
    `assert`, none `print`. An unknown value is not a failure: estimate it
    (rule 5) rather than leaving it `None`.
 
-5. **UNVERIFIED marks estimates.** `# UNVERIFIED` on a value means "estimated:
-   a guess, a rough number, a community model's figure". That's fine for
-   ideation; swap in a sourced number when the part has to fit something
-   real. It never excuses a validate() failure.
+5. **Every number says where it came from.** A number comes from a standard,
+   a vendor sheet, a KiCad/Eagle file, or it is a DESIGN choice. For
+   ideation, `# UNVERIFIED` on a value means "estimated: a guess, a rough
+   number, a community model's figure". A part that has to fit carries a tag
+   per value, `(value, TAG, source)`, and `validate()` refuses an untagged
+   value (projects/nft_table is the worked example):
+
+   ```
+   STANDARD     a published standard, named (ASTM D1785, ISO 273)
+   VENDOR       published by the vendor of the part used (sheet and page named)
+   VAULT        from the T1TRTA notes (file named)
+   INFERRED     follows from a published number, not stated (say from what)
+   DESIGN       a designer's choice; the part is designed to tolerate it
+   CONVENIENCE  set to draw the model; awaits derivation (design review rule 1)
+   PLACEHOLDER  drawn for a part whose geometry is unknown
+   ```
+
+   A load-bearing PLACEHOLDER fails `validate()`: unbuyable or unsourced is a
+   failing test. When a bought part's geometry is unpublished, design a
+   printed interface that does not depend on it instead of measuring it.
+   UNVERIFIED never excuses a validate() failure.
 
 6. **ACTIVE_SIZES gates work.** Inactive sizes still pass `validate()` (their
    arithmetic is cheap and catches rule drift), but nothing builds or tests

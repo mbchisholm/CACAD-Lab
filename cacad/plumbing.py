@@ -1,5 +1,7 @@
-r"""Analytic volume and bounding box of the plumbing solids, from their description alone. No numbers live here:
-params.py describes each part, rack.py builds it with build123d, and check_rack compares the two.
+r"""Plumbing solids: analytic volume and bounding box from a part's description alone, and the build123d solid
+built from the same description. No numbers live here: a project's params.py describes each part, its assembly
+builds it with `build_geom`, and its checks compare the solid with `legs_expect` / `sweep_expect`. Promoted from
+projects/nft_rack/legs.py (archive/nft_rack_v1).
 
 A *leg* is a stepped hollow cylinder along a unit axis `o` from a point `c`: sections (s0, s1, ro, ri) in mm along
 the axis. A straight part (pipe, cap, valve body, bushing, grommet) is one leg with t = 0 and s0 = 0 first. An
@@ -20,6 +22,8 @@ at radius R: volume by Pappus, pi (ro^2 - ri^2) x path length; bbox from the poi
 from __future__ import annotations
 
 import math
+
+from build123d import Align, Axis, Box, Circle, FilletPolyline, Location, Plane, Polyline, make_face, revolve, sweep
 
 
 def unit(v):
@@ -171,3 +175,46 @@ def frame_place(F, x, s, z):
 def frame_box_bbox(F, x0, x1, s0, s1, z0, z1):
     pts = [frame_place(F, x, s, z) for x in (x0, x1) for s in (s0, s1) for z in (z0, z1)]
     return tuple(min(p[i] for p in pts) for i in range(3)), tuple(max(p[i] for p in pts) for i in range(3))
+
+
+# ---------------------------------------------------------------------------
+# build123d solids from the same description
+# ---------------------------------------------------------------------------
+def build_leg(lg: dict, filled: bool = False):
+    """Revolve the stepped profile about local Z, cut by the mitre plane s = w t (local x = w), place.
+    filled=True drops the bore (insertion depth is measured on filled solids)."""
+    t = lg["t"]
+    smin = -max(sec[2] for sec in lg["sections"]) * t - 1.0
+    solid = None
+    for s0, s1, ro, ri in lg["sections"]:
+        s0 = smin if s0 is None else s0
+        ri = 0.0 if filled else ri
+        outline = [(ri, s0), (ro, s0), (ro, s1), (ri, s1)] if ri > 0 else [(0, s0), (ro, s0), (ro, s1), (0, s1)]
+        sec = revolve(make_face(Polyline(*[(x, 0, z) for x, z in outline], close=True)), Axis.Z, 360)
+        solid = sec if solid is None else solid + sec
+    if t > 0:
+        half = Box(1e4, 1e4, 1e4, align=(Align.CENTER, Align.CENTER, Align.MIN)).moved(
+            Location(Plane(origin=(0, 0, 0), x_dir=unit((1, 0, t)), z_dir=unit((-t, 0, 1)))))
+        solid = solid & half
+    return solid.moved(Location(Plane(origin=lg["c"], x_dir=lg["ew"], z_dir=lg["o"])))
+
+
+def build_geom(e: dict, filled: bool = False):
+    """Solid for an expectation made by legs_expect or sweep_expect. The legs of an elbow share their mitre face
+    and fuse into one solid (F29)."""
+    g = e["geom"]
+    if g[0] == "legs":
+        parts = [build_leg(lg, filled) for lg in g[1]]
+        out = parts[0]
+        for p in parts[1:]:
+            out = out + p
+        return out
+    if g[0] == "sweep":
+        _, pts, ro, ri, R = g
+        path = FilletPolyline(*pts, radius=R)
+        pl = Plane(origin=pts[0], z_dir=unit(tuple(b - a for a, b in zip(pts[0], pts[1]))))
+        prof = pl * Circle(ro)
+        if ri > 0 and not filled:
+            prof = prof - pl * Circle(ri)
+        return sweep(prof, path)
+    raise ValueError(f"build_geom: unknown geom {g[0]}")

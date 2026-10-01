@@ -17,7 +17,7 @@ from cacad.registries.materials import CLEAR_LOOSE, LAYER, NOZZLE, WALL
 COMMON = MappingProxyType(
     dict(
         # --- named clearances (mm): say which two surfaces each one separates ---
-        screw_clearance=CLEAR_LOOSE,   # diametral: bore - screw nominal (materials TODO until the coupon)
+        screw_clearance=CLEAR_LOOSE,   # diametral: bore - screw nominal (ISO 273 medium, cacad.registries.materials)
         slide_clearance=0.2,           # diametral: bore - the part that slides in it
         # --- geometry rules ---
         wall=WALL,                     # 4 perimeters

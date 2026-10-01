@@ -24,3 +24,10 @@ To run the gland again: `uv pip install -e ".[archive]"`, copy the
 and `cacad.registries.materials` strain table), and run it from
 `archive/cable_gland/` with its own `import params` style. It predates F23
 and F24, so it does not run in the build123d-mcp sandbox.
+
+`nft_rack_v1/` (parked 2026-10-01): the first NFT table and the AM Hydro
+multi-level layout. Its `nft_table` layout ended in FAIL on unpublished
+parts (AAPW400 body, Growrilla drain cap, PP collector margin) and caliper
+gates on the tote. Superseded by `projects/nft_table/`; its leg formulas
+moved to `cacad/plumbing.py`. Its imports of `projects.nft_rack.*` no
+longer resolve: read it, do not run it.

@@ -321,25 +321,21 @@ directory; either may be the trigger.
 **Rule.** Copy an external STEP to a space-free path under the repo
 (a project's gitignored `ref/`) or the scratchpad before importing it.
 
-## TODO — data that only printed coupons can supply
+## TODO — manufacturing facts that are not kernel facts
 
-Nothing below is settled. FINDINGS entries above are geometry/kernel facts;
-these are manufacturing facts and have **no measurement yet**.
+FINDINGS entries above are geometry/kernel facts; these are manufacturing
+assumptions. None of them gates a print: clearances come from ISO 273 plus a
+DESIGN FDM allowance, insert bores from the insert vendor, printed-to-PVC
+fits from published FDM guidance (`cacad/registries/materials.py`), and a
+part is designed to tolerate them (clamped, sealed, or free; never
+press-fit).
 
-- [ ] **Hole clearance, insert bore, shrinkage** (`python coupons/fdm_coupon.py` →
-  `coupons/out/fdm_coupon.stl`: five M5 clearance holes 5.10..5.30, five M3
+- [ ] **Optional: tune the clearances with the coupon** (`python coupons/fdm_coupon.py`
+  → `coupons/out/fdm_coupon.stl`: five M5 clearance holes 5.10..5.30, five M3
   heat-set insert bores 3.8..4.2 × 6 deep on a raised pad, one 20 mm cube;
-  PETG, 0.4 nozzle, labelled and dated). Fill in:
-
-  | measurement | result |
-  |---|---|
-  | smallest hole an M5 screw slips through freely → `CLEAR_SLIP` (now 0.20, guess) | |
-  | smallest hole that takes the screw with clearance for misalignment → `CLEAR_LOOSE` (now 0.40, guess) | |
-  | bore the M3 insert seats in without splitting the boss → `INSERT_BORE_M3` (now 4.00, guess) | |
-  | cube X / Y / Z vs 20.00 → shrinkage | |
-
-  Replace the three values in `cacad/registries/materials.py` and date the change.
-  Nothing prints for fit until this row is filled.
+  PETG, 0.4 nozzle, labelled and dated). If it is printed, record the results
+  here and date any change to `FDM_HOLE_ALLOWANCE`, `FIT_CLEAR` or the insert
+  bores in `cacad/registries/materials.py`.
 - [ ] Sliver exclusion threshold (`nozzle_d²`) and the 60° flank acceptance
   are slicer-side assumptions, not measured.
 - [ ] **Slicer settings: brim and stringing.** On the cable gland's first

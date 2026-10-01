@@ -40,7 +40,7 @@ SCREWS = MappingProxyType(dict(
 
 COMMON = MappingProxyType(dict(
     # --- named clearances (mm): which two surfaces each one separates ---
-    screw_clearance=CLEAR_LOOSE,      # diametral: plate/boss bore - screw nominal (materials TODO, coupon)
+    screw_clearance=CLEAR_LOOSE,      # diametral: plate/boss bore - screw nominal (ISO 273 medium M3)
     nut_pocket_clearance=0.30,        # across flats: pocket - nut s. UNVERIFIED: hex-pocket coupon
     nut_pocket_extra_depth=0.80,      # pocket depth - nut m: room for the screw tip window (>= screw_tip_min + a layer step)
     board_air_gap=1.0,                # lowest underside feature (pin tail) to plate top

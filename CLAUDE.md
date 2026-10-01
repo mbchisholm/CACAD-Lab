@@ -10,18 +10,20 @@ work is parked in `archive/`: read it for its findings, do not extend it.
 
 ```
 cacad/                shared package: selectors, probes, booleans, export (STEP/STL/3MF),
+                      plumbing (analytic + OCC pipe/fitting legs and sweeps),
                       checks/ (printability, orientation, overhang),
                       freecad/ (RPC client, re-derivation, BOP shape check, KiCad freeze),
                       registries/ (boards, connectors, reservoirs, materials). Tests in cacad/tests.
 projects/<name>/      one part or family: params.py, one file per part, tests/, out/ (gitignored).
                       standoff_plate/ is the worked example of the convention (plate and tray).
-                      tote_rack/, raised_bed/, nft_rack/ are bought-and-cut assemblies, not prints.
-coupons/              calibration coupon, for when a print has to fit.
+                      tote_rack/, raised_bed/ are bought-and-cut assemblies, not prints.
+                      nft_table/ is a bought PVC + 2020 kit with printed PETG interfaces.
+coupons/              calibration coupon: optional, for tuning a fit.
 docs/FINDINGS.md      kernel/library/tooling facts with reproductions (F-numbers). Read before fighting the kernel.
 docs/PARAMS_CONVENTION.md   how a params.py is written; docs/params_template.py is the skeleton.
 tools/board_from_eagle.py   vendor Eagle .brd -> Board() block with holes, drill, keepouts, source.
 tools/verify_mcp.py   drive a part through build123d-mcp outside a session (renders, find_holes).
-archive/              parked: cable_gland/, cacad_threads/. Not installed, not tested.
+archive/              parked: cable_gland/, cacad_threads/, nft_rack_v1/. Not installed, not tested.
 .mcp.json             build123d-mcp and freecad-mcp servers. Loads at session start; edit, then restart.
 ```
 
@@ -34,10 +36,19 @@ Run from the repo root: `.venv/bin/python projects/<name>/<part>.py`,
 
 ## Conduct
 
-- Missing numbers get estimated, not blocked on. Use a datasheet or vendor
-  file when one is at hand; otherwise pick a reasonable value, mark it
-  `UNVERIFIED` in the params comment, and keep going. Never ask the owner to
-  go measure something to proceed.
+- A number comes from a standard, a vendor sheet, a KiCad/Eagle file, or it
+  is a DESIGN choice, and params says which. When a bought part's geometry is
+  unpublished, design a printed interface that does not depend on it. Ask
+  only if neither works. Never ask the owner to go measure something.
+- Unbuyable or unsourced = failing test (`cad-design-review` rule 2). For
+  ideation, an estimate marked `UNVERIFIED` is fine; it never passes a part
+  that has to fit.
+- Printed fits: screw clearances are ISO 273 medium plus a DESIGN FDM
+  allowance, heat-set insert bores are the insert vendor's hole size, and
+  printed-to-PVC fits are DESIGN clearances from published FDM guidance
+  (`cacad.registries.materials`). The part tolerates them: clamped, sealed
+  with an O-ring or sealant, or free. Never press-fit. The coupon is an
+  optional tool, not a gate.
 - After a change: validate, check the bounding box, render it (F21).
 - Report failures as failures, first. A downgraded chamfer, a skipped
   assertion or a fallback is never described as success. Report errors verbatim.

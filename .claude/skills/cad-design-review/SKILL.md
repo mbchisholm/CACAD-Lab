@@ -18,10 +18,13 @@ geometric check.
    rounded for tidiness is flagged in the report as "convenience-set, awaits
    derivation" and derived from its functional requirement before the part
    is called done. Ask the owner if the derived value changes the envelope.
-2. **Unbuyable or unmeasurable = failing test.** If a load-bearing value could
-   be looked up today (nut heights, sheet thicknesses, standard holes,
-   gasket sizes) and isn't, `validate()` fails. UNVERIFIED marks design
-   choices awaiting a reference part; it never marks facts.
+2. **Unbuyable or unsourced = failing test.** A load-bearing value comes from a
+   standard, a vendor sheet, a KiCad/Eagle file, or it is a DESIGN choice. If
+   it could be looked up today (nut heights, sheet thicknesses, standard
+   holes, gasket sizes) and isn't, `validate()` fails. When the bought part's
+   geometry is unpublished, design the interface so it does not depend on it
+   (a clamp, a seal, a sleeve with clearance) rather than waiting on a
+   measurement. UNVERIFIED and DESIGN mark choices; they never mark facts.
 3. **Three layers per part: geometry, manufacturability, function.** Geometry:
    valid, solid count, bbox. Manufacturability: measured walls vs nozzle
    multiples, declared orientation with the bed face verified, overhang from
