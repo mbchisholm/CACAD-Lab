@@ -321,6 +321,44 @@ directory; either may be the trigger.
 **Rule.** Copy an external STEP to a space-free path under the repo
 (a project's gitignored `ref/`) or the scratchpad before importing it.
 
+## F28. Coaxial annuli that touch only along a circle fuse into two solids — CONFIRMED (2026-10-01)
+
+**Symptom.** In v1 (`archive/nft_rack_v1`), a PP socket hub drawn as an annulus whose inner radius equalled the
+pipe body's outer radius, stacked on the body's end, gave a part with two solids after `+`.
+**Reproduction.**
+```python
+from build123d import *
+def ann(ro, ri, z0, z1):
+    c = lambda r: Cylinder(r, z1 - z0, align=(Align.CENTER, Align.CENTER, Align.MIN)).moved(Pos(0, 0, z0))
+    return c(ro) - c(ri)
+print(len((ann(16, 13.4, 0, 40) + ann(22, 16, 40, 60)).solids()))                         # 2
+print(len((ann(16, 13.4, 0, 40) + ann(22, 13.4, 40, 42) + ann(22, 16, 42, 60)).solids()))  # 1
+```
+**Cause.** The two shapes share only the circle r = 16, z = 40: no face, so the fuse has nothing to merge.
+**Rule.** A hub on a body wall gets a shoulder: a short section at the hub OD down to the bore (v1's
+`pp32_pipe.shoulder`), so the parts share an annular face. `expect_solids` catches the split.
+
+## F29. Two mitred legs sharing their mitre face fuse into one solid, volumes adding — CONFIRMED (2026-10-01)
+
+**Symptom.** None; this is the property the elbow model relies on. `cacad.plumbing.elbow` draws a 90/87/60/30 deg
+elbow as two stepped legs cut by the bisector plane; `build_geom` fuses them.
+**Reproduction.** `cacad/tests/test_plumbing.py::test_mitred_leg_formulas_against_occ[90|87|60|30]`: one valid
+solid, volume equal to the sum of the legs' closed-form volumes to 1e-6, box to 1e-3 mm.
+**Rule.** Mitred legs are safe to fuse and their hand volumes add. A leg that only touches another along an edge
+or circle is not (F28).
+
+## F30. Spears catalogue editions differ by up to 1/16 in for the same part number — CONFIRMED (2026-10-01)
+
+**Symptom.** The same Sch 40 part has different letter dimensions in the 2012 (`ssb`), 2019 (`swt`) and Dec 2025
+(`SCH40TECH_40-1_T`) technical catalogues: 406-010 H 1-13/16 / 1-3/4 / 1-25/32; 406-007 M 1-11/32 (2019) vs
+1-5/16 (2025); 447-007 W 1-9/32 vs 1-5/16; 457-007 nut OD 1-31/32 vs 2; 2122 compact valve A/B/C differ between
+CB-2-0616 (2016) and VALTECH (Dec 2024).
+**Cause.** Mould and drawing revisions; Spears states +/- 1/16 on overall dimensions.
+**Rule.** Every Spears number in a params row cites its edition and page (projects/nft_table uses Dec 2025 and
+Dec 2024) and notes the other editions' value where they differ. Socket depth is never typed: it follows from
+H - G (ells, tees), (L - N)/2 (couplings, unions), (C - B)/2 (valves), and is measured on the geometry against the
+ASTM D2466 minimum.
+
 ## TODO — manufacturing facts that are not kernel facts
 
 FINDINGS entries above are geometry/kernel facts; these are manufacturing
