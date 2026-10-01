@@ -1,0 +1,20 @@
+[project]
+name = "cacad"
+version = "0.1.0"
+description = "build123d utilities, printability checks and FreeCAD cross-checks shared by the CACAD-Lab projects"
+requires-python = ">=3.12,<3.13"
+dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1"]
+
+[project.optional-dependencies]
+archive = ["bd_warehouse==0.3.0"]   # archive/cable_gland and archive/cacad_threads only
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["cacad*", "projects*", "coupons*"]
+namespaces = true
+
+[tool.pytest.ini_options]
+testpaths = ["cacad/tests", "projects"]
