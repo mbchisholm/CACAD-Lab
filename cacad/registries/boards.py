@@ -168,4 +168,61 @@ FEATHER_ESP32S3 = Board(
                 Connector(-14.48, 7.94, (0, 1), "JST_PH2")),
 )
 
-BOARDS = {b.name: b for b in (ADS1115, ADS1115_V1, UNO_R3, TENTACLE_T2, INA219, TCA9548A, BME280, FEATHER_ESP32S3)}
+# --- boards added 2026-10-04 for projects/nutrient_controller, from Adafruit's
+# published Eagle files parsed with tools/board_from_eagle.py. Connector facing
+# is the tool's inference (pad geometry or nearest edge).
+#
+# OLED_938: 1.3in 128x64 SSD1306, I2C default (STEMMA QT). The panel
+# (package UG-2864HSWEG01_1.3_WRAPAROUND, mirrored) sits on the side opposite
+# the components: glass 34.5 x 23.0 centred (0, +0.06), active area
+# 29.4 x 14.7 centred (0, +2.11) from the outline centre (tPlace / tDocu layers).
+# MOSFET_5648: STEMMA MOSFET driver, AO3406 + 1N4007, 3-30 V load, 1.5 A
+# continuous; JST PH3 input, WAGO 2060-402 SMD push-in terminal (X1) out.
+# Both holes on one short end: carry the free end.
+# RELAY_4409: STEMMA non-latching mini relay; 3.5 mm 3-way terminal block.
+
+OLED_938 = Board(
+    name="OLED_938",
+    size=(35.560, 33.020),
+    holes=((-15.240, -13.970), (15.240, -13.970), (-15.240, 13.970), (15.240, 13.970)),
+    hole_dia=2.50,   # Eagle drill; a plated hole finishes smaller than the drill
+    source="Adafruit 1.3in 128x64 OLED STEMMA QT.brd, github.com/adafruit/Adafruit-1.3inch-128x64-Mono-OLED-PCB (HEAD), 2026-10-04; Adafruit 1.3in 128x64 OLED STEMMA QT.brd parsed by tools/board_from_eagle.py, 2026-10-04",
+    thickness=None,   # not in an Eagle file: caliper
+    nearest_pin=6.35,
+    nearest_top_copper=3.79,
+    connectors=(
+        Connector(-15.24, 0.00, (-1, 0), "JST_SH4"),   # CONN4:JST_SH4, facing by pad geometry
+        Connector(15.24, 0.00, (1, 0), "JST_SH4"),   # CONN1:JST_SH4, facing by pad geometry
+    ),
+)
+
+MOSFET_5648 = Board(
+    name="MOSFET_5648",
+    size=(25.400, 17.780),
+    holes=((10.160, -6.350), (10.160, 6.350)),
+    hole_dia=2.50,   # Eagle drill; a plated hole finishes smaller than the drill
+    source="Adafruit MOSFET Driver STEMMA Breakout.brd, github.com/adafruit/Adafruit-MOSFET-Driver-STEMMA-PCB (HEAD), 2026-10-04; Adafruit MOSFET Driver STEMMA Breakout.brd parsed by tools/board_from_eagle.py, 2026-10-04",
+    thickness=None,   # not in an Eagle file: caliper
+    nearest_pin=6.38,
+    nearest_top_copper=1.27,
+    connectors=(
+        Connector(-8.06, 0.00, (-1, 0), "JST_PH3"),   # X4:JSTPH3, facing by nearest edge
+    ),
+)
+
+RELAY_4409 = Board(
+    name="RELAY_4409",
+    size=(34.290, 21.590),
+    holes=((-14.605, -8.255), (14.605, -8.255), (-14.605, 8.255), (14.605, 8.255)),
+    hole_dia=2.50,   # Eagle drill; a plated hole finishes smaller than the drill
+    source="Adafruit Non-Latching Relay Breakout.brd, github.com/adafruit/Adafruit-STEMMA-Non-Latching-Mini-Relay-PCB (HEAD), 2026-10-04; Adafruit Non-Latching Relay Breakout.brd parsed by tools/board_from_eagle.py, 2026-10-04",
+    thickness=None,   # not in an Eagle file: caliper
+    nearest_pin=5.71,
+    nearest_top_copper=1.17,
+    connectors=(
+        Connector(-12.64, 0.00, (-1, 0), "JST_PH3"),   # X4:JSTPH3, facing by nearest edge
+    ),
+)
+
+BOARDS = {b.name: b for b in (ADS1115, ADS1115_V1, UNO_R3, TENTACLE_T2, INA219, TCA9548A, BME280, FEATHER_ESP32S3, OLED_938,
+                                     MOSFET_5648, RELAY_4409)}
