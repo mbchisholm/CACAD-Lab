@@ -8,7 +8,7 @@ import math
 
 from build123d import Box, Circle, Cylinder, Part, Plane, Polygon, Pos, Rectangle, RegularPolygon, Rot, extrude
 
-AXES = {"x": (1, 0, 0), "y": (0, 1, 0), "z": (0, 0, 1)}
+AXES = {"x": (1, 0, 0), "y": (0, 1, 0), "z": (0, 0, 1), "-x": (-1, 0, 0), "-y": (0, -1, 0), "-z": (0, 0, -1)}
 
 
 def box(x0, x1, y0, y1, z0, z1) -> Part:
@@ -48,7 +48,15 @@ def slot_teardrop(w, half_len, axis, centre, length, apex="x") -> Part:
     return extrude(pl * prof, amount=length / 2, both=True)
 
 
-def hex_prism(s, axis, centre, length, flats_normal="y") -> Part:
-    """Hex of across-flats s along `axis`; one pair of flats faces `flats_normal`."""
+def hex_prism(s, axis, centre, length, flats_normal="y", apex=None) -> Part:
+    """Hex of across-flats s along `axis`; one pair of flats faces `flats_normal`. With `apex` (the print's up,
+    perpendicular to flats_normal) the vertex there gets a 45 deg roof, so a horizontal nut pocket prints."""
     pl = Plane(origin=centre, x_dir=AXES[flats_normal], z_dir=AXES[axis])
-    return extrude(pl * RegularPolygon(s / math.sqrt(3), 6, major_radius=True, rotation=30), amount=length / 2, both=True)
+    prof = RegularPolygon(s / math.sqrt(3), 6, major_radius=True, rotation=30)
+    if apex is not None:
+        # local y is z_dir x x_dir; the roof goes on whichever side of local y points to `apex`
+        ly = tuple(a * b for a, b in zip(tuple(pl.y_dir), AXES[apex]))
+        sgn = 1 if sum(ly) > 0 else -1
+        r = s / math.sqrt(3)
+        prof = prof + Polygon((-s / 2, sgn * r / 2), (0, sgn * (r / 2 + s / 2)), (s / 2, sgn * r / 2), (0, 0), align=None)
+    return extrude(pl * prof, amount=length / 2, both=True)

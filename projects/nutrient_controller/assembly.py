@@ -26,6 +26,7 @@ from projects.nutrient_controller.body import build_body
 from projects.nutrient_controller.cover import build_cover
 from projects.nutrient_controller.geom import box, cyl
 from projects.nutrient_controller.params import ACTIVE_SIZES, derive, validate
+from projects.nutrient_controller.rim_hook import build_hook, build_knob, build_pad, clamp_locations
 from projects.nutrient_controller.wall_plate import build_backing, build_plate, plate_x
 
 
@@ -100,25 +101,62 @@ def build_hardware(size: str = "B1") -> dict:
     fx, fz = pp["flange"][1], pp["flange"][0]                                    # rotated: 40.3 along x, 54.5 along z
     hw["pump_head"] = box(px - fx / 2, px + fx / 2, -W / 2 - pp["head_depth"], -W / 2, pz - fz / 2, pz + fz / 2)
     hw["pump_motor"] = cyl(pp["motor_d"], "y", (px, -W / 2 + pp["motor_l"] / 2, pz), pp["motor_l"])
-    # tubes leave the head towards the plate: outlet (upper) through the tote wall, inlet (lower) turns down
-    ty = d["tote_holes"]["tube"][0]
+    # tubes leave the head towards the plate. Wall mount: the outlet (upper) goes through the tote wall. Rim
+    # mount: both stop just past the plate; the outlet is routed by hand up and over the rim in the hook's groove.
+    ty = -W / 2 - pp["head_depth"] / 2
     xp0, xp1 = plate_x(d)
-    xt = xp0 - max(d["tote_wall_t"]) - d["backing_t"] - 10.0
+    xt = xp0 - max(d["tote_wall_t"]) - d["backing_t"] - 10.0 if d["mount"] == "wall" else xp0 - 5.0
     x_head = px - fx / 2
     lo, hi = d["tube_z"]
     hw["tube_out"] = cyl(pp["tube_od"], "x", ((x_head + xt) / 2, ty, hi), x_head - xt)
     hw["tube_in"] = cyl(pp["tube_od"], "x", ((x_head + xp1 + 3.0) / 2, ty, lo), x_head - xp1 - 3.0)
     hw["tube_in_down"] = cyl(pp["tube_od"], "z", (xp1 + 3.0 + pp["tube_od"] / 2, ty, lo / 2), lo)
+    if d["mount"] == "rim":
+        hw.update(_clamp_hardware(d))
     return hw
 
 
-def build_context(size: str = "B1") -> dict:
+def _clamp_hardware(d, c=None) -> dict:
+    """Rim clamp fasteners: two ISO 4762 M5 (heads on the leg's container face, nuts in the plate bosses) and the
+    ISO 4017 M6 screw with its nut, placed for a container of thickness c (default: mid range)."""
+    c = sum(d["rim_c"]) / 2 if c is None else c
+    m5, m6 = d["screws"]["M5"], d["screws"]["M6"]
+    xl0 = d["x_leg"][0]
+    x1 = plate_x(d)[1]
+    nb_d, nb_h = d["plate_nut_boss"]
+    pk = d["plate_nut_pocket"]
+    hw = {}
+    for i, y in enumerate(d["hook_bolts_y"]):
+        z = d["hook_bolts_z"]
+        L = d["hook_bolt_len"]
+        hw[f"m5_{i}_head"] = cyl(m5["head_dk"], "x", (xl0 - m5["head_k"] / 2, y, z), m5["head_k"])
+        hw[f"m5_{i}_shank"] = cyl(m5["d"], "x", (xl0 + L / 2, y, z), L)
+        nx0 = x1 + nb_h - pk["depth"]
+        hw[f"m5_{i}_nut"] = cyl(m5["nut_s"], "x", (nx0 + m5["nut_m_plain"] / 2, y, z), m5["nut_m_plain"])
+    loc = clamp_locations(d, c)
+    tip, head_top = loc["screw"]
+    y, z = d["hook_y"], d["screw_z"]
+    hw["m6_shank"] = cyl(m6["d"], "x", ((tip + head_top - m6["head_k"]) / 2, y, z), head_top - m6["head_k"] - tip)
+    hw["m6_head"] = cyl(m6["head_s"], "x", (head_top - m6["head_k"] / 2, y, z), m6["head_k"])
+    pkn = d["screw_nut_pocket"]
+    hw["m6_nut"] = cyl(m6["nut_s"], "x", (xl0 + pkn["depth"] - m6["nut_m"] / 2, y, z), m6["nut_m"])
+    return hw
+
+
+def build_context(size: str = "B1", c=None) -> dict:
+    """The container wall as a slab and the HDX waterline. Rim mount: the wall's inside face on the inner jaw,
+    thickness c at the screw (default mid range); it says nothing about any one container's real profile."""
     d = derive(size)
-    xp0 = plate_x(d)[0]
-    tw = max(d["tote_wall_t"])
     top = d["H"] + d["top_below_rim"]
-    wall = box(xp0 - tw, xp0, -200.0, 150.0, -60.0, top)
-    water = box(xp0 - tw - 150.0, xp0 - tw, -200.0, 150.0, -60.0, d["waterline_z"])
+    if d["mount"] == "wall":
+        xp0 = plate_x(d)[0]
+        tw = max(d["tote_wall_t"])
+        x0, x1 = xp0 - tw, xp0
+    else:
+        c = sum(d["rim_c"]) / 2 if c is None else c
+        x0, x1 = d["x_jaw_face"], d["x_jaw_face"] + c
+    wall = box(x0, x1, -200.0, 150.0, -60.0, top)
+    water = box(x0 - 150.0, x0, -200.0, 150.0, -60.0, d["waterline_z"])
     return dict(tote_wall=wall, water=water)
 
 
@@ -127,6 +165,9 @@ CONTACTS = {
     ("pump_motor", "body"), ("pump_head", "body"), ("pump_motor", "pump_head"),
     ("tube_in", "tube_in_down"), ("tube_out", "pump_head"), ("tube_in", "pump_head"),
     ("tube_out", "backing"),
+    ("m5_0_head", "m5_0_shank"), ("m5_1_head", "m5_1_shank"), ("m5_0_shank", "m5_0_nut"), ("m5_1_shank", "m5_1_nut"),
+    ("m6_shank", "m6_head"), ("m6_shank", "m6_nut"), ("m6_head", "knob"), ("m6_shank", "knob"), ("m6_shank", "pad"),
+    ("m6_nut", "hook"), ("m5_0_head", "hook"), ("m5_1_head", "hook"), ("m5_0_nut", "plate"), ("m5_1_nut", "plate"),
     ("button0", "cover"), ("button1", "cover"), ("button2", "cover"), ("led", "cover"),
     ("button0", "button0_bezel"), ("button1", "button1_bezel"), ("button2", "button2_bezel"),
     ("oled_glass", "oled_pcb"), ("oled_pcb", "oled_plug0"), ("oled_pcb", "oled_plug1"),
@@ -177,6 +218,8 @@ def check_assembly(printed: dict, hw: dict, size: str = "B1") -> list[str]:
         v = interference_volume(hw[t], printed["plate"])
         if v > 1e-3:
             fails.append(f"{t} hits the plate: {v:.2f} mm3")
+    if d["mount"] == "rim":
+        fails += _check_clamp(printed, d)
     # dry electronics inside the body's cavity
     cav = box(d["back_t"], d["D"], *d["inner_y"], *d["inner_z"])
     for n in ("tds_pcb", "ads_pcb", "mosfet_pcb", "carrier_pcb", "xiao", "pololu", "oled_pcb", "pump_motor"):
@@ -185,12 +228,56 @@ def check_assembly(printed: dict, hw: dict, size: str = "B1") -> list[str]:
     return fails
 
 
+def _check_clamp(printed: dict, d: dict) -> list[str]:
+    """Across the container range: the hook clears the wall, the pad lands on it, the knob clears everything,
+    and the M6 still reaches the pad and the nut."""
+    fails = []
+    pad0, knob0 = build_pad(d["size"]), build_knob(d["size"])
+    lo, hi = d["rim_c"]
+    for c in (lo, (lo + hi) / 2, hi):
+        wall = build_context(d["size"], c)["tote_wall"]
+        loc = clamp_locations(d, c)
+        pad, knob = loc["pad"] * pad0, loc["knob"] * knob0
+        for name, part in (("hook", printed["hook"]), ("pad", pad), ("plate", printed["plate"]), ("knob", knob)):
+            v = interference_volume(wall, part)
+            if v > 1e-3:
+                fails.append(f"container {c:g} mm x {name}: {v:.2f} mm3")
+        for name in ("body", "cover", "plate", "hook"):
+            v = interference_volume(knob, printed[name])
+            if v > 1e-3:
+                fails.append(f"knob at container {c:g} mm x {name}: {v:.2f} mm3")
+        v = interference_volume(pad, printed["hook"])
+        if v > 1e-3:
+            fails.append(f"pad at container {c:g} mm x hook: {v:.2f} mm3")
+        tip, head_top = loc["screw"]
+        nut_x = d["x_leg"][0] + d["screw_nut_pocket"]["depth"] - d["screws"]["M6"]["nut_m"]
+        if not tip < nut_x:
+            fails.append(f"M6 tip at container {c:g} mm does not pass its nut")
+    for hw_bolt in ("m5_0_head", "m5_1_head"):
+        h = _clamp_hardware(d, hi)[hw_bolt]
+        v = interference_volume(h, build_context(d["size"], hi)["tote_wall"])
+        if v > 1e-3:
+            fails.append(f"{hw_bolt} hits the thickest container: {v:.2f} mm3")
+    return fails
+
+
+def build_printed(size: str) -> dict:
+    d = derive(size)
+    printed = dict(body=build_body(size), cover=build_cover(size), plate=build_plate(size))
+    if d["mount"] == "wall":
+        printed["backing"] = build_backing(size)
+    else:
+        loc = clamp_locations(d, sum(d["rim_c"]) / 2)
+        printed.update(hook=build_hook(size), knob=loc["knob"] * build_knob(size), pad=loc["pad"] * build_pad(size))
+    return printed
+
+
 def main():
     out = __file__.rsplit("/", 1)[0] + "/out"
     res = {}
     for size in ACTIVE_SIZES:
         validate(size)
-        printed = dict(body=build_body(size), cover=build_cover(size), plate=build_plate(size), backing=build_backing(size))
+        printed = build_printed(size)
         hw = build_hardware(size)
         ctx = build_context(size)
         fails = check_assembly(printed, hw, size)
