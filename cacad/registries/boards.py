@@ -224,5 +224,41 @@ RELAY_4409 = Board(
     ),
 )
 
+# DFRobot SEN0244 Gravity analog TDS signal board. Outline 42 x 32, four
+# holes on 35.00 x 25.00 (both dimensioned) in SEN0244_analog-tds-sensor_
+# layout_V1.0.pdf (DFRobot wiki "Layout" download). Hole diameter is drawn,
+# not dimensioned: about 3.05 scaled from the vector PDF, so an M2.5 screw.
+# XH2.54-2P probe header on one 32 mm edge, PH2.0-3P signal header on the
+# other, both side entry and centred (same PDF, scaled). Tallest part is the
+# XH header (connectors.JST_XH2, 7.0).
+SEN0244 = Board(
+    name="SEN0244",
+    size=(42.0, 32.0),
+    holes=_rect_pattern(35.0, 25.0),
+    hole_dia=3.0,                                # scaled from the layout PDF, not dimensioned
+    source="SEN0244_analog-tds-sensor_layout_V1.0.pdf, wiki.dfrobot.com SKU SEN0244, read 2026-10-04",
+    thickness=None,
+    nearest_pin=None,                            # layout shows SMD only near the holes; no pin data
+    nearest_top_copper=None,
+    connectors=(Connector(-21.0 + 6.1 / 2, 0.0, (-1, 0), "JST_XH2"),
+                Connector(21.0 - 6.0 / 2, 0.0, (1, 0), "JST_PH3")),
+)
+
+# Adafruit Perma-Proto quarter-sized breadboard PCB: a carrier for boards
+# without holes (XIAO ESP32-C3, Pololu D24V10F5) and loose parts. From
+# `adafruit permaproto quarterbreadboard.brd`, github.com/adafruit/
+# Adafruit-Perma-Proto-PCB (HEAD), parsed with tools/board_from_eagle.py on
+# 2026-10-04: 1.70 x 2.00 in, two unplated 3.2 holes on the long centreline.
+PERMAPROTO_QUARTER = Board(
+    name="PERMAPROTO_QUARTER",
+    size=(43.180, 50.800),
+    holes=((-17.780, 0.000), (17.780, 0.000)),
+    hole_dia=3.20,
+    source="adafruit permaproto quarterbreadboard.brd, github.com/adafruit/Adafruit-Perma-Proto-PCB (HEAD), 2026-10-04",
+    thickness=None,
+    nearest_pin=None,                            # breadboard pattern: whatever the builder solders
+    nearest_top_copper=None,
+)
+
 BOARDS = {b.name: b for b in (ADS1115, ADS1115_V1, UNO_R3, TENTACLE_T2, INA219, TCA9548A, BME280, FEATHER_ESP32S3, OLED_938,
-                                     MOSFET_5648, RELAY_4409)}
+                                     MOSFET_5648, RELAY_4409, SEN0244, PERMAPROTO_QUARTER)}

@@ -1,243 +1,460 @@
-"""Nutrient controller: a printed PETG housing that regulates one HDX 27 gal
-tote. XIAO ESP32-C3, ADS1115, DFRobot SEN0244 TDS board and probe, DS18B20
-probe, one peristaltic dosing pump on a relay, SSD1306 128x64 OLED, three
-buttons, one LED. Electronics from sprout-cut env `nutrient-analog-xiao`
-(platformio.ini:309-363): TDS on ADS1115 AIN1 at 0x48, OLED 0x3D on the same
-I2C (D4/D5), DS18B20 on D10, pumps on active-low relays. That env drives three
-relays and a pH probe; this housing carries one pump and no pH (owner,
-2026-10-04).
+"""Nutrient controller, concept B (wall mount), revision B1: every number.
 
-Stage: IDEATION. Three concepts, massing only. Envelopes of bought parts are
-PLACEHOLDER unless a source is named; nothing here passes a part that has to
-fit. Each concept answers the questions in NOTES.md with a number.
+A printed PETG box that hangs on a wall plate bolted to the outside of the
+HDX 27 gal tote's short end wall. The box hangs by three keyholes on printed
+mushroom posts and lifts off for service; it sits parallel to the wall, so
+the wall's draft never enters a dimension (it tilts the screen up a few
+degrees). Probe cables come out of a window in the plate, run down the gap
+behind the box and enter cable glands in its bottom wall from below (drip
+loop). The pump flange bolts to the outside of the -Y side wall, motor
+inside; both tubes leave the head towards the plate, the outlet through a
+tote-wall hole, the inlet down to a concentrate bottle standing on the floor.
 
-Frame (all concepts): the tote. Origin at the centre of the rim top, +X along
-the tote length, +Z up. The rim top is z = 0, the lid sits on it, the inside
-floor is at z = -inside depth, the waterline at floor + fill_depth.
+Electronics from sprout-cut `nutrient-analog-xiao` (NOTES.md), with a MOSFET
+driver in place of the relay (active-high: firmware `activeHigh=true`).
 
-Every downstream script reads `derive(concept)`.
+Frames. BOX: x out of the wall from the box's back face (x = 0), y across
+(+y to the right looking at the front), z up from the box's bottom face
+(z = 0). Every part file builds in the box frame. The wall plate's front face
+is at x = -gap, the tote wall's outer face at x = -gap - plate_t. A box z
+maps to a tote height below the rim as z - H - top_below_rim (measured along
+the drafted wall, so it overstates depth: conservative for the waterline).
+
+Tags (PARAMS_CONVENTION rule 5): each bought-part row says VENDOR (sheet
+named), STANDARD, INFERRED (from what), DESIGN or PLACEHOLDER. Sheets are in
+ref/vendor_sheets/ (gitignored).
+
+    .venv/bin/python projects/nutrient_controller/params.py     # prints the design
 """
 from __future__ import annotations
 
 import math
 from types import MappingProxyType
 
-from cacad.registries.boards import ADS1115
-from cacad.registries.connectors import USB_C
-from cacad.registries.materials import BED, LAYER, NOZZLE, WALL, clearance_bore
+from cacad.registries.boards import BOARDS
+from cacad.registries.connectors import MATINGS
+from cacad.registries.materials import (BED, FDM_HOLE_ALLOWANCE, FIT_CLEAR, INSERT_BORE_M3, INSERT_LEN_M3,
+                                        INSERT_WALL_M3, LAYER, NOZZLE, clearance_bore)
 from cacad.registries.reservoirs import HDX_27GAL
 
 # ---------------------------------------------------------------------------
-# Bought parts: (x, y, z) envelope, mm, lying flat, z = height above its base.
-# tag/source per row (PARAMS_CONVENTION rule 5). PLACEHOLDER = drawn for a
-# part whose geometry is not yet sourced; a concept may place it, never fit it.
+# Fasteners. ISO 7045 pan head (M2-M3), ISO 4762 socket head (M5), ISO 4032
+# nuts, ISO 10511 nylon-insert nut, ISO 7089 washer. `lengths` is the stocked
+# ladder. A head wider than a board's nearest top copper takes a PA (nylon)
+# screw of the same standard.
+# ---------------------------------------------------------------------------
+SCREWS = MappingProxyType(dict(
+    M2=dict(d=2.0, head_dk=4.0, head_k=1.6, nut_s=4.0, nut_m=1.6, lengths=(4, 5, 6, 8, 10, 12, 16, 20),
+            std="ISO 7045 / ISO 4032"),
+    M2_5=dict(d=2.5, head_dk=5.0, head_k=2.0, nut_s=5.0, nut_m=2.0, lengths=(4, 5, 6, 8, 10, 12, 16, 20),
+              std="ISO 7045 / ISO 4032"),
+    M3=dict(d=3.0, head_dk=5.6, head_k=2.4, nut_s=5.5, nut_m=2.4, lengths=(5, 6, 8, 10, 12, 16, 20, 25),
+            std="ISO 7045 / ISO 4032"),
+    M5=dict(d=5.0, head_dk=8.5, head_k=5.0, nut_s=8.0, nut_m=5.0, washer_d=10.0, washer_h=1.0,
+            lengths=(10, 12, 16, 20, 25, 30, 35, 40), std="ISO 4762 / ISO 10511 nyloc / ISO 7089"),
+))
+
+# ---------------------------------------------------------------------------
+# Bought parts. One row each; the tag says where the numbers come from.
 # ---------------------------------------------------------------------------
 PARTS = MappingProxyType(dict(
-    xiao=dict(size=(21.0, 17.8, 1.0 + USB_C.header_h), tag="VENDOR",
-              source="Seeed wiki XIAO_ESP32C3_Getting_Started: 21 x 17.8; height = PCB 1.0 PLACEHOLDER + USB-C receptacle "
-                     "(connectors.USB_C). No mounting holes: held by a printed edge cradle."),
-    ads1115=dict(size=(ADS1115.size[0], ADS1115.size[1], 1.6 + 2.9), tag="VENDOR",
-                 source="boards.ADS1115 (Eagle); height = PCB 1.6 PLACEHOLDER + JST SH header 2.9 (connectors.JST_SH4)"),
-    tds_board=dict(size=(42.0, 32.0, 12.0), tag="VENDOR",
-                   source="DFRobot wiki SEN0244: board 42 x 32, PH2.0-3P out, XH2.54-2P probe; height 12 PLACEHOLDER; "
-                          "holes unpublished: held by a printed edge rail"),
-    oled=dict(size=(35.4, 33.5, 5.0), window=(30.0, 16.0), tag="PLACEHOLDER",
-              source="generic 1.3in SSD1306 128x64 module; panel module not chosen (sprout-cut names only SSD1306 0x3D)"),
-    relay=dict(size=(50.0, 26.0, 19.0), tag="PLACEHOLDER", source="generic 1-channel opto relay module, active-low"),
-    buck=dict(size=(22.0, 17.0, 6.0), tag="PLACEHOLDER", source="MP1584-class 12 V -> 5 V module"),
-    dc_jack=dict(d=11.0, l=16.0, hole_d=8.0, tag="PLACEHOLDER", source="5.5 x 2.1 panel jack"),
-    button=dict(size=(12.0, 12.0, 7.3), cap_d=11.5, hole_d=12.4, tag="PLACEHOLDER", source="12 mm tact switch + round cap"),
-    led=dict(d=5.0, flange_d=5.8, l=8.6, tag="PLACEHOLDER", source="T-1 3/4 (5 mm) LED in a printed bezel"),
-    pump_head=dict(size=(48.0, 30.0, 34.0), tag="PLACEHOLDER",
-                   source="generic 12 V DC peristaltic, Kamoer NKP class; model not chosen"),
-    pump_motor=dict(d=28.0, l=50.0, tag="PLACEHOLDER", source="as pump_head"),
-    tube_od=dict(d=4.0, tag="PLACEHOLDER", source="pump tubing, model not chosen"),
-    tds_probe=dict(d=12.0, l=60.0, cable_d=3.5, length_total=830.0, tag="VENDOR",
-                   source="DFRobot wiki SEN0244: probe 'Length 83cm' (probe + cable); body d, l and cable d PLACEHOLDER"),
-    ds18b20=dict(d=6.0, l=50.0, cable_d=4.0, length_total=1000.0, tag="PLACEHOLDER",
-                 source="generic stainless DS18B20 probe, 1 m lead"),
-    stock_bottle=dict(d=75.0, h=170.0, tag="PLACEHOLDER", source="500 mL concentrate bottle; not chosen"),
+    pump=dict(tag="VENDOR", model="Kamoer NKP-DC-S06, 12 V, straight bracket",
+              source="Kamoer NKP datasheet p.2 'Straight Bracket' (ref/vendor_sheets/pump), p.1 code table",
+              hole_d=3.2, hole_pitch=48.5, flange=(54.5, 40.3), head_depth=23.5, motor_d=30.5, motor_l=44.0,
+              volts=12.0, amps=0.25, tube_id=2.0, tube_od=4.0,
+              # INFERRED: drawn, not dimensioned. The holes sit on the line through the shaft; the two tube
+              # ends 18.6 apart about it. Slots and a sliding nut tolerate the first, a slot the second.
+              tube_pitch=18.6),
+    gland_tds=dict(tag="VENDOR", model="Lapp SKINTOP ST-M M16x1.5 (53111010) + GMP-GL-M M16 locknut (53119010)",
+                   source="Lapp DB53111000EN p.2, DB53119000EN p.2, T21 hole table",
+                   hole=16.0, hole_tol=0.2, sw=19.0, a=21.1, c_max=34.0, thread=8.0, clamp=(4.0, 10.0),
+                   nut_sw=22.0, nut_a=24.2, nut_b=5.0),
+    gland_ds=dict(tag="VENDOR", model="Lapp SKINTOP ST-M M12x1.5 (53111000) + GMP-GL-M M12 locknut (53119000)",
+                  source="Lapp DB53111000EN p.2, DB53119000EN p.2, T21 hole table",
+                  hole=12.0, hole_tol=0.2, sw=15.0, a=16.6, c_max=30.0, thread=8.0, clamp=(3.5, 7.0),
+                  nut_sw=17.0, nut_a=18.7, nut_b=5.0),
+    dc_jack=dict(tag="VENDOR", model="Switchcraft 722A, 2.0 mm pin (5.5 x 2.1 plug)",
+                 source="Switchcraft 722A sheet, 'Mounting' and drawing 722A_CD",
+                 hole=7.95, panel_max=3.18, body_d=11.0, body_l=15.2),
+    button=dict(tag="VENDOR", model="E-Switch PV0 IP67 12 mm momentary",
+                source="E-Switch PV0 datasheet p.2", hole=12.0, hole_tol=0.2, panel=(1.0, 6.0),
+                bezel_d=14.0, behind=19.0),       # 18.0 +/- 1: the larger
+    led=dict(tag="VENDOR", model="Bivar CR-174 T-1 3/4 clip and ring + 5 mm LED",
+             source="Bivar CR-174 datasheet", hole=6.86, panel=(0.8, 3.2), ring_d=8.9, ring_h=4.1,
+             body_l=8.6),                     # LED body behind the ring: PLACEHOLDER (T-1 3/4 lamps, typical)
+    oled=dict(tag="VENDOR", board="OLED_938", source="boards.OLED_938 (Eagle): glass and active area from the panel package",
+              glass=(34.5, 23.0), glass_off=(0.0, 0.06), active=(29.4, 14.7), active_off=(0.0, 2.11),
+              panel_t=1.6,                    # PLACEHOLDER: not in the Eagle file; the boss height clears 3.0
+              back_h=MATINGS["JST_SH4"].header_h),
+    xiao=dict(tag="VENDOR", size=(20.955, 17.78),
+              source="Seeed XIAO ESP32C3_v1.3.kicad_pcb Edge.Cuts (ref/vendor_sheets/xiao_esp32c3)",
+              pcb_t=1.6,                      # PLACEHOLDER: KiCad default, no stackup published
+              usb_h=MATINGS["USB_C"].header_h,
+              spacer=2.54),                   # PLACEHOLDER: 0.1 in pin header body under the board
+    pololu=dict(tag="VENDOR", model="Pololu D24V10F5 5 V 1 A step-down, 5.1-36 V in",
+                source="d24v10fx dimensions PDF (pololu.com/file/0J1662), product 2831",
+                size=(17.8, 12.7), h=1.02 + 2.8, vin=(5.1, 36.0)),
+    tds_probe=dict(tag="VENDOR", source="DFRobot wiki SEN0244: probe 'Length 83cm' with XH2.54-2P plug",
+                   length_total=830.0, plug="JST_XH2",
+                   d=12.0, l=60.0, cable_d=3.5),   # PLACEHOLDER: probe body and cable not published
+    ds18b20=dict(tag="PLACEHOLDER", source="generic stainless DS18B20, 1 m lead, bare ends",
+                 d=6.0, l=50.0, cable_d=4.0, length_total=1000.0),
+    usb_plug=dict(tag="PLACEHOLDER", source="USB-C plug overmold: USB-IF spec not read",
+                  overmold=(12.35, 6.5)),
 ))
 
 COMMON = MappingProxyType(dict(
     # --- named clearances (mm): which two surfaces each one separates ---
-    part_air=3.0,          # DESIGN: any bought-part envelope to any inner wall or other envelope
-    window_lip=1.0,        # DESIGN: OLED window edge inside the module's active-area edge
-    cable_hole_extra=2.0,  # DESIGN: cable/tube hole d - cable d; a printed split grommet seals it at fidelity stage
+    fit_clear=FIT_CLEAR,                 # radial: printed bore - bought part it slips over (materials)
+    hole_allow=FDM_HOLE_ALLOWANCE,       # diametral: added to every vendor panel-hole size (materials)
+    part_air=2.0,                        # DESIGN: any bought-part envelope to another or to a wall
+    board_air=1.0,                       # DESIGN: pin tails under a board to the boss base
+    boss_pin_margin=1.0,                 # DESIGN: boss outer radius stays this far inside a board's nearest pin
+    nut_pocket_clear=0.3,                # DESIGN: across flats, hex pocket - nut
+    nut_pocket_extra=0.8,                # DESIGN: pocket depth - nut m
+    keyhole_clear=0.4,                   # DESIGN radial: keyhole - post neck and head
+    plug_finger=5.0,                     # DESIGN: room beyond a pulled plug, to grip it
+    rest_pad_d=4.0,                      # DESIGN: pad under a board edge that has no holes
+    tds_sleeve_wall=1.0,                 # DESIGN: heat-shrink built up on the TDS cable at its gland
     # --- geometry rules ---
-    wall=2.0,              # DESIGN: 5 perimeters, above materials.WALL for a part that gets handled
-    floor=2.0,
-    corner_r=4.0,          # DESIGN: outer vertical corner radius
-    lid_t=max(HDX_27GAL.lid_t_range),   # DESIGN context: thickest lid the tote range admits
-    standoff=4.0,          # DESIGN: board underside above the cavity floor (cradle height)
-    tote_wall=3.0,         # PLACEHOLDER context: draws the tote, never fits to it
-    tote_lip=15.0,         # PLACEHOLDER context: rim flange overhang beyond the wall at the top
-    immersion=40.0,        # DESIGN: probe tip this far below the waterline
-    service_slack=150.0,   # DESIGN: cable slack to lift a probe out without unmounting anything
-    nozzle_d=NOZZLE,
-    layer=LAYER,
-    min_wall=1.2,
-    bed=BED,
-    material="PETG",
+    wall=2.4,                            # DESIGN: 6 perimeters; glands torque against it
+    back_t=3.2,                          # DESIGN: holds M2 / M2.5 nut pockets from the back face
+    cover_t=2.5,                         # DESIGN: inside the PV0 and CR-174 panel ranges
+    corner_r=5.0,
+    standoff=5.0,                        # DESIGN minimum: board underside above the back plate's inner face
+    screw_tip_min=0.4,                   # DESIGN: a board screw's tip stays this far inside the back face
+    insert_boss_od=INSERT_BORE_M3 + 2 * 2.0,   # wall 2.0 >= vendor minimum INSERT_WALL_M3
+    insert_depth=INSERT_LEN_M3 + 1.0,    # CNC Kitchen: insert length + about 1 mm
+    teardrop_cap=0.6,                    # DESIGN: a horizontal hole's teardrop is cut flat this far above r
+    tote_wall_t=(2.0, 5.0),              # DESIGN: HDX wall thickness unpublished; the bolt length covers the range
+    hole_over_water=50.0,                # DESIGN: least height of any tote-wall hole over the waterline
+    immersion=40.0,                      # DESIGN: probe tip below the waterline
+    service_slack=150.0,                 # DESIGN: lead to lift a probe out
+    nozzle_d=NOZZLE, layer=LAYER, min_wall=1.2, bed=BED, material="PETG",
+))
+
+PRINT_ORIENTATION = MappingProxyType(dict(
+    body=dict(up=(1, 0, 0), bed_face="back face, x = 0", bed_z="0",
+              known_overhangs=["side- and bottom-wall holes: truncated teardrops, apex +x"],
+              overhang_exceptions=[]),
+    cover=dict(up=(-1, 0, 0), bed_face="front face", bed_z="0", known_overhangs=[], overhang_exceptions=[]),
+    plate=dict(up=(1, 0, 0), bed_face="tote-side face", bed_z="0",
+               known_overhangs=["post heads: 45 deg cone underside"], overhang_exceptions=[]),
+    backing=dict(up=(1, 0, 0), bed_face="either face", bed_z="0", known_overhangs=[], overhang_exceptions=[]),
 ))
 
 # ---------------------------------------------------------------------------
-# Concepts (the family axis). Inputs only.
-#   A_lid    wedge box screwed to the lid; probes and tube drop through the lid
-#   B_wall   tall box bolted to the outside of the short wall; one grommet hole
-#            in the tote wall above the waterline; lid untouched
-#   C_split  slim UI head on a 2020 rail beside the tote + wet pod on the lid
-#            (pump, probe guides, bottle)
+# Revisions (the family axis). Inputs only.
 # ---------------------------------------------------------------------------
-CONCEPTS = {
-    "A_lid": dict(
-        box=(150.0, 110.0), h_front=42.0, h_back=78.0,    # DESIGN: footprint (X, Y), wedge heights
-        split_z=36.0,                                      # DESIGN: base/cover split above the box floor
-        at=(220.0, 0.0),                                   # DESIGN: box centre on the lid; tube drop clears the end wall
-        flange=10.0, lid_screw="M5",                       # DESIGN: skirt flange width, screws through the lid
-        # DESIGN layout, box frame (x, y from the box centre; rot deg about Z; xiao USB faces +X at rot 0)
-        floor_parts=dict(relay=(-20, -37, 0), buck=(45, -38, 0), tds_board=(-45, 32, 0), ads1115=(-5, 38, 0),
-                         xiao=(20, 39.5, 90)),
-        ui=dict(oled=(-35, 62), buttons=((15, 45), (35, 45), (55, 45)), led=(35, 82)),   # (x, s along the slope)
-        cable_holes=((-50, -4), (-35, -4)),               # floor, x, y
-        jack=("+Y", 50, 12), usb=("+Y", 20),               # wall, along-wall position, z above floor
-        pump=("+X", 0, 18),                                # wall, y, motor axis z above floor
-        bottle_at=(95.0, 0.0),                             # bottle holster centre on the lid, tote frame
-    ),
-    "B_wall": dict(
-        box=(120.0, 62.0, 170.0),                          # DESIGN: (width Y, depth X, height Z)
-        top_z=-20.0,                                       # DESIGN: box top below the rim, so the lid clears
-        wall_hole_z=-60.0, wall_hole_d=22.0,               # DESIGN: one grommet hole through the tote wall
-        bolt="M5", bolt_dy=80.0,                           # DESIGN: two bolts through the tote wall
-        bottle_below=True,
-        spacer_z=(-25.0, -100.0),                          # DESIGN: wedge spacer span on the drafted wall
-        # DESIGN layout on the back plate: (y, z below the box top, rot about X; xiao USB faces -Z at rot 0)
-        back_parts=dict(tds_board=(-34, -45), ads1115=(35, -40), xiao=(35, -75), relay=(-25, -110), buck=(35, -110)),
-        ui=dict(oled=(0, -35), buttons=((-25, -75), (0, -75), (25, -75)), led=(40, -35)),   # front face (y, z)
-        jack=("bottom", 5), usb=("bottom", 35),
-        pump=("-Y", -140),                                 # side wall, motor axis z below the box top
-        bolt_z=-25.0, tube_hole=(-85.0, -40.0),            # tote-wall tube hole (y, z)
-    ),
-    "C_split": dict(
-        head=(96.0, 64.0), head_h_front=26.0, head_h_back=46.0,   # DESIGN: slim wedge, UI + all electronics
-        head_at=(430.0, -140.0, 120.0),                    # DESIGN: head centre, on a 2020 post beside the tote end
-        pod=(130.0, 90.0, 44.0), pod_at=(220.0, 0.0),      # DESIGN: wet pod on the lid
-        rail=20.0,                                         # 2020 extrusion section, as projects/nft_table
-        head_floor_parts=dict(tds_board=(-20, 10, 0), ads1115=(22, 15, 0), xiao=(32, -16, 0)),
-        head_ui=dict(oled=(-24, 34), buttons=((5, 20), (20, 20), (35, 20)), led=(20, 46)),
-        head_usb=("+X", -16), head_gland=("+Y", 30),
-        pod_floor_parts=dict(relay=(-25, -25, 0), buck=(-30, 25, 0)),
-        pod_cable_holes=((-45, 0), (-33, 0)), pod_jack=("-X", 25, 14), pod_gland=("-Y", 20, 26),
-        pump=("+X", 0, 18),
-        bottle_at=(95.0, 0.0),
+SIZES = {
+    "B1": dict(
+        W=110.0, H=150.0, D=44.0,                  # DESIGN: box outer, D = back face to front rim
+        skirt=3.0,                                 # DESIGN: cover lip over the body's outer edge; ends short of the pump flange
+        gap=12.0,                                  # DESIGN: plate front face to box back (cables, bolt heads)
+        plate_t=5.0, backing_t=4.0,
+        plate_y=(-88.0, 60.0), plate_z=(0.0, 150.0),
+        top_below_rim=20.0,                        # DESIGN: box top under the rim; the lid's lip clears
+        # boards on the back plate: registry board, centre (y, z), rot deg in the y-z plane, screw
+        back_boards=dict(
+            tds=("SEN0244", (-30.0, 39.0), 90, "M2_5"),
+            ads=("ADS1115", (-24.0, 82.0), 0, "M2"),          # above the TDS PH plug, under the motor, plug clear of the nut block
+            mosfet=("MOSFET_5648", (25.0, 70.0), 0, "M2"),
+            carrier=("PERMAPROTO_QUARTER", (22.0, 30.8), 0, "M3"),   # M3 into heat-set inserts
+        ),
+        # on the carrier: centre (y, z) in the box frame; the XIAO's USB end down at the carrier's edge
+        xiao_yz=(33.0, None), pololu_yz=(12.0, 20.0),
+        # front cover UI, (y, z)
+        oled_yz=(20.0, 125.0), buttons_yz=((-30.0, 80.0), (0.0, 80.0), (30.0, 80.0)), led_yz=(45.0, 100.0),
+        # bottom wall: (y, x)
+        gland_tds_yx=(-30.0, 21.0), gland_ds_yx=(0.0, 21.0), jack_yx=(15.0, 30.0),
+        usb_opening=(13.5, 8.0),                   # DESIGN: (y, x), around the PLACEHOLDER overmold
+        # pump on the -Y wall: motor axis (x, z)
+        pump_xz=(19.5, 108.0), pump_slot=1.5,      # DESIGN: flange clears the skirt, motor clears the back plate
+        # keyholes: rest positions (y, z) of the posts; the box slides down `slide` onto them
+        keyholes=((-36.0, 140.0), (36.0, 140.0), (-7.0, 18.0)), slide=10.0,
+        post_neck_d=6.0, post_head_d=10.0, post_head_t=3.0,
+        plate_bolts=((-75.0, 140.0), (50.0, 140.0), (-75.0, 60.0), (50.0, 60.0)), plate_bolt="M5",
+        cable_hole=(-20.0, 100.0), cable_hole_d=16.0, plate_window_d=20.0,   # tote hole (y, z), DESIGN
+        tube_hole_d=8.0,                           # DESIGN: tote hole for the 4 mm outlet tube
     ),
 }
 
-ACTIVE_CONCEPTS = ("A_lid", "B_wall", "C_split")
+ACTIVE_SIZES = ("B1",)
 
 
-def _tote() -> dict:
-    L, W, H = HDX_27GAL.exterior_top
-    li, wi, hi = HDX_27GAL.interior_bottom
-    floor_z = -hi
-    return dict(top=(L, W), bottom_in=(li, wi), depth_in=hi, height=H, floor_z=floor_z,
-                waterline_z=floor_z + HDX_27GAL.fill_depth)
+def _rot(u, v, deg):
+    a = math.radians(deg)
+    return u * math.cos(a) - v * math.sin(a), u * math.sin(a) + v * math.cos(a)
 
 
-def derive(concept: str, **overrides) -> dict:
-    s = dict(CONCEPTS[concept])
+def _stock(lengths, need):
+    ok = [L for L in lengths if L >= need]
+    return min(ok) if ok else None
+
+
+def derive(size: str, **overrides) -> dict:
+    s = dict(SIZES[size])
     c = dict(COMMON)
     for k, v in overrides.items():
         (s if k in s else c)[k] = v
-    d = dict(concept=concept, **s, **c)
-    d["parts"] = PARTS
-    d["tote"] = t = _tote()
-    w = c["wall"]
-    # the short-end wall face at the rim, inside the lip; its draft follows from the vendor top and bottom
-    end_x_top = t["top"][0] / 2 - c["tote_lip"]
-    end_x_bot = t["bottom_in"][0] / 2 + c["tote_wall"]
-    d["tote_end_x_top"] = end_x_top
-    d["tote_draft_deg"] = math.degrees(math.atan2(end_x_top - end_x_bot, t["height"]))   # INFERRED, context only
+    d = dict(size=size, **s, **c)
+    P = PARTS
+    d["parts"], d["screws"] = P, SCREWS
+    W, H, D, w = s["W"], s["H"], s["D"], c["wall"]
+    d["inner_y"] = (-W / 2 + w, W / 2 - w)
+    d["inner_z"] = (w, H - w)
+    d["inner_x"] = (c["back_t"], D)
 
-    # electronics the dry box carries, in every concept
-    d["dry_parts"] = ("xiao", "ads1115", "tds_board", "relay", "buck")
-    d["ui_parts"] = ("oled", "button", "button", "button", "led")
+    # --- boards on the back plate: outline, holes and connectors in the box frame ---
+    boards = {}
+    for key, (bname, (cy, cz), rot, screw) in s["back_boards"].items():
+        b = BOARDS[bname]
+        sx, sy = b.size
+        ex, ey = (sx, sy) if rot % 180 == 0 else (sy, sx)
+        holes = [(cy + _rot(u, v, rot)[0], cz + _rot(u, v, rot)[1]) for u, v in b.holes]
+        conns = []
+        for cn in b.connectors:
+            m = MATINGS[cn.kind]
+            py, pz = _rot(cn.x, cn.y, rot)
+            fy, fz = _rot(*cn.facing, rot)
+            conns.append(dict(kind=cn.kind, at=(cy + py, cz + pz), facing=(round(fy), round(fz)), mating=m))
+        sc = SCREWS[screw]
+        bore = clearance_bore(screw.replace("_", ".")) if screw.replace("_", ".") in ("M3",) else sc["d"] + 0.4 + c["hole_allow"]
+        boards[key] = dict(name=bname, centre=(cy, cz), rot=rot, extent=(ex, ey), holes=holes, conns=conns,
+                           screw=screw, bore=bore, board=b)
+    d["boards"] = boards
+    # board heights above the underside (tallest part on top); thickness from the registry or PLACEHOLDER 1.6
+    tops = dict(tds=MATINGS["JST_XH2"].header_h, ads=MATINGS["JST_SH4"].header_h, mosfet=4.5,   # WAGO 2060: 4.5, INFERRED from the 2060 series
+                carrier=P["xiao"]["spacer"] + P["xiao"]["pcb_t"] + P["xiao"]["usb_h"])
+    d["pcb_t"] = 1.6                                     # PLACEHOLDER for every board: no Eagle file states it
+    d["board_tops"] = tops
 
-    # probe reach: cable from the housing exit to a probe tip `immersion` below the waterline, plus service slack
-    def reach(exit_xyz, probe):
-        p = PARTS[probe]
-        tip_z = t["waterline_z"] - c["immersion"]
-        run = abs(exit_xyz[2] - tip_z) + p["l"]
-        need = run + c["service_slack"]
-        return dict(need=need, have=p["length_total"], margin=p["length_total"] - need)
+    # boss per board hole. M2 / M2.5: nut pocket open to the back face, the boss height raised until a
+    # stocked screw ends inside the nut and short of the back face (rule 7: the governing need is recorded).
+    # M3 (carrier): heat-set insert from the boss top, screw = PCB + insert length.
+    bosses = []
+    for key, b in boards.items():
+        sc = SCREWS[b["screw"]]
+        insert = b["screw"] == "M3"
+        boss_h = c["standoff"]
+        if insert:
+            od, pocket = c["insert_boss_od"], None
+            L = _stock(sc["lengths"], d["pcb_t"] + INSERT_LEN_M3)
+            b["governed_by"] = "standoff minimum"
+        else:
+            pocket = dict(s=sc["nut_s"] + c["nut_pocket_clear"], depth=sc["nut_m"] + c["nut_pocket_extra"])
+            od = b["bore"] + 2 * c["min_wall"]
+            nut_far = pocket["depth"] - sc["nut_m"]                   # nut face nearest the back face, x
+            L = _stock(sc["lengths"], c["back_t"] + boss_h + d["pcb_t"] - nut_far)
+            tip = c["back_t"] + boss_h + d["pcb_t"] - (L or 0)
+            b["governed_by"] = "standoff minimum"
+            if L is not None and tip < c["screw_tip_min"]:
+                boss_h += c["screw_tip_min"] - tip
+                b["governed_by"] = f"M{sc['d']:g}x{L} tip inside the back face"
+        b["boss_h"], b["x0"] = boss_h, c["back_t"] + boss_h
+        for (y, z) in b["holes"]:
+            bosses.append(dict(board=key, at=(y, z), od=od, bore=b["bore"], pocket=pocket, insert=insert,
+                               screw=b["screw"], length=L, h=boss_h))
+        nb = b["board"]
+        b["boss_vs_pin"] = None if nb.nearest_pin is None else nb.nearest_pin - c["boss_pin_margin"] - od / 2
+        b["head_vs_copper"] = None if nb.nearest_top_copper is None else nb.nearest_top_copper - sc["head_dk"] / 2
+        b["nylon_screw"] = b["head_vs_copper"] is not None and b["head_vs_copper"] < 0
+    d["bosses"] = bosses
 
-    if concept == "A_lid":
-        bx, by = s["box"]
-        d["slope_deg"] = math.degrees(math.atan2(s["h_back"] - s["h_front"], by))
-        d["box_z0"] = c["lid_t"]                       # box floor underside on the lid top
-        d["lid_screw_d"] = clearance_bore(s["lid_screw"])
-        d["exits"] = {"cables": (s["at"][0] - 50.0, s["at"][1] - 4.0, 0.0),
-                      "tube": (s["at"][0] + bx / 2 + PARTS["pump_head"]["size"][1] / 2, 0.0, 0.0)}
-        d["lid_removable_alone"] = False               # the box rides on the lid
-        d["printed"] = {"base": (bx + 2 * s["flange"], by + 2 * s["flange"], s["split_z"]),
-                        "cover": (bx, by, s["h_back"] - s["split_z"])}
-    elif concept == "B_wall":
-        wy, dx, hz = s["box"]
-        d["box_x0"] = end_x_top                        # box back on the end wall at the rim (wall draft: NOTES)
-        d["box_z0"] = s["top_z"] - hz
-        d["wall_bolt_d"] = clearance_bore(s["bolt"])
-        d["exits"] = {"cables": (end_x_top, 0.0, s["wall_hole_z"]), "tube": (end_x_top, 0.0, s["wall_hole_z"])}
-        d["lid_removable_alone"] = True
-        d["printed"] = {"body": (dx, wy, hz), "front": (dx * 0.3, wy, hz)}
-    else:
-        hx, hy = s["head"]
-        px, py, pz = s["pod"]
-        d["slope_deg"] = math.degrees(math.atan2(s["head_h_back"] - s["head_h_front"], hy))
-        d["pod_z0"] = c["lid_t"]
-        d["exits"] = {"cables": (s["pod_at"][0] - 45.0, 0.0, 0.0),
-                      "tube": (s["pod_at"][0] + px / 2 + PARTS["pump_head"]["size"][1] / 2, 0.0, 0.0)}
-        # the probe cables run pod -> head: add the straight-line run between them
-        hx0, hy0, hz0 = s["head_at"]
-        d["pod_to_head"] = math.dist((s["pod_at"][0], s["pod_at"][1], c["lid_t"] + pz), (hx0, hy0, hz0))
-        d["lid_removable_alone"] = False               # the pod rides the lid; the head does not
-        d["printed"] = {"head_base": (hx, hy, s["head_h_front"] * 0.6), "head_cover": (hx, hy, s["head_h_back"]),
-                        "pod": (px, py, pz)}
+    # --- the carrier's passengers ---
+    for k, b in boards.items():
+        b["top_x"] = b["x0"] + d["pcb_t"] + tops[k]
+    car = boards["carrier"]
+    cy0, cz0 = car["centre"]
+    x_car_top = car["x0"] + d["pcb_t"]
+    xz = P["xiao"]
+    xiao_z0 = cz0 - car["extent"][1] / 2                  # USB end at the carrier's bottom edge
+    d["xiao"] = dict(y=s["xiao_yz"][0], z=(xiao_z0, xiao_z0 + xz["size"][0]), width=xz["size"][1],
+                     x=(x_car_top + xz["spacer"], x_car_top + xz["spacer"] + xz["pcb_t"] + xz["usb_h"]))
+    d["usb_x"] = x_car_top + xz["spacer"] + xz["pcb_t"] + xz["usb_h"] / 2
+    pl = P["pololu"]
+    d["pololu"] = dict(y=s["pololu_yz"][0], z=s["pololu_yz"][1], size=pl["size"],
+                       x=(x_car_top + xz["spacer"], x_car_top + xz["spacer"] + pl["h"]))
 
-    lowest_exit = min(e[2] for e in d["exits"].values())
-    d["exit_above_water"] = lowest_exit - t["waterline_z"]
-    probes = {}
+    # --- cover ---
+    sk_in = c["fit_clear"]
+    d["cover_outer"] = (W + 2 * (sk_in + c["min_wall"] + 0.4), H + 2 * (sk_in + c["min_wall"] + 0.4))
+    d["cover_inner_x"] = D                                # cover inner face sits on the rim
+    ob = BOARDS["OLED_938"]
+    d["oled_boss_h"] = 4.0                                # DESIGN: clears a panel up to 4.0 - air
+    d["oled_board_x"] = D - d["oled_boss_h"] - d["pcb_t"]   # component-side face of the OLED PCB
+    d["oled_holes"] = [(s["oled_yz"][0] + u, s["oled_yz"][1] + v) for u, v in ob.holes]
+    d["oled_window"] = (P["oled"]["active"][0] + 1.0, P["oled"]["active"][1] + 1.0)   # DESIGN: 0.5 each side
+    d["oled_window_c"] = (s["oled_yz"][0] + P["oled"]["active_off"][0], s["oled_yz"][1] + P["oled"]["active_off"][1])
+    d["button_hole"] = P["button"]["hole"] + P["button"]["hole_tol"] / 2 + c["hole_allow"]
+    d["led_hole"] = P["led"]["hole"] + c["hole_allow"]
+    # corner insert columns sink `sink` into both walls: a column tangent to a wall meshes non-manifold (F31)
+    sink = 0.6
+    r_ib = c["insert_boss_od"] / 2 - sink
+    d["cover_screw_pts"] = [(sy * (W / 2 - w - r_ib), z) for sy in (-1, 1) for z in (w + r_ib, H - w - r_ib)]
+    d["cover_screw"] = _stock(SCREWS["M3"]["lengths"], c["cover_t"] + INSERT_LEN_M3 - 0.2)
+
+    # --- bottom wall ---
+    d["gland_holes"] = {k: P[k]["hole"] + P[k]["hole_tol"] / 2 + c["hole_allow"] for k in ("gland_tds", "gland_ds")}
+    d["jack_hole"] = P["dc_jack"]["hole"] + c["hole_allow"]
+
+    # --- pump ---
+    pp = P["pump"]
+    px, pz = s["pump_xz"]
+    d["pump_hole_z"] = (pz - pp["hole_pitch"] / 2, pz + pp["hole_pitch"] / 2)
+    d["pump_slot_w"] = clearance_bore("M3")
+    d["motor_hole"] = pp["motor_d"] + 2 * c["fit_clear"]
+    d["pump_head_y"] = (-W / 2 - pp["head_depth"], -W / 2)
+    d["pump_screw"] = _stock(SCREWS["M3"]["lengths"], 3.0 + w + SCREWS["M3"]["nut_m"] + 0.5)   # flange 3.0 PLACEHOLDER
+    d["nut_channel_s"] = SCREWS["M3"]["nut_s"] + c["nut_pocket_clear"]
+    d["tube_z"] = (pz - pp["tube_pitch"] / 2, pz + pp["tube_pitch"] / 2)     # outlet = the upper one (DESIGN)
+
+    # --- hanging: posts and keyholes ---
+    kc = c["keyhole_clear"]
+    d["keyhole_big"] = s["post_head_d"] + 2 * kc
+    d["keyhole_slot"] = s["post_neck_d"] + 2 * kc
+    d["post_neck_l"] = s["gap"] + c["back_t"] + kc        # plate face to under the head
+    # --- plate bolts through the tote wall ---
+    b5 = SCREWS[s["plate_bolt"]]
+    grip = [s["plate_t"] + t + s["backing_t"] + b5["washer_h"] for t in c["tote_wall_t"]]
+    d["plate_bolt_len"] = _stock(b5["lengths"], max(grip) + b5["nut_m"] + 1.0)
+    d["plate_bolt_grip"] = grip
+    d["plate_bolt_hole"] = clearance_bore("M5")
+
+    # --- tote mapping and the water ---
+    t_in = HDX_27GAL.interior_bottom
+    waterline_below_rim = t_in[2] - HDX_27GAL.fill_depth
+    d["waterline_z"] = H + s["top_below_rim"] - waterline_below_rim     # box frame
+    d["tote_holes"] = {"cable": s["cable_hole"], "tube": (-W / 2 - pp["head_depth"] / 2, d["tube_z"][1])}
+    d["tote_holes"].update({f"bolt{i}": p for i, p in enumerate(s["plate_bolts"])})
+    d["lowest_hole_over_water"] = min(z for _, z in d["tote_holes"].values()) - d["waterline_z"]
+
+    # --- probe reach: tote hole -> tip below the waterline; tote hole -> down the gap -> gland -> board ---
+    reach = {}
+    gl = {"tds_probe": s["gland_tds_yx"], "ds18b20": s["gland_ds_yx"]}
+    target = {"tds_probe": boards["tds"]["conns"][0]["at"], "ds18b20": (s["pololu_yz"][0], s["pololu_yz"][1])}
     for p in ("tds_probe", "ds18b20"):
-        r = reach(d["exits"]["cables"], p)
-        if concept == "C_split":
-            r["need"] += d["pod_to_head"]
-            r["margin"] = r["have"] - r["need"]
-        probes[p] = r
-    d["reach"] = probes
+        hy, hz = s["cable_hole"]
+        tip_z = d["waterline_z"] - c["immersion"]
+        wet = (hz - tip_z) + P[p]["l"] + 50.0                     # 50: DESIGN, hole to the water surface sideways
+        gy = gl[p][0]
+        dry = (hz - (-30.0)) + abs(hy - gy) + 30.0 + abs(target[p][1] - 0.0) + abs(target[p][0] - gy)   # loop 30 below the box
+        need = wet + dry + c["service_slack"]
+        reach[p] = dict(need=need, have=P[p]["length_total"], margin=P[p]["length_total"] - need)
+    d["reach"] = reach
+
+    # --- glands: what passes and what seals ---
+    xh = MATINGS[P["tds_probe"]["plug"]]
+    d["xh_diag"] = math.hypot(xh.plug_w, xh.plug_h)
+    d["tds_cable_sealed"] = P["tds_probe"]["cable_d"] + 2 * c["tds_sleeve_wall"]
+    # pads under the hole-less end of a board whose holes are all on one end (MOSFET 5648)
+    pads = []
+    for key, b in boards.items():
+        us = [u for u, _ in b["board"].holes]
+        if all(u > 0 for u in us) or all(u < 0 for u in us):
+            for u, v in b["board"].holes:
+                py, pz = _rot(-u, v, b["rot"])
+                pads.append(dict(board=key, at=(b["centre"][0] + py, b["centre"][1] + pz), h=b["boss_h"]))
+    d["rest_pads"] = pads
+    # plug envelopes: plug length + finger room, except where the cable comes straight in from a gland
+    d["finger"] = {("tds", "JST_XH2"): 0.0}
+    sc2 = SCREWS["M2"]
+    d["oled_screw"] = _stock(sc2["lengths"], c["cover_t"] + d["oled_boss_h"] + d["pcb_t"] + sc2["nut_m"] + 0.4)
+    d["oled_boss_od"] = d["boards"]["ads"]["bore"] + 2 * c["min_wall"]
+    d["oled_boss_flat"] = 0.3                            # DESIGN: boss trimmed flat this far from the glass edge
+    # print-frame z of each bridged ceiling (overhang exceptions): nut-pocket ceilings, teardrop flats, USB slot top
+    r = lambda dia: dia / 2 + c["teardrop_cap"]
+    ex = [("nut pocket ceiling " + k, b["pocket"]["depth"]) for k, b in
+          {bb["screw"]: bb for bb in bosses if bb["pocket"]}.items()]
+    ex += [("motor hole flat", s["pump_xz"][0] + r(d["motor_hole"])),
+           ("gland_tds flat", s["gland_tds_yx"][1] + r(d["gland_holes"]["gland_tds"])),
+           ("gland_ds flat", s["gland_ds_yx"][1] + r(d["gland_holes"]["gland_ds"])),
+           ("jack flat", s["jack_yx"][1] + r(d["jack_hole"])),
+           ("usb opening top", d["usb_x"] + s["usb_opening"][1] / 2)]
+    d["body_overhang_exceptions"] = ex
+    d["print_orientation"] = PRINT_ORIENTATION
+    d["walls"] = {"body wall": w, "back": c["back_t"], "cover": c["cover_t"],
+                  "insert boss": (c["insert_boss_od"] - INSERT_BORE_M3) / 2}
+    d["printed_sizes"] = {"body": (W, H, D), "cover": (*d["cover_outer"], c["cover_t"] + max(s["skirt"], d["oled_boss_h"])),
+                          "plate": (s["plate_y"][1] - s["plate_y"][0], s["plate_z"][1] - s["plate_z"][0],
+                                    s["plate_t"] + d["post_neck_l"] + s["post_head_t"]),
+                          "backing": (s["plate_y"][1] - s["plate_y"][0], s["plate_z"][1] - s["plate_z"][0], s["backing_t"])}
     return d
 
 
-def validate(concept: str) -> dict:
-    """Arithmetic of a concept. Ideation: placeholders allowed, impossibilities not."""
-    d = derive(concept)
-    assert d["wall"] >= d["min_wall"] and d["wall"] >= 2 * d["nozzle_d"], f"{concept}: wall {d['wall']}"
-    for name, size in d["printed"].items():
-        assert all(a <= b for a, b in zip(sorted(size), sorted(d["bed"]))), f"{concept}: {name} {size} exceeds the bed"
-    assert d["exit_above_water"] > 0, f"{concept}: an opening sits {-d['exit_above_water']:.0f} mm under the waterline"
+def validate(size: str) -> dict:
+    """Raise AssertionError on anything not buyable, printable or assemblable."""
+    d = derive(size)
+    P, c = d["parts"], d
+    for name, wv in d["walls"].items():
+        assert wv >= d["min_wall"] and wv >= 2 * d["nozzle_d"], f"{size}: {name} {wv:.2f}"
+    assert d["walls"]["insert boss"] >= INSERT_WALL_M3, f"{size}: insert boss wall under the vendor minimum"
+    for name, sz in d["printed_sizes"].items():
+        assert all(a <= b for a, b in zip(sorted(sz), sorted(d["bed"]))), f"{size}: {name} {sz} exceeds the bed"
+    # panel thickness ranges of the panel parts
+    lo, hi = P["button"]["panel"]
+    assert lo <= d["cover_t"] <= hi, f"{size}: cover {d['cover_t']} outside the PV0 panel range {P['button']['panel']}"
+    lo, hi = P["led"]["panel"]
+    assert lo <= d["cover_t"] <= hi, f"{size}: cover outside the CR-174 panel range"
+    assert d["wall"] <= P["dc_jack"]["panel_max"], f"{size}: bottom wall thicker than the 722A takes"
+    for g in ("gland_tds", "gland_ds"):
+        assert P[g]["thread"] >= d["wall"] + P[g]["nut_b"], f"{size}: {g} thread too short for wall + locknut"
+    # the TDS probe's XH plug passes the open M16 gland; the cables seal
+    assert d["xh_diag"] <= P["gland_tds"]["clamp"][1], f"{size}: XH plug {d['xh_diag']:.1f} does not pass the TDS gland"
+    lo, hi = P["gland_tds"]["clamp"]
+    assert lo <= d["tds_cable_sealed"] <= hi, f"{size}: TDS cable + sleeve {d['tds_cable_sealed']} outside {P['gland_tds']['clamp']}"
+    lo, hi = P["gland_ds"]["clamp"]
+    assert lo <= P["ds18b20"]["cable_d"] <= hi, f"{size}: DS18B20 cable outside the M12 clamp range"
+    # electrical ratings
+    assert P["pump"]["amps"] <= 1.5 and P["pump"]["volts"] <= 30, f"{size}: pump over the MOSFET 5648 rating"
+    lo, hi = P["pololu"]["vin"]
+    assert lo <= P["pump"]["volts"] <= hi, f"{size}: 12 V supply outside the Pololu input range"
+    # fasteners are stocked; bosses clear pins
+    for b in d["bosses"]:
+        assert b["length"] is not None, f"{size}: no stocked {b['screw']} for {b['board']}"
+        if b["insert"]:
+            assert b["length"] <= d["pcb_t"] + d["insert_depth"], f"{size}: {b['board']} M3 bottoms out in its insert"
+    for k, b in d["boards"].items():
+        if b["boss_vs_pin"] is not None:
+            assert b["boss_vs_pin"] >= 0, f"{size}: {k} boss reaches {-b['boss_vs_pin']:.2f} into the pin margin"
+    assert d["plate_bolt_len"] is not None, f"{size}: no stocked M5 for the plate grip {d['plate_bolt_grip']}"
+    assert d["plate_bolt_len"] - max(d["plate_bolt_grip"]) >= SCREWS["M5"]["nut_m"] + 0.8, f"{size}: M5 too short at the thick wall"
+    assert d["cover_screw"] is not None and d["pump_screw"] is not None
+    assert d["lowest_hole_over_water"] >= d["hole_over_water"], \
+        f"{size}: a tote-wall hole sits {d['lowest_hole_over_water']:.0f} mm over the waterline (< {d['hole_over_water']})"
     for p, r in d["reach"].items():
-        assert r["margin"] >= 0, f"{concept}: {p} lead short by {-r['margin']:.0f} mm (need {r['need']:.0f})"
+        assert r["margin"] >= 0, f"{size}: {p} lead short by {-r['margin']:.0f} mm"
+    assert d["oled_boss_h"] - P["oled"]["panel_t"] >= 1.0, f"{size}: OLED glass within 1 mm of the window"
+    assert d["oled_screw"] is not None, f"{size}: no stocked M2 for the OLED"
+    # the OLED bosses are trimmed flat towards the glass; what is left beside the bore must still print
+    hz = abs(BOARDS["OLED_938"].holes[0][1])
+    glass_edge = P["oled"]["glass"][1] / 2 + abs(P["oled"]["glass_off"][1])
+    flat_wall = hz - glass_edge - d["oled_boss_flat"] - d["boards"]["ads"]["bore"] / 2
+    assert flat_wall >= 2 * d["nozzle_d"], f"{size}: OLED boss wall at the glass {flat_wall:.2f} < 2 nozzles"
     return d
 
 
 if __name__ == "__main__":
-    for name in CONCEPTS:
+    for size in SIZES:
         try:
-            d = validate(name)
-            flag = "ok  "
+            d = validate(size)
+            print(f"{size}: ok")
         except AssertionError as e:
-            d, flag = derive(name), f"FAIL: {e}\n      "
-        reach = ", ".join(f"{p} margin {r['margin']:+.0f}" for p, r in d["reach"].items())
-        print(f"{name}: {flag}exit {d['exit_above_water']:+.0f} mm over water; {reach}; "
-              f"lid lifts alone: {d['lid_removable_alone']}; printed {d['printed']}")
-    t = derive("A_lid")
-    print(f"tote: waterline z {t['tote']['waterline_z']:.0f}, floor z {t['tote']['floor_z']:.0f}, "
-          f"end-wall draft {t['tote_draft_deg']:.1f} deg (INFERRED from vendor envelope + PLACEHOLDER lip)")
+            d = derive(size)
+            print(f"{size}: FAIL: {e}")
+        print(f"  box {d['W']} x {d['H']} x {d['D']}, cover {d['cover_outer'][0]:.1f} x {d['cover_outer'][1]:.1f}, "
+              f"waterline at box z {d['waterline_z']:.0f}, lowest tote hole +{d['lowest_hole_over_water']:.0f}")
+        fmt = lambda v: "n/a" if v is None else f"{v:+.2f}"
+        for k, b in d["boards"].items():
+            print(f"  {k:8s} {b['name']:19s} screw {b['screw']:4s} bore {b['bore']:.2f}  "
+                  f"boss-pin {fmt(b['boss_vs_pin'])}  head-copper {fmt(b['head_vs_copper'])}"
+                  f"{'  -> PA screw' if b['nylon_screw'] else ''}")
+        for k, b in d["boards"].items():
+            print(f"  {k:8s} boss {b['boss_h']:.2f} ({b['governed_by']}), top of parts at x {b['top_x']:.1f}")
+        lens = sorted({(b['screw'], b['length']) for b in d['bosses']})
+        print(f"  board screws {lens}; cover M3x{d['cover_screw']}; pump M3x{d['pump_screw']}; "
+              f"plate M5x{d['plate_bolt_len']} (grip {d['plate_bolt_grip'][0]:.0f}-{d['plate_bolt_grip'][1]:.0f})")
+        print(f"  XH plug diagonal {d['xh_diag']:.2f} vs M16 clamp max {d['parts']['gland_tds']['clamp'][1]}; "
+              f"TDS cable + sleeve {d['tds_cable_sealed']:.1f}")
+        for p, r in d["reach"].items():
+            print(f"  {p}: lead need {r['need']:.0f} of {r['have']:.0f}, margin {r['margin']:+.0f}")

@@ -2,7 +2,7 @@
 import pytest
 
 from projects.nutrient_controller import concepts as C
-from projects.nutrient_controller.params import ACTIVE_CONCEPTS, CONCEPTS, derive, validate
+from projects.nutrient_controller.concept_params import ACTIVE_CONCEPTS, CONCEPTS, derive, validate
 
 
 @pytest.mark.parametrize("concept", list(CONCEPTS))

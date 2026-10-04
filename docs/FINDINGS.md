@@ -382,3 +382,23 @@ press-fit).
   were not recorded. Before the next fit print, record the Bambu Studio
   profile (brim type and gap, retraction, travel, temperature), and check
   whether any mating face touches the bed where a brim would sit.
+
+## F31. A cylinder tangent to a wall fuses into a valid solid that meshes non-manifold — CONFIRMED (2026-10-04)
+
+**Symptom.** `export_3mf` on the nutrient controller body raised `printed_body: 3mf mesh is invalid`. The solid was
+one valid solid; its tessellation had eight edges shared by four triangles, all on the four cover-insert columns,
+each drawn tangent to two inner walls.
+**Reproduction.**
+```python
+from build123d import *
+tray = Pos(0, 0, 10) * Box(40, 40, 20) - Pos(0, 0, 12) * Box(36, 36, 20)   # walls 2
+for sink in (0.0, 0.6):
+    p = tray + Pos(18 - 4 + sink, 0, 11) * Cylinder(4, 18)               # tangent to the +X wall at sink 0
+    print(sink, p.is_valid, len(p.solids()))                               # True 1 both times
+# Mesher._mesh_shape -> lib3mf IsValid(): False at sink 0, True at sink 0.6
+```
+**Cause.** The fuse keeps the tangent line as a shared edge with zero-width contact; the solid passes
+`is_valid`, but every triangle fan along that line meets three others.
+**Rule.** A boss, column or rib that leans on a wall overlaps it (projects/nutrient_controller sinks 0.6 mm), never
+touches it tangentially. The 3MF export is the check that catches it; `is_valid` and `single_solid` do not. Same
+family as F28: contact without a shared face.

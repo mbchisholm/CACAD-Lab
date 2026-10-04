@@ -2,84 +2,93 @@
 
 A printed PETG housing that regulates one HDX 27 gal tote: TDS and water
 temperature in, one peristaltic dose out, an OLED, three buttons and an LED on
-the front. Stage: **ideation**. Three massing concepts exist to pick a
-direction; nothing here is ready to print for fit.
+the front. Concept B (wall mount) chosen 2026-10-04; revision **B1** is
+modelled on sourced parts and passes its checks. It has not been printed.
 
 Supersedes the `enclosure_atlas` spec (Atlas EZO, caliper-gated) for the
 analog build.
 
-## Electronics (the config this housing serves)
+    .venv/bin/python projects/nutrient_controller/params.py      # the design, printed
+    .venv/bin/python projects/nutrient_controller/assembly.py    # build, check, out/B1.3mf
+    .venv/bin/python -m pytest projects/nutrient_controller
 
-From sprout-cut env `nutrient-analog-xiao` (`platformio.ini:309-363`):
+## B1 in one paragraph
 
-| function | part | bus / pin |
+A wall plate bolts flat to the outside of the tote's short end wall (4 x M5
+through the wall into a backing plate inside the tote). The box hangs on the
+plate's three mushroom posts by keyholes and lifts off for service. It sits
+parallel to the wall, so the wall's draft never enters a dimension. Probe
+cables leave the tote through one hole behind the plate, run down the gap
+behind the box and enter cable glands in its bottom wall from below (drip
+loop). The pump flange bolts to the outside of the -Y wall, motor inside; both
+tubes leave the head towards the plate, the outlet into the tote through its
+own hole, the inlet down to a concentrate bottle on the floor. The lid is
+untouched.
+
+## Parts
+
+| part | model | source |
 |---|---|---|
-| MCU | Seeed XIAO ESP32-C3 | native USB-C |
-| TDS | DFRobot SEN0244 board + probe, read by ADS1115 AIN1 | I2C 0x48, D4/D5 |
-| OLED | SSD1306 128x64 | I2C 0x3D, same bus |
-| temperature | DS18B20, 4.7 k pull-up | D10 |
-| pump | peristaltic on an active-low relay | D2 (nutrient_a) |
+| MCU | Seeed XIAO ESP32-C3, on a Perma-Proto quarter | Seeed KiCad Edge.Cuts; Adafruit Eagle |
+| 5 V | Pololu D24V10F5 (5.1-36 V in), on the Perma-Proto | Pololu dimension PDF |
+| ADC | Adafruit ADS1115 (STEMMA QT) | Eagle, `boards.ADS1115` |
+| TDS | DFRobot SEN0244 board + probe | DFRobot layout PDF, `boards.SEN0244` |
+| temperature | DS18B20 stainless probe, 1 m | PLACEHOLDER (generic) |
+| pump | Kamoer NKP-DC-S06, 12 V, straight bracket | Kamoer NKP datasheet p.2 |
+| pump driver | Adafruit MOSFET driver 5648 (AO3406, 1.5 A) | Eagle, `boards.MOSFET_5648` |
+| display | Adafruit 1.3in 128x64 OLED 938 (SSD1306, I2C 0x3D) | Eagle, `boards.OLED_938` |
+| buttons | 3 x E-Switch PV0, IP67, 12 mm | PV0 datasheet |
+| LED | 5 mm in Bivar CR-174 clip + ring | CR-174 datasheet |
+| power in | Switchcraft 722A 2.1 mm jack, 12 V | Switchcraft sheet |
+| glands | Lapp SKINTOP ST-M M16 (TDS), M12 (DS18B20) + GMP-GL-M locknuts | Lapp DB53111000EN, DB53119000EN |
+| fasteners | M2 x 10 (ADS1115, PA nylon on the MOSFET), M2.5 x 10 (SEN0244), M3 x 8 + CNC Kitchen inserts (carrier, cover), M3 x 10 (pump), M5 x 25 ISO 4762 + ISO 10511 nyloc + ISO 7089 (plate) | ISO tables in params |
 
-Housing carries **one pump, no pH** (owner, 2026-10-04); the env drives three
-relays and a pH probe. With one pump, D1 and D3 are free; buttons and LED need
-four pins, so the fourth comes from D6/D7 (UART0, unused under USB CDC) or a
-strapping pin (D0/D8/D9) with a pull-up. The env wires no buttons or LED yet.
+Vendor sheets are in `ref/vendor_sheets/` and the Eagle files in `ref/eagle/`
+(both gitignored). The sprout-cut env needs one change for the MOSFET driver:
+the pump output becomes active-high (`activeHigh=true`). Pins for three buttons
+and the LED: D1, D3 (free with one pump) plus D6/D7 (UART0, unused under USB
+CDC).
 
-## Concepts
+## Printed parts (PETG, A1 bed)
 
-All in the tote frame (`params.py` docstring). `concepts.py` builds them;
-`out/<concept>.3mf` holds every printed part, bought-part envelope and the tote
-as separate meshes.
+| part | size, mm | prints on |
+|---|---|---|
+| body | 44 x 110 x 150 | its back; wall holes are truncated teardrops |
+| cover | 6.5 x 114 x 154 | its front face |
+| wall plate | 25.6 x 148 x 150 | its tote-side face; post heads have 45 deg undersides |
+| backing plate | 4 x 148 x 150 | flat |
 
-| | A_lid | B_wall | C_split |
-|---|---|---|---|
-| where | wedge box screwed to the lid | tall box bolted to the outside of the short end wall | slim UI head on a 2020 post + wet pod on the lid |
-| lid lifts off alone | no: box, probes and tube ride it | **yes**: nothing on the lid | no: pod rides it |
-| lowest opening over waterline | +160 mm | +100 mm (wall hole) | +160 mm |
-| TDS lead spare (830 mm lead) | +420 mm | +480 mm | **+158 mm** |
-| tote modification | 7 lid holes | 4 wall holes (probe grommet, tube, 2 bolts) | 3 lid holes |
-| printed parts | base 193x130x42, cover, holster | body 62x120x170, front, wedge spacer, holster | head (2), pod 163x90x44, holster |
-| screen height | at lid level, tilted 18 deg | vertical, below the rim | ~120 mm over the rim, tilted 17 deg |
-| depends on unpublished tote geometry | lid flatness (screws + fender washers tolerate it) | **end-wall draft**: 7.9 deg INFERRED; the spacer is a separate part to swap | lid flatness |
+## Still a placeholder (does not block a first print; each is tolerated by design)
 
-Spare lead = lead length - (exit to probe tip 40 mm under the waterline +
-probe body + 150 mm service loop). C pays for the pod-to-head run.
+- PCB thickness of every board (1.6), the XIAO's height, the 2.54 header body under it.
+- OLED panel thickness: the 4.0 bosses clear a panel up to 3.0.
+- TDS probe body and cable OD: the M16 gland seals 4-10; a heat-shrink sleeve builds a thin cable up.
+- USB-C plug overmold: USB-IF spec not read; the opening is 13.5 x 8.
+- NKP flange thickness and the hole and tube offsets: drawn, not dimensioned; the wall slots, sliding nuts
+  and the plate's tube slot absorb them.
+- HDX wall thickness: the M5 x 25 covers 2-5 mm.
+- WAGO 2060 terminal height 4.5, INFERRED from the series.
 
-**Reading.** B is the only one where the lid is a lid again: top off,
-probes and dosing line stay put, and the electronics never sit over open
-water. Its cost is drilling the tote wall and the draft it has to bridge. A is
-the quickest to print and the easiest to tune. C puts the screen where you'd
-read it but its TDS lead is tight and it is two enclosures.
+## Next
 
-## What every concept still lacks (fidelity stage)
+1. Print the body and the cover; fit the boards, glands, buttons and pump. Measure nothing: if a part does not
+   fit, the clearance it violates is named in params.
+2. `cad-design-review` on the wall plate (it carries the box and resists the gland torque).
+3. Cable strain relief inside the box, an optional anti-lift screw through the back into the plate, labels.
+4. Optional: a KiCad carrier replacing the Perma-Proto.
 
-1. **Pick the bought parts and source them** into the registries:
-   - XIAO: Seeed's DXF and KiCad project → `boards.py`. It has no holes, so it gets an edge cradle.
-   - SEN0244: DFRobot dimension drawing → `boards.py`. Holes unpublished → edge rail.
-   - OLED module: a vendor with an Eagle file, so `tools/board_from_eagle.py` works.
-   - Pump: a model with a published drawing, which fixes the voltage.
-   - Relay or MOSFET module.
-   - DC jack, buttons, LED bezel, PG7 cable glands.
-   - `Mating` rows for PH2.0-3P, XH2.54-2P and the USB-C plug overmold, which the USB-IF spec has and the registry is missing.
-2. **Interfaces replace envelopes**: cradles, a window bezel that clamps the
-   OLED, button plungers, M3 heat-set cover screws (`materials.INSERT_*`),
-   split grommets on the probe cables, a drip lip at the cover joint.
-3. **Mount**: A, screws through the lid with fender washers. B, the wedge
-   spacer derived from the draft, and a printed wall-hole template.
-4. **Checks**: `cacad.checks` printability and overhang per part,
-   PRINT_ORIENTATION in params, and `cad-design-review` on the mount.
-5. **Optional**: a KiCad carrier for XIAO + ADS1115 + screw terminals instead of
-   hand wiring (`cacad.freecad.kicad_freeze` brings it back as STEP).
+## Concepts (2026-10-04, superseded by B1)
 
-## Open decisions (owner)
-
-- Concept: A, B, C or a hybrid.
-- Pump voltage: 12 V (needs a jack and a buck converter) or 5 V (one USB-C feeds everything, smaller box).
-- Relay (sprout-cut today) or a MOSFET module for a DC pump: smaller, silent, no contact wear.
-- Concentrate bottle size; 500 mL drawn.
+`concepts.py` and `concept_params.py` keep the three massing models (A_lid,
+B_wall, C_split) that chose the direction. B won: it is the only one where
+the lid lifts off alone. B1 replaced its wedge spacer (which needed the wall's
+draft) with keyholes on a plate that follows the wall.
 
 ## Log
 
-- 2026-10-04: concepts A/B/C built as massing models; function checks pass
-  (no envelope collisions, dry parts in dry cavities, all on the A1 bed,
-  openings over the waterline). Renders in `out/*.png`.
+- 2026-10-04: concepts A/B/C built as massing models; function checks pass.
+- 2026-10-04: B chosen. B1 modelled on sourced parts. Boards from Adafruit Eagle files, JST, Lapp, Kamoer,
+  E-Switch, Bivar, Switchcraft, Pololu sheets. Assembly checks pass: 37 envelopes, 4 printed parts, no unplanned
+  contact, keyholes pass the post heads, tubes pass the plate, every tote hole >= 50 mm over the waterline.
+  The checks found and fixed: ADS1115 plug vs pump nut block, pump flange vs cover skirt, cover corner fillets
+  vs body, tangent insert columns (non-manifold mesh, FINDINGS F31).

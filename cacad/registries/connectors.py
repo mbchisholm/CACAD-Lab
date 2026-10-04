@@ -54,6 +54,17 @@ JST_PH3 = Mating(
     source="JST PH connector datasheet ePH.pdf, p.3 PHR-3, p.4 S3B-PH-SM4-TB, read 2026-10-04",
 )
 
+# JST XH 2.5 mm, 2 circuits, side entry: the DFRobot SEN0244 probe input.
+# JST eXH.pdf: housing XHP-2 (p.4: B = 7.3 across the pitch, 5.7 thick,
+# 7.5 + 0.25 along the mating axis); through-hole side-entry header S2B-XH-A
+# (p.5: B = 7.4; side view 7 tall, 6.1 deep, pins 3.4 beyond).
+JST_XH2 = Mating(
+    name="JST_XH2",
+    header_h=7.0, header_len=7.4, header_depth=6.1,
+    plug_w=7.3, plug_len=7.75, plug_h=5.7,
+    source="JST XH connector datasheet eXH.pdf, p.4 XHP-2, p.5 S2B-XH-A, read 2026-10-04",
+)
+
 # USB Type-C receptacle. The opening is 8.34 x 2.56, 6.20 deep (USB Type-C
 # specification, via en.wikipedia.org/wiki/USB-C, read 2026-09-21). The plug
 # overmold maximum is in the USB-IF specification, not read yet: an enclosure
@@ -66,4 +77,4 @@ USB_C = Mating(
     source="USB Type-C Cable and Connector Specification (overmold max not read); opening via en.wikipedia.org/wiki/USB-C, 2026-09-21",
 )
 
-MATINGS = {m.name: m for m in (JST_SH4, JST_PH2, JST_PH3, USB_C)}
+MATINGS = {m.name: m for m in (JST_SH4, JST_PH2, JST_PH3, JST_XH2, USB_C)}

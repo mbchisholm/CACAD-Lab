@@ -19,7 +19,7 @@ from build123d import (Axis, Box, Compound, Cylinder, Location, Part, Plane, Pol
                        fillet, loft)
 
 from cacad import export, export_3mf, interference_volume, is_inside, maybe_show
-from projects.nutrient_controller.params import ACTIVE_CONCEPTS, derive, validate
+from projects.nutrient_controller.concept_params import ACTIVE_CONCEPTS, derive, validate
 
 def _box(x, y, z, at=(0, 0, 0), rot=0.0, base=True) -> Part:
     """Box with its base (or centre) at `at`, turned `rot` deg about Z."""
