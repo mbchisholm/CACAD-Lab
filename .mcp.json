@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "build123d-mcp": {
+      "command": "uv",
+      "args": [
+        "tool", "run", "--python", "3.12", "build123d-mcp@latest",
+        "--allow-imports", "cacad,projects,coupons,types"
+      ],
+      "env": { "PYTHONPATH": "/Users/mattchisholm/Developer/mbchisholm/CACAD-Lab" }
+    },
+    "freecad": {
+      "command": "uvx",
+      "args": [
+        "freecad-mcp", "--only-text-feedback",
+        "--freecadcmd", "/Applications/FreeCAD.app/Contents/Resources/bin/freecadcmd"
+      ]
+    }
+  }
+}

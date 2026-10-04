@@ -1,0 +1,10 @@
+.venv/
+out/
+ref/
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+# Claude Code conversation exports
+20??-??-??-*.txt
+*.egg-info/
