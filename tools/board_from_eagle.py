@@ -149,8 +149,8 @@ def main(path: str, name: str, source: str):
         print(f"#        ({h.x - cx:7.3f}, {h.y - cy:7.3f})   {h.drill:.2f}   {str(h.plated):5s}   {fmt(top)} / {fmt(bot)} / {fmt(pin)}   [{h.element}]")
     if len(drills) != 1:
         print("# WARNING: mixed drill sizes; hole_dia below is the smallest. Check which are mounting holes.")
-    for name, pkg, x, y, edge in unknown:
-        print(f"# edge package with no connector rule: {name} {pkg} at ({x - cx:.2f}, {y - cy:.2f}), {edge:.2f} from the edge")
+    for el_name, pkg, x, y, edge in unknown:
+        print(f"# edge package with no connector rule: {el_name} {pkg} at ({x - cx:.2f}, {y - cy:.2f}), {edge:.2f} from the edge")
     print()
     print(f"{name} = Board(")
     print(f'    name="{name}",')

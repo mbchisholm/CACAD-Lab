@@ -33,15 +33,36 @@ JST_SH4 = Mating(
     source="JST SH connector datasheet eSH.pdf, pp. 2-3, read 2026-09-20",
 )
 
-# JST PH 2.0 mm, 2 circuits, side entry: the Feather LiPo connector.
-# JST ePH.pdf: housing PHR-2 (p.3: B = 5.8 for 2 circuits, drawing 4.5 x
-# 6.85: 4.5 across, 6.85 along the mating axis); SMT side-entry header
-# S2B-PH-SM4-TB (p.4: B = 7.9 for 2 circuits, drawing 6 tall, 5.5 deep).
+# JST PH 2.0 mm, side entry, SMT: the Feather LiPo connector (2 circuits) and
+# the Adafruit STEMMA JST PH input (3 circuits, MOSFET 5648, relay 4409).
+# JST ePH.pdf: housing PHR-n (p.3: B = 5.8 / 7.8 for 2 / 3 circuits, drawing
+# 4.5 across, 6.85 along the mating axis); SMT side-entry header
+# Sn B-PH-SM4-TB (p.4: B = 7.9 / 9.9; side-entry drawing 5.5 tall, 6 deep
+# plus 2.6 of pads). 2026-10-04: header_h and header_depth were swapped
+# (6.0 tall, 5.5 deep) in the 2026-09-21 reading of the same drawing.
 JST_PH2 = Mating(
     name="JST_PH2",
-    header_h=6.0, header_len=7.9, header_depth=5.5,
+    header_h=5.5, header_len=7.9, header_depth=6.0,
     plug_w=5.8, plug_len=6.85, plug_h=4.5,
-    source="JST PH connector datasheet ePH.pdf, pp. 3-4, read 2026-09-21",
+    source="JST PH connector datasheet ePH.pdf, pp. 3-4, read 2026-09-21, h/depth corrected 2026-10-04",
+)
+
+JST_PH3 = Mating(
+    name="JST_PH3",
+    header_h=5.5, header_len=9.9, header_depth=6.0,
+    plug_w=7.8, plug_len=6.85, plug_h=4.5,
+    source="JST PH connector datasheet ePH.pdf, p.3 PHR-3, p.4 S3B-PH-SM4-TB, read 2026-10-04",
+)
+
+# JST XH 2.5 mm, 2 circuits, side entry: the DFRobot SEN0244 probe input.
+# JST eXH.pdf: housing XHP-2 (p.4: B = 7.3 across the pitch, 5.7 thick,
+# 7.5 + 0.25 along the mating axis); through-hole side-entry header S2B-XH-A
+# (p.5: B = 7.4; side view 7 tall, 6.1 deep, pins 3.4 beyond).
+JST_XH2 = Mating(
+    name="JST_XH2",
+    header_h=7.0, header_len=7.4, header_depth=6.1,
+    plug_w=7.3, plug_len=7.75, plug_h=5.7,
+    source="JST XH connector datasheet eXH.pdf, p.4 XHP-2, p.5 S2B-XH-A, read 2026-10-04",
 )
 
 # USB Type-C receptacle. The opening is 8.34 x 2.56, 6.20 deep (USB Type-C
@@ -56,4 +77,4 @@ USB_C = Mating(
     source="USB Type-C Cable and Connector Specification (overmold max not read); opening via en.wikipedia.org/wiki/USB-C, 2026-09-21",
 )
 
-MATINGS = {m.name: m for m in (JST_SH4, JST_PH2, USB_C)}
+MATINGS = {m.name: m for m in (JST_SH4, JST_PH2, JST_PH3, JST_XH2, USB_C)}

@@ -23,6 +23,7 @@ ISO_273 = MappingProxyType({
     "M3": (3.2, 3.4, 3.6),
     "M4": (4.3, 4.5, 4.8),
     "M5": (5.3, 5.5, 5.8),
+    "M6": (6.4, 6.6, 7.0),
 })
 CLEAR_SLIP = 0.20     # diametral, M3: ISO 273 fine 3.2 - 3.0
 CLEAR_LOOSE = 0.40    # diametral, M3: ISO 273 medium 3.4 - 3.0
