@@ -126,13 +126,19 @@ because a wall opening for an unsourced plug is a guess.
 
 ![Sensor hub tray: INA219, two ADS1115, TCA9548A](docs/img/sensor_hub_tray.png)
 
-### Enclosure on a reservoir lid
+### Nutrient controller
 
-`projects/enclosure_atlas/` is a spec with no geometry yet: an enclosure for
-Atlas Scientific EZO circuits and their probes on the lid of a 27-gallon
-tote. `NOTES.md` lists the questions the model must answer (can the lid still
-come off, is every opening above the waterline, can a probe be swapped
-without unmounting) and the measurements it's waiting on.
+`projects/nutrient_controller/` is a reservoir controller box: XIAO ESP32-C3,
+analog TDS through an ADS1115, a DS18B20, one peristaltic pump, an OLED with
+three buttons. It hangs beside any tote or bucket on a printed clamp over the
+rim, so the container is never drilled; a bolted-through-the-wall revision
+stays in params as the alternative. Every bought part is sourced from a vendor
+sheet or board file, and the assembly checks run the clamp across a 2 to 35 mm
+container wall. Its README walks through the modelling approach and the
+build123d methods. It supersedes the `enclosure_atlas` spec, which was waiting
+on caliper measurements.
+
+![Nutrient controller on a container rim](docs/img/nutrient_controller_b2_front.png)
 
 ### Calibration coupon
 
