@@ -1,37 +1,28 @@
 # CACAD: Computer-Aided Computer-Aided Design
 
 This repo is a collection of my experiments using AI agents for 3D design, a
-genre I'm calling Computer-Aided Computer-Aided Design (lol). The concrete
-goal is mounting hardware for sensor electronics: standoffs, plates and
-enclosures for breakout boards like the ADS1115 and Atlas Scientific EZO
-circuits, printed in PETG on a Bambu A1. Parts are written in Python with
+genre I'm calling Computer-Aided Computer-Aided Design (lol). Parts are written in Python with
 [build123d](https://build123d.readthedocs.io/), checked by tests, and
-exported for the slicer. FreeCAD is a viewer and the bridge to KiCad, not a
-place where geometry gets drawn.
+exported for the slicer. FreeCAD is used as the viewer for assemblies // renderings. I can also use freecad as a middleman for automatically editing enclosures when the kicad geometry of a pcb changes.
+## Repo Structure
 
-## Repo structure
-
-Two parts matter: `cacad/` is the shared toolbox, `projects/` is one folder
-per part or family that uses it. Around them sit the docs that record what
-was learned, a calibration coupon, and the MCP configuration that lets an
-agent drive build123d and FreeCAD from a session.
+`cacad/` is the shared set of reusable widgets & methods, `projects/` contains individual examples
 
 | path | role |
 |---|---|
-| `cacad/registries/` | The facts every part reads: board outlines and hole patterns (`boards.py`), reservoir dimensions, printer and material numbers. Each value has its source next to it. A number with no source doesn't go in. |
-| `cacad/selectors.py` | Pick faces and edges by what they are (a circle of radius r at height z), never by index, so a parameter change can't silently select a different face. |
-| `cacad/probes.py` | Prove a feature exists on the built solid: is there material at this point, how thin is the wall on this cross-section, what's the steepest downward face. |
-| `cacad/booleans.py` | Interference volume between two parts, computed solid by solid. This is how "does the board sit on the bosses without touching anything else" becomes a number. |
-| `cacad/finishing.py` | Chamfer with fallback sizes. Cosmetic chamfers may shrink and warn; functional ones are `required=True` and fail. |
-| `cacad/export.py` | STEP and STL per part, and a 3MF with one named mesh per part for a print plate. |
-| `cacad/checks/` | The manufacturability tests, reusable across projects: walls against the nozzle, a declared print orientation whose bed face must exist, overhangs from face normals where any undeclared ceiling fails. They run last, from pytest. |
+| `cacad/registries/` | "source measurements". board outlines and hole patterns, physical dimensions of stuff I'm trying to model, 3D printer specs, etc. 
+| `cacad/selectors.py` | Pick faces and edges as defined (a circle of radius r at height z), never by index, so a parameter change can't silently select a different face. |
+| `cacad/probes.py` | Works as a linter. Proves a part that we create can actually get printed: is there material at this point, how thin is the wall on this cross-section, etc |
+| `cacad/booleans.py` | Interference volume between two parts|
+| `cacad/finishing.py` | Chamfer with fallback sizes.|
+| `cacad/export.py` | Produces STEP and STL per part, and a 3MF with one named mesh per part for a print plate. |
+| `cacad/checks/` | More manufacturability tests, reusable across projects: walls against the nozzle, a declared print orientation whose bed face must exist, overhangs from face normals where any undeclared ceiling fails. They run last, from pytest. |
 | `cacad/freecad/` | The RPC client for FreeCAD, a shape check from STEP and BREP, re-derivation of placements inside FreeCAD, and the KiCad-board-to-STEP freeze. |
 | `projects/<name>/` | `params.py` (every number), one file per part, `tests/`, and `out/` (gitignored). |
-| `coupons/` | The calibration plate that prints before anything prints for fit. |
 | `tools/` | `board_from_eagle.py` turns a vendor Eagle `.brd` into a registry entry; `verify_mcp.py` runs a part through build123d-mcp from a shell. |
-| `docs/` | `FINDINGS.md` (kernel and tooling facts with reproductions), `PARAMS_CONVENTION.md` and `params_template.py` (how a params file is written). |
-| `archive/` | Parked work, kept for its numbers and findings. Not tested, not on the main path. |
-| `CLAUDE.md`, `.mcp.json` | The rules the agent works under, and the build123d-mcp and freecad-mcp servers it uses. |
+| `docs/` | `PARAMS_CONVENTION.md` and `params_template.py` (how a params file is written). |
+| `archive/` | Junk I'm waiting  |
+|`.mcp.json` | Build123d-mcp and freecad-mcp servers |
 
 ## How a part gets made
 
@@ -140,16 +131,6 @@ on caliper measurements.
 
 ![Nutrient controller on a container rim](docs/img/nutrient_controller_b2_front.png)
 
-### Calibration coupon
-
-![FDM calibration coupon](docs/img/fdm_coupon.png)
-
-`coupons/fdm_coupon.py` prints before anything prints for fit: five 5 mm
-holes at +0.10 to +0.30 clearance, five M3 heat-set insert bores from 3.8 to
-4.2 mm, and a 20 mm cube for shrinkage, all labelled. Its measurements
-replace the TODO values in `cacad/registries/materials.py`. Until then every
-clearance in the repo is a guess, which is why the first printed parts
-didn't fit.
 
 ### Larger assemblies, not printed
 
