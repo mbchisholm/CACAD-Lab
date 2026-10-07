@@ -49,7 +49,45 @@ def manifest(size: str = "V0") -> dict:
         rows.append(dict(name=n, file=str(OUT / f"{n}.step"), group="Printed", color=c, placement=IDENT))
     for r in rows:
         assert Path(r["file"]).exists(), f"missing {r['file']}: run assembly.py first"
-    return dict(doc=f"camera_reader_{size}", save=str(OUT / f"camera_reader_{size}.FCStd"), parts=rows)
+        r["label"], r["transparency"] = SHOW[r["name"]]
+    return dict(doc=f"camera_reader_{size}", save=str(OUT / f"camera_reader_{size}.FCStd"), parts=rows,
+                guides=guides(d), explode=EXPLODE)
+
+
+# --- display only: tree labels, see-through shells, exploded view. Nothing here is geometry. ---------------------
+# The shells that hide the light path (stand, snout, box, lid, riser) are see-through; what the light meets is solid.
+SHOW = {
+    "Stand_Upright": ("Stand upright (bought)", 75), "Stand_Base": ("Stand base (bought)", 75),
+    "Pi4B": ("Pi 4B (bought)", 0), "CameraV2_NoIR": ("Camera Module 2 NoIR (bought)", 0),
+    "cuvette_c50": ("50 mm cuvette (bought)", 45), "cuvette_c10": ("10 mm cuvette (bought)", 45),
+    "diffuser": ("Diffuser, 3 mm opal (bought, cut)", 35), "leds": ("LEDs x7 (bought)", 0),
+    "snout": ("Snout (printed)", 70), "cell_box": ("Cell box (printed)", 65), "retainer": ("LED retainer (printed)", 30),
+    "lid": ("Lid (printed)", 70), "riser": ("Riser (printed)", 70),
+}
+_BOX = ["riser", "cell_box", "lid", "cuvette_c50", "cuvette_c10", "diffuser", "leds", "retainer"]
+# Moves add up per part, in mm along ASM (Y = optical axis, Z up). The order is the order you take it apart.
+EXPLODE = [
+    ("box assembly away from the camera", _BOX, (0, 90, 0)),
+    ("snout off the camera rim", ["snout"], (0, 40, 0)),
+    ("lid up", ["lid"], (0, 0, 130)),
+    ("cuvettes up out of their pockets", ["cuvette_c50", "cuvette_c10"], (0, 0, 70)),
+    ("diffuser up out of its slot", ["diffuser"], (0, 0, 90)),
+    ("retainer off the back", ["retainer"], (0, 90, 0)),
+    ("LEDs out of the back wall", ["leds"], (0, 40, 0)),
+]
+
+
+def guides(d) -> dict:
+    """The lens-to-window light paths and the axis on from the datum wall to the LEDs, from params: lines only."""
+    lx, ly, lz = d["lens"]
+    y_back = d["retainer"]["y"][0]
+    paths = {}
+    for name, (x0, x1, z0, z1) in d["windows"].items():
+        paths[name] = [(lx, ly, lz), ((x0 + x1) / 2, d["y_datum"], (z0 + z1) / 2)]
+    # (part, text, text drop in mm: the retainer's centre sits at the box's height, one below the other)
+    labels = [("CameraV2_NoIR", "Camera", 0), ("Pi4B", "Pi 4B", 0), ("snout", "Snout", 0), ("cell_box", "Cell box + cuvettes", 0),
+              ("retainer", "LEDs + retainer", 25), ("riser", "Riser", 0)]
+    return dict(axis=[(lx, d["y_datum"], lz), (lx, y_back, lz)], paths=paths, labels=labels)
 
 
 if __name__ == "__main__":
