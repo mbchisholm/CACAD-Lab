@@ -8,7 +8,7 @@ pairs_with: projects/camera_reader/ref/camera-reader-v0.md (same camera, same re
 # Leaf NDVI imager — v0 bench build
 
 The camera reader's hardware and read method, turned from water to leaves. A Pi
-Camera v2 NoIR looks straight down at a leaf on a drawer, in a dark chamber, lit
+Camera v2 NoIR looks straight down at a leaf on a platen, in a dark chamber, lit
 by a ring of LEDs at 45°. It takes one raw frame per wavelength and turns them
 into per-pixel reflectance. Every pixel then gets NDVI, red-edge NDRE and a
 true-colour image.
@@ -51,8 +51,8 @@ As v0, per pixel instead of per window:
 2. **Per LED.** One channel on, settle, N raw frames at that channel's fixed
    exposure, off.
 3. **Reflectance.** `R = (S − dark) / (F − dark_F) × (ref_F / ref_now)`.
-   - `F` is the flat-field: the same channel imaged once with a white card filling
-     the drawer.
+   - `F` is the flat-field: the same channel imaged once with a white card covering
+     the platen.
    - `ref` is the mean over the in-frame white strip, at flat-field time and now.
    - The flat-field takes out the ring's fixed unevenness and the lens shading. The
      strip takes out LED drift.
@@ -185,30 +185,37 @@ Sources:
 ## Layout
 
 ```
-          [Pi 4B on the roof, vented]
-               | 30-60 mm of ribbon through a light-trapped slot
-          [camera carrier, roof underside]
+          [Pi 4B on the roof, rotated so its CSI connector sits on the ribbon's line]
+               | 117 mm ribbon path: up through a felt-flapped roof slot, over the Pi
+          [roof, on the chamber's tongue]  [camera carrier under it]
                |  100 mm
-   [LED ring: 4 x 5 bands, 60 mm out, 60 mm up]
+   [LED ring PCB on the chamber's ledge: 4 x 5 bands, 60 mm out, 60 mm up]
                |
-   [drawer: black-flock platen + white PTFE strip + hold-down frame]
+   [base: black platen lining + white PTFE strip + pins for the hold-down frame]
 ```
 
-Chamber inside about 140 × 140 × 120 mm, outside about 150 × 150 × 135 mm plus the
-Pi on top.
+The chamber is 140.3 mm square inside and 118 mm from the leaf plane to the roof.
+The whole stack is 151 × 154 × 141 mm, with the Pi overhanging the roof by 6 mm at
+its USB end. `params.py` prints every number.
 
 - **Pi on the roof.** The Camera Module 2 ships with a 150 mm ribbon (VENDOR:
   raspberrypi.com Camera Module 2 product page, "15cm ribbon cable"; that the NoIR
   ships the same cable is UNVERIFIED). Camera on the roof's underside, Pi on its
   top: about 30–60 mm of ribbon, through a light-trapped slot. A Pi in a base
   would need about 235 mm. Heat rises away from the leaf.
-- **Drawer.** The leaf goes in on a drawer, not through a door.
-  - The drawer carries the black-flock platen, the white reference strip (8 mm
-    wide, along one field edge, in the leaf's plane) and a hinged open frame that
-    holds the leaf flat at its edges.
+- **The chamber lifts off; there is no drawer** (DESIGN, 2026-10-07).
+  - A drawer has to carry the pins, frame and strip out under the chamber's front
+    wall. That needs a full-width opening, and its lintel would be a 140 mm
+    bridge in an upright print.
+  - So the base is a fixed platen. It carries the black lining, the white
+    reference strip (8 mm wide, along one field edge, face in the leaf plane) and
+    two pins.
+  - The open hold-down frame drops over the pins and holds the leaf's edges flat.
+  - The chamber, carrying the roof, camera and Pi, is lowered back on. A rim on
+    all four sides of the base locates it and laps the joint against light.
   - Same reference, same place, every read.
-  - The drawer front is the light seal, with a foam-lined notch so a leaf still on
-    its plant can go in with its petiole through the notch.
+  - Foam-lined notches in the chamber's front wall and the base rim line up, so a
+    leaf still on its plant goes in with its petiole through them.
 - **The platen must be dark in NIR.** Leaves pass a good share of 850 nm light, so
   what is under the leaf adds to its NIR reading. Many black plastics and dyes are
   bright at 850 nm, and black PETG passes NIR (v0 README). "Black flock" is not
@@ -244,22 +251,30 @@ Pi on top.
 
 ## Parts
 
+Five printed parts, one file each in this folder. `assembly.py` checks them
+together.
+
 | Part | Job | Print |
 |---|---|---|
-| **Chamber** | Four walls, LED board ledge 60 mm above the platen, drawer runners, roof seat | Upright |
-| **LED board** (bought, fabbed from KiCad) | Annular PCB, SMD LEDs facing down on a 60 mm radius, inner edge clear of the view cone; connector to the band MOSFETs | n/a |
-| **LED board clamp** | Clamps the PCB's outer rim onto the ledge with M3 screws into heat-set inserts, never pressed (v0 rule) | Flat |
-| **Roof** | Camera carrier seat underneath, Pi standoffs on top, ribbon light trap | Flat |
-| **Camera carrier** | Camera board on its four holes; locates the lens over the field centre | Flat, bores vertical (as the compact reader) |
-| **Drawer** | Platen recess, PTFE strip pocket, petiole notch, pull | Flat |
-| **Hold-down frame** | Open frame pressing the leaf's edges flat, hinged on the drawer | Flat |
+| **Base** (`base.py`) | Platen: PTFE strip pocket, two frame pins; rim all round with the petiole notch | On its bottom |
+| **Chamber** (`chamber.py`) | Open square tube: LED-board ledge on a 45° corbel, four corner bosses for M3 inserts, tongue on top, petiole notch | Upright on its bottom edge; the notch top is a 10 mm bridge |
+| **Hold-down frame** (`hold_down.py`) | Open frame on the leaf's edges, tabs over the pins | Flat |
+| **Roof** (`roof.py`) | Groove over the chamber's tongue, four Pi bosses with an M2.5 nut in each top, ribbon slot, LED cable hole, two M3 holes for the carrier | On its underside; the groove ceiling is a 2.4 mm bridge |
+| **Camera carrier** (`carrier.py`) | Holds the camera face down on four bosses, lens on the axis; M2 nuts in its top, M3 nuts in its bottom | Upside down; the M2 pocket ceilings are bridged |
+| **LED board** (bought, fabbed from KiCad) | Square PCB with a round hole, SMD LEDs facing down on a 60 mm radius, an M3 hole in each corner | n/a |
 
-**Hardware**
-- Camera: 4 × M2 into M2 heat-set inserts in the carrier (holes 2.2 mm, VENDOR
-  RP-008149).
-- Pi: 4 × M2.5 on the RP-008343 pattern.
-- LED board clamp: M3 × 8 ISO 7045 into heat-set inserts (as v0).
-- Drawer stop: a printed detent, no magnet near the camera.
+The LED board screws straight into the chamber's corner inserts, so the separate
+board clamp is gone.
+
+**Hardware** (ISO 7045 pan head screws, ISO 4032 nuts; lengths from `params.py`)
+- LED board: 4 × M3 × 6 into M3 heat-set inserts (CNC Kitchen standard, 4.0 mm
+  bore), 4.4 mm of thread in each.
+- Camera: 4 × M2 × 10 up through the camera into nuts captured in the carrier's
+  top. The spacer under the camera is 4.2 mm, so one length fits any board from
+  0.8 to 1.6 mm thick. The board thickness is unpublished.
+- Carrier: 2 × M3 × 8 down from the roof top, nuts in the carrier's bottom.
+- Pi: 4 × M2.5 × 5 down into nuts in the boss tops. The bores are blind, so
+  there is no hole into the chamber.
 
 ## Electronics
 
@@ -301,25 +316,27 @@ this instrument gets its own Camera Module 2 NoIR, refocused to 100 mm for good.
 | Logic-level N-MOSFET | One per band, low-side; part to pick | 5 |
 | Resistors, 0.5 W | 4 each of 20, 22, 27, 30, 51 Ω | 20 |
 | LED ring PCB | KiCad, fabbed; annulus, 60 mm LED radius | 1 (fab minimum 5) |
-| PTFE sheet, ≥ 5 mm | White reference strip and flat-field card | strip + one card covering the drawer |
+| PTFE sheet, ≥ 5 mm | White reference strip and flat-field card | strip 108.6 × 8 + one card covering the platen |
 | NIR-dark black: Fineshut KIWAMI, Acktar Metal Velvet or Edmund Flock 65 | ≤ 3 % at 850 nm, published | platen + chamber lining |
 | Grey card / matte grey sample | L2 linearity ladder | 1 |
-| Foam strip, black | Drawer notch seal | small |
+| Foam strip, black | Petiole notch seals (chamber and base rim) | small |
+| Felt | Flaps over the roof's ribbon slot and cable hole | small |
+| Screws and nuts | 6 × M3 (4 × 6, 2 × 8) + 2 M3 nuts, 4 × M2 × 10 + 4 nuts, 4 × M2.5 × 5 + 4 nuts, 4 × M3 heat-set inserts | — |
 
 ## Experiments
 
 | ID | Test | Answers |
 |---|---|---|
-| L1 | One leaf, reinserted 10×, fixed patch | Repeatability, the drawer's registration |
+| L1 | One leaf, reinserted 10× (chamber lifted and lowered each time), fixed patch | Repeatability, the platen's and chamber's registration |
 | L2 | White / grey / black ladder, plus bare platen | Linearity, PTFE flatness, platen NIR darkness |
 | L3 | Dark-green vs yellowing leaf of one plant | Whether NDVI saturates and NDRE separates them |
 | L4 | One plant, daily, through a deliberate feed cut | Whether stress shows in the maps before it shows to the eye |
 
 ## What `validate()` checks
 
-`params.validate()` checks 1–5 and the drive now. Check 6 waits for the part files.
+`params.validate()` checks 1–5 and the drive. `assembly.py` checks 6.
 
-1. The field at 100 mm covers the drawer's leaf area and the white strip, inside
+1. The field at 100 mm covers the leaf area and the white strip, inside
    90 % of the half-field.
 2. No LED, ring part or hold-down frame is in the camera's view cone.
 3. The line from every LED to the field centre is at 45 ± 1° to the platen.
@@ -328,7 +345,7 @@ this instrument gets its own Camera Module 2 NoIR, refocused to 100 mm for good.
    every band.
 5. The ribbon path from the CSI connector to the camera, with bends, ≤ 130 mm
    (150 mm VENDOR ribbon, 20 mm slack).
-6. Parts clear pairwise, the drawer slides its full stroke clear of the ring, and
+6. Parts clear pairwise, every LED's light reaches the field and the strip, and
    overhangs are ≤ 45° in each part's print orientation.
 
 ## Decisions (owner, 2026-10-07)
@@ -354,5 +371,12 @@ this instrument gets its own Camera Module 2 NoIR, refocused to 100 mm for good.
 - Measure each band's current on the bench. Vf at 100 mA is not tabulated, so
   the computed current is an upper-side estimate.
 - Whether the v2 lens refocuses to 100 mm cleanly.
+- The image's long axis is INFERRED to run parallel to the camera's connector
+  edge. If it is the other way, the field turns 90° and `params` needs the swap.
+- The camera's back-side connector height (≤ 3.5 mm allowed) and the SD card's
+  overhang at the Pi's end (4 mm allowed) are unpublished.
+- Line the hold-down frame's top black. Black PETG can be bright at 850 nm, and
+  the frame is in the picture.
+- The MOSFET board has no home yet. The roof has room beside the Pi.
 - PTFE's flatness at 850 nm (L2). No published 850 nm number for skived sheet was
   found.
