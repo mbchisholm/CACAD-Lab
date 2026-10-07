@@ -235,11 +235,13 @@ SEN0244 = Board(
     name="SEN0244",
     size=(42.0, 32.0),
     holes=_rect_pattern(35.0, 25.0),
-    hole_dia=3.0,                                # scaled from the layout PDF, not dimensioned
-    source="SEN0244_analog-tds-sensor_layout_V1.0.pdf, wiki.dfrobot.com SKU SEN0244, read 2026-10-04",
+    hole_dia=3.05,                               # scaled from the layout PDF (stroke centreline, 14.705 pt/mm), not dimensioned
+    source="SEN0244_analog-tds-sensor_layout_V1.0.pdf, wiki.dfrobot.com SKU SEN0244, read 2026-10-04, re-read 2026-10-07",
     thickness=None,
-    nearest_pin=None,                            # layout shows SMD only near the holes; no pin data
-    nearest_top_copper=None,
+    # no through-hole pins: the nearest drawn component pad (diode, 4.57 from
+    # hole (-17.5, -12.5)) bounds the boss too; the underside is not drawn
+    nearest_pin=4.57,
+    nearest_top_copper=4.57,                     # same pad; the "A" silkscreen box at 4.11 is not copper
     connectors=(Connector(-21.0 + 6.1 / 2, 0.0, (-1, 0), "JST_XH2"),
                 Connector(21.0 - 6.0 / 2, 0.0, (1, 0), "JST_PH3")),
 )

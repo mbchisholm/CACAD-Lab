@@ -47,7 +47,9 @@ BME280): the family has no rest for a cantilevered edge.
 Status (2026-09-21): active and passing — `ADS1115`, `INA219`, `TCA9548A`,
 `FEATHER` (flat plates), `ADS1115x2_tray`, and `SENSOR_HUB_tray` (INA219 +
 2 × ADS1115 + TCA9548A in one column, 35.7 × 90.9 × 16.4, 14 bosses, six
-openings). Failing by rule — `ADS1115x2` (inner connectors face each other
+openings). Added 2026-10-07: `SEN0244` (DFRobot Gravity analog TDS, M3 × 10
++ ISO 4032 nuts, 48 × 38 × 9.0, holes 35 × 25 from DFRobot's layout PDF; the
+hole diameter is scaled from that drawing, not dimensioned). Failing by rule — `ADS1115x2` (inner connectors face each other
 6.5 mm apart, plug needs 15), `ADS1115_V1` and `BME280` (holes on one edge),
 `UNO_R3` (no `nearest_pin`), `FEATHER_tray` (USB-C plug envelope not yet in
 the connector registry; the Feather joins the hub tray when it is).

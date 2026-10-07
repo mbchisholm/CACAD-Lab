@@ -109,9 +109,17 @@ PLATES = {
         ("ADS1115", (0.0, 44.83), 0),
         ("TCA9548A", (0.0, 66.61), 90),
     ), tray=True),
+    # --- 2026-10-07: DFRobot Gravity analog TDS board on M3 + ISO 4032 nuts. The board thickness is
+    # not published; the layout shows SMD parts only and no underside, so underside_protrusion is a
+    # DESIGN allowance that also clears through-hole tails if the board has any.
+    "SEN0244": dict(screw="M3",
+                    board_t=1.6,                # UNVERIFIED: not published, standard FR-4
+                    underside_protrusion=3.5,   # DESIGN allowance, UNVERIFIED: underside not drawn
+                    top_protrusion=6.0,         # UNVERIFIED: XH header height; tray only
+                    placements=(("SEN0244", (0.0, 0.0)),), tray=False),
 }
 
-ACTIVE_PLATES = ("ADS1115", "ADS1115x2_tray", "INA219", "TCA9548A", "FEATHER", "SENSOR_HUB_tray")
+ACTIVE_PLATES = ("ADS1115", "ADS1115x2_tray", "INA219", "TCA9548A", "FEATHER", "SENSOR_HUB_tray", "SEN0244")
 
 
 def _round_up(x: float, step: float) -> float:
