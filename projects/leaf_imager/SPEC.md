@@ -142,9 +142,11 @@ and beams that differ by band give each band a different noise map.
 So the ring is SMD on one PCB. That suits the repo, because KiCad is already the
 board tool here.
 
-**Source: distributor parts, ams-OSRAM and Vishay** (decided 2026-10-07). Each
-has a current datasheet and a Farnell, RS or Mouser listing, and all have a ±60°
-(120° full) Lambertian beam.
+**Source: distributor parts, ams-OSRAM, Cree LED and Vishay** (decided
+2026-10-07).
+- Each part has a current datasheet, and each maker lists it as active.
+- Every beam is 120° full (Lambertian), except the green at 135°.
+- `params.LEDS` holds every number, with its page.
 
 Roithner's SMC family has a near-identical beam and runs at lower current. It
 was dropped because it cannot be shown to be buyable:
@@ -153,17 +155,17 @@ was dropped because it cannot be shown to be buyable:
 
 | Band | Part | Peak / FWHM | Beam | Vf | Min. current |
 |---|---|---|---|---|---|
-| 450 | ams-OSRAM GD CSSRML.14 (OSLON Optimal deep blue) | 448 / UNVERIFIED | 120° | UNVERIFIED | UNVERIFIED |
+| 450 | ams-OSRAM GD CSSPM1.14 (OSLON SSL 120 deep blue) | 445 / not stated | 120° | 2.85 V @ 350 mA | 100 mA |
 | 525 | Cree LED XLamp XP-E2 green, XPEBGR-L1-0000-00K03 (bin G3–G4) | 525–535 dominant / UNVERIFIED | 135° | 2.7 V @ 350 mA | none stated |
-| 660 | ams-OSRAM GH CSSRM4.24 (OSLON Square hyper red) | 660 / 25 nm | 120° | 2.02 V @ 700 mA | 100 mA |
+| 660 | ams-OSRAM GH CSSPM1.24 (OSLON SSL 120 hyper red) | 660 / 25 nm | 120° | 2.07 V @ 350 mA | 100 mA |
 | 730 | ams-OSRAM GF CSSRML.24 (OSLON Optimal far red) | 727 / 30 nm | 120° | 1.84 V @ 350 mA | 30 mA |
-| 850 | Vishay VSMY3850X01 (PLCC-2) | 850 / 30 nm | ±60° | 1.6 V @ 100 mA | n/a |
+| 850 | Vishay VSMY3850X01 (PLCC-2) | 850 / 30 nm | ±60° | 1.6 V @ 100 mA | none; **100 mA absolute max** |
 
 Sources:
-- GH CSSRM4.24, GF CSSRML.24 and VSMY3850X01 numbers are from the datasheets
-  (VENDOR):
-  - `look.ams-osram.com/.../GH-CSSRM4-24.pdf`
-  - `look.ams-osram.com/.../GF-CSSRML-24.pdf`
+- The ams-OSRAM and Vishay numbers are from their datasheets (VENDOR):
+  - `look.ams-osram.com/.../GD-CSSPM1-14.pdf` (v1.4)
+  - `look.ams-osram.com/.../GH-CSSPM1-24.pdf` (v1.15)
+  - `look.ams-osram.com/.../GF-CSSRML-24.pdf` (v1.3)
   - `vishay.com/docs/80225`
 - XP-E2 green numbers are from Cree LED datasheet CLD-DS56 rev 25B
   (`downloads.cree-led.com/files/ds/x/XLamp-XPE2.pdf`). The order code is in
@@ -172,11 +174,12 @@ Sources:
   family is listed at Digi-Key and RS.
   - Its 135° beam against the others' 120° is within the same-beam rule: ±67.5°
     against ±60° changes the 4-flat ratio by under 0.05 (INFERRED, same model).
-- GD CSSRML.14's 448 nm and 120° are from Farnell's listing (order code
-  4063762), until its datasheet is read.
-- GF CSSRML.24 is listed at Farnell (4035474) and RS (2490443), and ams-OSRAM
-  lists it in full production.
-- GH CSSRM4.24 is listed at Farnell (3299837).
+- Production status:
+  - ams-OSRAM's product pages list GD CSSPM1.14, GH CSSPM1.24 and GF CSSRML.24
+    as full production. GF CSSRML.24 is also listed at Farnell (4035474) and RS
+    (2490443).
+  - The first picks, GD CSSRML.14 and GH CSSRM4.24, are **discontinued** on the
+    same pages. ams-OSRAM names GD CSSPM1.14 as the blue's replacement.
 - Stock at order time is UNVERIFIED for every part.
 
 ## Layout
@@ -263,19 +266,27 @@ Pi on top.
 v0's read method, but not its LED driver. Each LED has its own series resistor
 from Pi 5 V. Each band's four LEDs are in parallel and switched low-side by one
 logic-level N-MOSFET, with its gate on a GPIO.
-- **100 mA per LED** (DESIGN). That is the highest datasheet minimum among the
-  chosen parts (GH CSSRM4.24, 100 mA), and well under every part's rating. It
-  gives 400 mA per band, with one band on at a time.
+- **Currents per band** (DESIGN, `params.COMMON.i_led`):
+  - 100 mA per LED for the four visible and red bands. That is the ams-OSRAM
+    parts' datasheet minimum, and a tenth of their 1000 mA maximum.
+  - 60 mA for the 850 nm band. Its 100 mA is an absolute maximum, so the drive
+    stays under 0.7 × that after the resistor is rounded to E24 (65 mA).
+  - At most about 420 mA per band, one band on at a time.
 - **Why not the ULN2803A.** At 400 mA a ULN2803A output's saturation voltage
   eats most of the headroom a 3 V blue or green LED leaves on a 5 V rail. Its
   current would then hang on the transistor, not the resistor.
-- **Resistors:** (5 V − Vf) / 100 mA, so about 30 Ω for the red bands and 20 Ω
-  for blue. That is up to 0.35 W each, so use 0.5 W parts. Pick values from the
-  final Vf bins.
+- **Resistors:** the largest E24 value at or under (5 V − Vf − 0.1 V) / I:
+  - 20 Ω blue, 22 Ω green, 27 Ω red, 30 Ω far red, 51 Ω NIR.
+  - Each dissipates at most 0.31 W, so use 0.5 W parts.
+  - Vf is the datasheet's typical at its test current, which is higher than at
+    100 mA, so the real current runs a little over the design value.
+  - The 0.1 V is the drop the MOSFET is allowed at 400 mA.
 - **Drift is fine.** Resistor drive lets current drift a little with LED
   temperature, and the in-frame white strip cancels that drift.
-- **Power budget:** 400 mA on top of the Pi 4B on its 5 V supply. Check the
-  supply rating with the Pi's other loads when the supply is picked (UNVERIFIED).
+- **Power budget:** about 1.3 A on the official 5 V / 3 A supply:
+  - the Pi 4B's typical 600 mA;
+  - a 300 mA allowance for the camera and sensor;
+  - the worst band, about 420 mA.
 - A DS18B20 logs chamber temperature.
 
 ## Bill of materials (new parts only)
@@ -286,9 +297,9 @@ this instrument gets its own Camera Module 2 NoIR, refocused to 100 mm for good.
 | Part | Spec | Qty |
 |---|---|---|
 | Camera Module 2 NoIR | Dedicated, refocused to 100 mm | 1 |
-| LEDs: GD CSSRML.14, XPEBGR-L1-0000-00K03, GH CSSRM4.24, GF CSSRML.24, VSMY3850X01 | Datasheets above; 120–135° | 4 per band + spares |
+| LEDs: GD CSSPM1.14, XPEBGR-L1-0000-00K03, GH CSSPM1.24, GF CSSRML.24, VSMY3850X01 | Datasheets above; 120–135° | 4 per band + spares |
 | Logic-level N-MOSFET | One per band, low-side; part to pick | 5 |
-| Resistors, 0.5 W | One per LED, values from the Vf bins | 20 |
+| Resistors, 0.5 W | 4 each of 20, 22, 27, 30, 51 Ω | 20 |
 | LED ring PCB | KiCad, fabbed; annulus, 60 mm LED radius | 1 (fab minimum 5) |
 | PTFE sheet, ≥ 5 mm | White reference strip and flat-field card | strip + one card covering the drawer |
 | NIR-dark black: Fineshut KIWAMI, Acktar Metal Velvet or Edmund Flock 65 | ≤ 3 % at 850 nm, published | platen + chamber lining |
@@ -304,7 +315,9 @@ this instrument gets its own Camera Module 2 NoIR, refocused to 100 mm for good.
 | L3 | Dark-green vs yellowing leaf of one plant | Whether NDVI saturates and NDRE separates them |
 | L4 | One plant, daily, through a deliberate feed cut | Whether stress shows in the maps before it shows to the eye |
 
-## What `validate()` must check (when this becomes CAD)
+## What `validate()` checks
+
+`params.validate()` checks 1–5 and the drive now. Check 6 waits for the part files.
 
 1. The field at 100 mm covers the drawer's leaf area and the white strip, inside
    90 % of the half-field.
@@ -330,16 +343,16 @@ this instrument gets its own Camera Module 2 NoIR, refocused to 100 mm for good.
    literature.
    - The rejected option was transmission through the leaf on a backlight, a
      per-pixel SPAD meter.
-3. **LEDs: distributor parts** (ams-OSRAM + Vishay), ±60°, 100 mA, one MOSFET per
-   band.
+3. **LEDs: distributor parts** (ams-OSRAM, Cree LED and Vishay), about 120°,
+   100 mA (60 mA at 850 nm), one MOSFET per band.
    - Roithner's SMC family was dropped because it cannot be shown to be buyable.
 
 ## Open
 
-- **GD CSSRML.14:** read the datasheet (FWHM, Vf, minimum current) and confirm it
-  is in production.
 - Stock for every LED at order time.
-- The MOSFET part and the 5 V supply's margin.
+- The MOSFET part: logic-level, at most 0.1 V drop at 400 mA with a 3.3 V gate.
+- Measure each band's current on the bench. Vf at 100 mA is not tabulated, so
+  the computed current is an upper-side estimate.
 - Whether the v2 lens refocuses to 100 mm cleanly.
 - PTFE's flatness at 850 nm (L2). No published 850 nm number for skived sheet was
   found.
