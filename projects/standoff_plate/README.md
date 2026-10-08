@@ -34,6 +34,16 @@ wide from `opening_below` under the board top to the rim. The rim is the
 board top + the tallest top-side thing (connector or header, whichever the
 registry and the caliper say) + `lid_clearance`. No lid yet.
 
+Mount holes (`mount=dict(screw="M3", sides="X" | "Y")`, flat plates only):
+four plain through bores, one per plate corner, `mount_inset` (head radius
++ `mount_head_seat`) from both edges. On the two mount sides the plate grows
+a strip so each head sits wholly outside every board outline with
+`mount_access_clearance` to spare, and `check_plate` proves a head-sized
+driver column reaches it straight down past the boards and their screws.
+Pick the sides no connector faces; `validate()` refuses a connector that
+faces one. The clamp is `plate_t`; the screw length is set by what the
+plate mounts to.
+
 Declared ceiling: the annulus above each nut pocket (4.3 mm hex, bridged).
 The nut bears on it. If bridging sags in practice, the alternative is a
 sacrificial layer across the pocket, drilled out after printing.
@@ -47,7 +57,12 @@ BME280): the family has no rest for a cantilevered edge.
 Status (2026-09-21): active and passing — `ADS1115`, `INA219`, `TCA9548A`,
 `FEATHER` (flat plates), `ADS1115x2_tray`, and `SENSOR_HUB_tray` (INA219 +
 2 × ADS1115 + TCA9548A in one column, 35.7 × 90.9 × 16.4, 14 bosses, six
-openings). Failing by rule — `ADS1115x2` (inner connectors face each other
+openings). Added 2026-10-07: `SEN0244` (DFRobot Gravity analog TDS, M3 × 10
++ ISO 4032 nuts, 48 × 45 × 9.0 with M3 mount holes, holes 35 × 25 from DFRobot's layout PDF; the
+hole diameter is scaled from that drawing, not dimensioned) and `EZO_ISO_x2`
+(two Atlas isolated EZO carriers, pH + EC, M2 × 10, 81 × 48 × 8.8 with M3 mount holes; the
+carrier hole is 3.0 so M3 is refused; Atlas's STEP placed on it intersects
+nothing). Failing by rule — `ADS1115x2` (inner connectors face each other
 6.5 mm apart, plug needs 15), `ADS1115_V1` and `BME280` (holes on one edge),
 `UNO_R3` (no `nearest_pin`), `FEATHER_tray` (USB-C plug envelope not yet in
 the connector registry; the Feather joins the hub tray when it is).

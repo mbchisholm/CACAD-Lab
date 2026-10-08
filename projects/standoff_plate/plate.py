@@ -53,6 +53,9 @@ def build_plate(plate: str) -> Part:
         extrude(sk.sketch, amount=d["pocket_depth"], mode=Mode.SUBTRACT)
         with Locations(*[(x, y, d["z_board_bottom"]) for x, y in d["holes"]]):
             Hole(d["bore_d"] / 2)
+        if d["mount_holes"]:   # plain through bores for the screws that hold the plate down
+            with Locations(*[(x, y, d["plate_t"]) for x, y in d["mount_holes"]]):
+                Hole(d["mount_bore_d"] / 2)
     part = bp.part
     # finish last: cosmetic lead-in on each bore at the boss top
     lead_in = circular_edges(part, d["bore_d"] / 2, d["z_board_bottom"])
@@ -80,6 +83,15 @@ def build_hardware(plate: str) -> dict[str, Compound]:
                 RegularPolygon(sc["nut_s"] / (2 * math.cos(math.radians(30))), 6, rotation=30)
         nuts.append(extrude(sk.sketch, amount=sc["nut_m"]) - Cylinder(sc["d"] / 2, sc["nut_m"], align=ALIGN_MIN_Z)
                     .moved(Location((x, y, d["pocket_depth"] - sc["nut_m"]))))
+    # mount screws: shank through the plate, head on the plate top, and the straight-down driver column above the head
+    mount_screws, mount_access = [], []
+    for x, y in d["mount_holes"]:
+        ms = d["mount_spec"]
+        shank = Cylinder(ms["d"] / 2, d["plate_t"], align=ALIGN_MIN_Z).moved(Location((x, y, 0)))
+        head = Cylinder(d["mount_head_r"], ms["head_k"], align=ALIGN_MIN_Z).moved(Location((x, y, d["plate_t"])))
+        mount_screws.append(shank + head)
+        z0 = d["plate_t"] + ms["head_k"]
+        mount_access.append(Cylinder(d["mount_head_r"], d["z_head_top"] + 5.0 - z0, align=ALIGN_MIN_Z).moved(Location((x, y, z0))))
     plugs, reach = [], []
     for cn in d["connectors"]:
         if cn["plug"] is None:
@@ -91,7 +103,8 @@ def build_hardware(plate: str) -> dict[str, Compound]:
             centre = (mx + fx * length / 2, my + fy * length / 2, d["z_board_top"])
             dest.append(Box(*size, align=ALIGN_MIN_Z).moved(Location(centre)))
     return dict(boards=Compound(children=boards), screws=Compound(children=screws), nuts=Compound(children=nuts),
-                plugs=Compound(children=plugs), reach=Compound(children=reach))
+                plugs=Compound(children=plugs), reach=Compound(children=reach),
+                mount_screws=Compound(children=mount_screws), mount_access=Compound(children=mount_access))
 
 
 def expected_volume(d: dict) -> float:
@@ -109,7 +122,8 @@ def expected_volume(d: dict) -> float:
     bosses = n * math.pi * d["boss_r"] ** 2 * d["standoff_h"]
     pockets = n * (3 * math.sqrt(3) / 2) * d["pocket_r"] ** 2 * d["pocket_depth"]
     bores = n * math.pi * (d["bore_d"] / 2) ** 2 * (d["plate_t"] + d["standoff_h"] - d["pocket_depth"])
-    return plate + bosses - pockets - bores
+    mount = len(d["mount_holes"]) * math.pi * (d.get("mount_bore_d", 0.0) / 2) ** 2 * d["plate_t"]
+    return plate + bosses - pockets - bores - mount
 
 
 def check_plate(plate: str, part: Part) -> dict:
@@ -139,6 +153,11 @@ def check_plate(plate: str, part: Part) -> dict:
             f"web{i} solid": ((x + d["bore_d"] / 2 + 0.3, y, d["pocket_depth"] + d["pocket_web"] / 2), True),
             f"web{i} bore": ((x, y, d["pocket_depth"] + d["pocket_web"] / 2), False),
         })
+    for i, (x, y) in enumerate(d["mount_holes"]):   # through bore, material past it on the plate-edge side
+        sx = 1.0 if x > d["plate_centre"][0] else -1.0
+        for z in (0.2, d["plate_t"] / 2, d["plate_t"] - 0.2):
+            probes[f"mount{i} bore z{z:.1f}"] = ((x, y, z), False)
+        probes[f"mount{i} wall to edge"] = ((x + sx * (d["mount_bore_d"] / 2 + 0.3), y, d["plate_t"] / 2), True)
     assert_material(part, probes)
 
     # function: the purchased parts and the boards, placed, intersect nothing they should not
@@ -158,6 +177,10 @@ def check_plate(plate: str, part: Part) -> dict:
         assert not is_inside(part, (x, y, o["z0"] + 0.2)), f"{label}: opening {o['side']} not cut"
         assert is_inside(part, (x, y, o["z0"] - 0.2)), f"{label}: opening {o['side']} floor missing"
         assert is_inside(part, (x + dx, y + dy, o["z0"] + 0.2)), f"{label}: no wall beside opening {o['side']}"
+    if hw["mount_access"].solids():   # a driver reaches every mount head straight down, past the boards and their screws
+        for other in ("boards", "screws"):
+            v = interference_volume(hw["mount_access"], hw[other])
+            assert v < 1e-6, f"{label}: mount screw driver column hits the {other} by {v:.4f} mm^3"
     assert interference_volume(hw["screws"], hw["boards"]) < 1e-6, f"{label}: screws hit the boards"
     assert interference_volume(hw["screws"], hw["nuts"]) < 1e-6, f"{label}: screw shank hits the nut (bore)"
     # the board rests on every boss: boss top touches the board underside inside its outline
