@@ -1,9 +1,11 @@
 # CACAD: Computer-Aided Computer-Aided Design
 
-This repo is a collection of my experiments using AI agents for 3D design, a
-genre I'm calling Computer-Aided Computer-Aided Design (lol). Parts are written in Python with
-[build123d](https://build123d.readthedocs.io/), checked by tests, and
-exported for the slicer. FreeCAD is used as the viewer for assemblies // renderings. I can also use freecad as a middleman for automatically editing enclosures when the kicad geometry of a pcb changes.
+My experiments using AI agents for 3D design, a genre I'm calling
+Computer-Aided Computer-Aided Design. Parts are Python in
+[build123d](https://build123d.readthedocs.io/), checked by tests and exported
+for the slicer. FreeCAD is the viewer for assemblies and renders, and the
+bridge that lets an enclosure follow a KiCad board when the board changes.
+
 ## Repo Structure
 
 `cacad/` is the shared set of reusable widgets & methods, `projects/` contains individual examples

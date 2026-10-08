@@ -22,6 +22,7 @@ projects/<name>/      one part or family: params.py, one file per part, tests/, 
                       camera_reader/ is a bought Pi stand (meshes in ref/) with printed optics.
 coupons/              calibration coupon: optional, for tuning a fit.
 docs/FINDINGS.md      kernel/library/tooling facts with reproductions (F-numbers). Read before fighting the kernel.
+docs/PRINT_LOG.md     manufacturing assumptions and print results (nothing printed yet).
 docs/PARAMS_CONVENTION.md   how a params.py is written; docs/params_template.py is the skeleton.
 tools/board_from_eagle.py   vendor Eagle .brd -> Board() block with holes, drill, keepouts, source.
 tools/verify_mcp.py   drive a part through build123d-mcp outside a session (renders, find_holes).
