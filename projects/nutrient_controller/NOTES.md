@@ -131,3 +131,7 @@ draft) with keyholes on a plate that follows the wall.
   B2's M3 insert bosses under the carrier (OD 8.0) reached 1.19 into the pin margin, a check that had been
   skipped while `nearest_pin` was unknown. DESIGN: the four vias nearest each carrier hole (8 in all) stay
   unsoldered. The nearest usable via is 6.35 away, so the boss clears the margin by 1.35.
+- 2026-10-08: concept D, the instrument panel (DESIGN.md). Three red 7-segment readouts, APEM pilot lamps,
+  AUTO / OFF / PRIME toggles and the pump heads on the front, one encoder knob. Layout and fit checks pass:
+  56 solids, no overlap. Vendor: Adafruit 878 and 4991 STEPs, APEM Q datasheet (ref/). UNVERIFIED: the C&K
+  7000 toggle and Hexseal boot sizes, the encoder thread, the NKP head diameter, the display back parts.

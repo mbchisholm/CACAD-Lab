@@ -10,7 +10,7 @@ container is never drilled. Nothing has been printed yet.
 
 | file | what is in it |
 |---|---|
-| `DESIGN.md` | the three concepts, the box, the B1 and B2 mounts, limits |
+| `DESIGN.md` | the concepts, the box, the B1 and B2 mounts, concept D (instrument panel), limits |
 | `MODELLING.md` | how it was modelled: approach, code layout, build123d methods, what the checks caught |
 | `NOTES.md` | the working log: parts list with sources, placeholders, what comes next |
 
@@ -25,6 +25,10 @@ Limits worth knowing: every DESIGN clearance is untested in PETG; the TDS
 probe's 830 mm lead leaves 53 mm to spare on the HDX tote and 13 mm on a
 deeper container; the clamp holds by friction and one screw, so the hook is
 the first part for a `cad-design-review` pass.
+
+Concept D (`panel.py`, STATUS concept) redraws the front for the full analog
+node as an instrument: red LED readouts, a lamp, toggle and pump head per
+pump, one knob. Its layout and fit checks pass; see DESIGN.md.
 
 ## Sources
 
@@ -46,6 +50,8 @@ them.
 ```
 .venv/bin/python projects/nutrient_controller/params.py     # every derived number, both revisions
 .venv/bin/python projects/nutrient_controller/assembly.py   # build, check, out/B2.3mf and out/B2_assembly.step
+.venv/bin/python projects/nutrient_controller/panel.py     # concept D: build, check, out/D_*.step, D_panel.3mf
+.venv/bin/python projects/nutrient_controller/panel_view.py   # then: FreeCAD document NutrientController_D
 .venv/bin/python -m pytest -q projects/nutrient_controller
 ```
 
