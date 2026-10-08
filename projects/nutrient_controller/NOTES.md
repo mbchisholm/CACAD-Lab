@@ -7,7 +7,7 @@ Active revision **B2** clamps over the rim of any tote or bucket, no drilling;
 **B1** bolts through the HDX wall and stays in params as the alternative
 (validated, not built). Neither has been printed.
 
-Supersedes the `enclosure_atlas` spec (Atlas EZO, caliper-gated) for the
+Supersedes the `archive/enclosure_atlas` spec (Atlas EZO, caliper-gated) for the
 analog build.
 
     .venv/bin/python projects/nutrient_controller/params.py      # the design, printed

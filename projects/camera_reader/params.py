@@ -21,7 +21,7 @@ stand's base. The stand's meshes come in their print frame ("flat": plate on
 the bed, camera facing +z, Pi long axis along +y); `FLAT_TO_ASM` places them.
 
 Tags (PARAMS_CONVENTION rule 5): VENDOR (sheet named, ref/vendor_sheets/),
-VAULT (ref/camera-reader-v0.md, the owner's spec), INFERRED (from what),
+NOTES (ref/camera-reader-v0.md, the author's unpublished spec), INFERRED (from what),
 DESIGN, UNVERIFIED (estimate; ideation only).
 
     .venv/bin/python projects/camera_reader/params.py     # prints the design
@@ -107,10 +107,10 @@ PARTS = MappingProxyType(dict(
                                          "width 10, 17.5 ml), msesupplies.com, 2026-10-06",
                     h=45.0, w=12.5, d=52.5, inside_w=10.0, path=50.0, volume_ml=17.5,
                     cap_h=8.0),         # UNVERIFIED: PTFE lid height above the rim
-    cuvette_10=dict(tag="INFERRED", source="standard macro cuvette 12.5 x 12.5 x 45 (VAULT spec lists it; "
+    cuvette_10=dict(tag="INFERRED", source="standard macro cuvette 12.5 x 12.5 x 45 (NOTES spec lists it; "
                                            "vendor TODO there). UNVERIFIED until a vendor is picked",
                     h=45.0, w=12.5, d=12.5, inside_w=10.0, path=10.0, cap_h=8.0),
-    diffuser=dict(tag="DESIGN", source="VAULT spec: 3 mm opal (white) acrylic, cut to size by the owner",
+    diffuser=dict(tag="DESIGN", source="NOTES spec: 3 mm opal (white) acrylic, cut to size by the owner",
                   t=3.0, t_tol=0.3),    # UNVERIFIED: cast acrylic sheet is commonly +/-10 %
     led=dict(tag="UNVERIFIED", source="generic 5 mm (T-1 3/4) LED; part numbers are an open item in the spec",
              body_d=5.0, flange_d=5.8, flange_t=1.0, lead_pitch=2.54, body_len=8.6),
@@ -126,7 +126,7 @@ COMMON = MappingProxyType(dict(
                             # does the light-tightness, the wall the stiffness
     fit=FIT_CLEAR,          # radial, printed part around a bought part (collar on the stand's rim, cuvette pockets,
                             # diffuser slot): materials.FIT_CLEAR
-    lens_to_cells=150.0,    # VAULT spec "~150 mm dark air gap": lens front to the 50 mm cell's near face
+    lens_to_cells=150.0,    # NOTES spec "~150 mm dark air gap": lens front to the 50 mm cell's near face
     cell_pitch=16.0,        # window centres across X, camera's left to right: REF, 50 mm (on the axis: its rays run
                             # 52.5 mm through the liquid, so it gets the least parallax), 10 mm
     window=(7.0, 18.0),     # mask window W x H: every ray from the pupil to the window stays inside each cuvette's
@@ -136,7 +136,7 @@ COMMON = MappingProxyType(dict(
     floor_t=2.4,            # under the pockets
     side_margin=8.0,        # outermost pocket to the side wall, inside: room for the flange nuts (validate)
     front_margin=4.0,       # box front wall inside face to the 50 mm cell's near face
-    cavity=30.0,            # VAULT spec: white-walled mixing cavity, diffuser to LED wall
+    cavity=30.0,            # NOTES spec: white-walled mixing cavity, diffuser to LED wall
     rib=2.0, rib_h=3.0,     # ribs (Y thickness, inward height) that hold the diffuser against the mask wall
     corbel=2.0,             # riser: flat band under its 45 deg inner corbel, which carries the box's walls
     head_room=4.0,          # cuvette cap top to the lid underside
@@ -307,7 +307,7 @@ def derive(size: str = "V0", **overrides) -> dict:
     # The box drops into the riser's top lip (fit all round); the lip is a riser wall carried up riser_lip.
     d["riser"] = dict(z=(0.0, bz0), lip_top=bz0 + c["riser_lip"], x=(bx[0] - f - w, bx[1] + f + w),
                       y=(by[0] - f - w, by[1] + f + w))
-    # ROI size: 2x2 binned raw is 1640 px across the 62.2 deg field (VAULT spec, VENDOR FOV)
+    # ROI size: 2x2 binned raw is 1640 px across the 62.2 deg field (NOTES spec, VENDOR FOV)
     px_mm = 1640 / (2 * (y_datum - LY) * math.tan(math.radians(cam["fov"][0] / 2)))
     d["roi_px"] = (px_mm, int(c["window"][0] * c["window"][1] * px_mm ** 2))
     return d

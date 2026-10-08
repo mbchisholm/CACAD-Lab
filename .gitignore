@@ -8,3 +8,6 @@ __pycache__/
 # Claude Code conversation exports
 20??-??-??-*.txt
 *.egg-info/
+# Personal notes and chat exports
+*threads*.txt
+devChatLogs/

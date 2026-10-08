@@ -45,7 +45,7 @@ def test_slope_sets_the_saddles(d):
     assert h["B"] == pytest.approx(d["p1_t_base"] + P.bv("shcs", "k_M5") + d["L"]["p1_head_clear"])
 
 
-def test_slope_outside_the_vault_range_is_refused():
+def test_slope_outside_the_notes_range_is_refused():
     with pytest.raises(AssertionError, match="outside 1:30..1:40"):
         P.validate(slope=1 / 60)
 

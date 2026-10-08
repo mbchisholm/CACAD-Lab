@@ -232,7 +232,7 @@ not `Contents/MacOS/FreeCADCmd`.
 
 An engraved outline groove (2 layers deep) cut before a boss was added left
 a 0.4 mm void where the groove crossed the boss footprint. Start the boss
-below the groove floor (`projects/mount_plate/mount_plate.py`) or engrave
+below the groove floor (`archive/mount_plate/mount_plate.py`) or engrave
 last.
 
 ## F21. build123d-mcp `render_view` at the default angle can hide a feature — OBSERVED (2026-09-14)

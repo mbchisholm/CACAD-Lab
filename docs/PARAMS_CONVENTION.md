@@ -57,7 +57,7 @@ the script.
    ```
    STANDARD     a published standard, named (ASTM D1785, ISO 273)
    VENDOR       published by the vendor of the part used (sheet and page named)
-   VAULT        from the T1TRTA notes (file named)
+   NOTES        the author's own design notes; not independently sourced
    INFERRED     follows from a published number, not stated (say from what)
    DESIGN       a designer's choice; the part is designed to tolerate it
    CONVENIENCE  set to draw the model; awaits derivation (design review rule 1)
