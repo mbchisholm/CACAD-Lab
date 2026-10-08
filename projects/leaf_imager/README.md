@@ -9,6 +9,20 @@ per-pixel reflectance map, then NDVI and NDRE. Nothing has been printed yet.
 
 ![Cutaway: hold-down frame on the base, carrier under the roof](../../docs/img/leaf_imager_v0_cutaway.png)
 
+## Status
+
+STATUS is `passes`: V0 validates, all five printed parts build, and the
+assembly checks below pass. Open: the first print, stock for every LED at
+order time, and the light-leak lining (below).
+
+## Sources
+
+`SPEC.md` is the authority: it names the question, the acceptance criteria and
+every bought part. Each number in `params.py` carries a tag (VENDOR, STANDARD,
+INFERRED, DESIGN, NOTES, UNVERIFIED) and its source; UNVERIFIED values such as
+LED stock and the camera's back-side connector height never pass a part that
+has to fit.
+
 ## How you use it
 
 1. Lift the chamber off the base. It carries the roof, camera and Pi with it.
@@ -30,7 +44,7 @@ Five printed parts in PETG, one file each:
 parts as envelopes: camera, Pi, LED board, PTFE strip, lining and fasteners.
 The fasteners are listed in `SPEC.md` under *Parts*.
 
-## Build and check
+## Run
 
 ```
 .venv/bin/python projects/leaf_imager/params.py     # the design, printed and validated
