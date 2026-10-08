@@ -54,3 +54,15 @@ def seg_dist(p0, p1, q0, q1) -> float:
     c1 = [p + s * d for p, d in zip(p0, d1)]
     c2 = [q + t * d for q, d in zip(q0, d2)]
     return math.dist(c1, c2)
+
+
+def frac_in(mm: float, denom: int = 16) -> str:
+    """mm -> a tape-measure reading in inches to the nearest 1/denom, reduced: 845.4 -> '33-5/16'."""
+    n = round(mm / 25.4 * denom)
+    whole, rem = divmod(abs(n), denom)
+    sign = "-" if n < 0 else ""
+    if rem == 0:
+        return f"{sign}{whole}"
+    g = math.gcd(rem, denom)
+    f = f"{rem // g}/{denom // g}"
+    return f"{sign}{whole}-{f}" if whole else f"{sign}{f}"
