@@ -33,8 +33,14 @@ WALLS = MappingProxyType(dict(
         lip_h=6.0 * IN,               # UNVERIFIED: floor to lip top, owner's rough figure
         lip_h_dev=0.5 * IN,           # DESIGN allowance: "about 6" may be 5.5 to 6.5, or vary along the wall
         lip_material="concrete",
+        # Owner, 2026-10-08: the wall above the lip is drywall. Framing behind it is not described; wood studs are the
+        # usual garage wall. A build that screws into it reads these and says how to find the studs.
+        finish="drywall",
+        drywall_t_max=5 / 8 * IN,     # UNVERIFIED: 1/2 in is the IRC R302.6 garage-side minimum, 5/8 Type X is common;
+                                      # a wall screw is sized to bite enough through the thicker one
+        stud_oc=16 * IN,              # UNVERIFIED: the usual stud spacing; a build screws at every stud a stud finder shows
         length=None,                  # not given: a build reports its own length and the owner checks it fits
-        source="owner, chat 2026-10-07, rough figures, no photo",
+        source="owner, chat 2026-10-07 (lip, rough figures, no photo) and 2026-10-08 (drywall)",
     )),
 ))
 

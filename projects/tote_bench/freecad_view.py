@@ -1,8 +1,8 @@
-"""Each version in its garage, in FreeCAD: wood coloured by size, feet,
-translucent totes, slab, lip and wall. Imported positions are checked
-against params (F11) with a shifted control. Renders per version a room view
-and a front view; for the first version also a section through a tote column
-and one ladder on its own (the build's repeated unit). Saves
+"""The bench in its garage, in FreeCAD: wood coloured by size, translucent
+totes, slab, lip and wall. Imported positions are checked against params
+(F11) with a shifted control. Renders one image per assembly stage
+(build_sheet.STAGES, cumulative, garage always shown), the finished bench
+with totes, a front view and a section through a tote column. Saves
 out/tote_bench_<version>.FCStd.
 
 Needs FreeCAD open with the MCP Addon's RPC server started, and bench.py run first.
@@ -15,10 +15,11 @@ import json
 
 from cacad.freecad import FreeCADRPC
 from projects.garage.params import derive as site_derive
+from projects.tote_bench.build_sheet import STAGES
 from projects.tote_bench.params import ACTIVE_VERSIONS, derive
 from projects.workbench.freecad_view import IMPORT, SAVE, SECTION, STYLE, check_positions
 
-LOOK = dict(x2x4=((0.62, 0.42, 0.22), 0), x2x6=((0.85, 0.68, 0.45), 0), foot=((0.20, 0.20, 0.22), 0),
+LOOK = dict(x2x4=((0.62, 0.42, 0.22), 0), x2x6=((0.85, 0.68, 0.45), 0),
             tote=((0.30, 0.50, 0.75), 55), SLAB=((0.62, 0.62, 0.60), 0), LIP=((0.50, 0.50, 0.48), 0),
             WALL=((0.90, 0.89, 0.86), 0))
 
@@ -34,8 +35,9 @@ pref.SetBool("UseNavigationAnimations", False)
 sec = [o for o in doc.Objects if o.Label.startswith("cut ")]
 full = [o for o in doc.Objects if o.TypeId == "Part::Feature" and o not in sec]
 only = D["only"]
+shown = lambda o: only is None or o.Label in D["always"] or any(p in o.Label for p in only)
 for o in full:
-    o.ViewObject.Visibility = (not D["section"]) and (only is None or any(o.Label.startswith(p) for p in only))
+    o.ViewObject.Visibility = (not D["section"]) and shown(o)
 for o in sec:
     o.ViewObject.Visibility = D["section"]
 v.setCameraType("Orthographic")
@@ -51,26 +53,24 @@ for o in full:
 for o in sec:
     o.ViewObject.Visibility = False
 pref.SetBool("UseNavigationAnimations", anim)
-print("JSON:" + json.dumps(dict(png=D["png"], shown=sum(1 for o in full if only is None or any(o.Label.startswith(p) for p in only)))))
+print("JSON:" + json.dumps(dict(png=D["png"], shown=sum(1 for o in full if shown(o)))))
 '''
 
 
 def expected(d: dict) -> dict:
     out = {nm: ("bench", lo, size) for nm, (_, size, lo) in d["boards"].items()}
-    for nm, (base, r, h) in d["feet"].items():
-        out[nm] = ("feet", (base[0] - r, base[1] - r, base[2]), (2 * r, 2 * r, h))
     for nm, (size, lo) in d["totes"].items():
         out[nm] = ("totes", lo, size)
-    for nm, (size, lo) in site_derive(d["top_x0"], d["top_x0"] + d["W"])["boxes"].items():
+    for nm, (size, lo) in site_derive(0.0, d["W"])["boxes"].items():
         out[nm] = ("garage", lo, size)
     return out
 
 
-def main(version: str, detail: bool):
+def main(version: str):
     d = derive(version)
     out = __file__.rsplit("/", 1)[0] + "/out"
     doc = f"tote_bench_{version}"
-    steps = {g: f"{out}/tote_bench_{version}{'' if g == 'bench' else '_' + g}.step" for g in ("bench", "feet", "totes", "garage")}
+    steps = {g: f"{out}/tote_bench_{version}{'' if g == 'bench' else '_' + g}.step" for g in ("bench", "totes", "garage")}
     fc = FreeCADRPC()
     got = fc.run(IMPORT % dict(d=json.dumps(dict(doc=doc, steps=steps))), f"import {version}")
     want = expected(d)
@@ -80,21 +80,25 @@ def main(version: str, detail: bool):
     grp, lo, size = want[nm]
     assert check_positions(dict(want, **{nm: (grp, (lo[0] + 1.0, lo[1], lo[2]), size)}), got), "control: 1 mm shift not detected"
     print(f"  {version}: {len(got)} solids agree with params to 0.01 mm; shifted control disagrees")
-    look = {nm: LOOK[d["boards"][nm][0] if g == "bench" else {"feet": "foot", "totes": "tote"}.get(g, nm)] for nm, (g, _, _) in want.items()}
+    look = {nm: LOOK[d["boards"][nm][0] if g == "bench" else {"totes": "tote"}.get(g, nm)] for nm, (g, _, _) in want.items()}
     st = fc.run(STYLE % dict(d=json.dumps(dict(doc=doc, look=look))), "style")
     assert st["styled"] == len(want), st
-    renders = [("room", "room", False, None, 150), ("front", "viewRear", False, None, 0)]
-    if detail:
-        col = next(c for c in d["columns"] if c["kind"] == "T")
-        sec = fc.run(SECTION % dict(d=json.dumps(dict(doc=doc, look=look, x=(col["x0"] + col["x1"]) / 2))), "section")
-        print(f"  section through tote column {col['j']}: {sec['cut']} cut solids")
-        renders += [("section", "viewLeft", True, None, 0), ("ladder", "room", False, ["L1-", "FOOT-L1-"], 75)]
+    garage = [nm for nm, (g, _, _) in want.items() if g == "garage"]
+    col = next(c for c in d["columns"] if c["kind"] == "T")
+    sec = fc.run(SECTION % dict(d=json.dumps(dict(doc=doc, look=look, x=(col["x0"] + col["x1"]) / 2))), "section")
+    print(f"  section through tote column {col['j']}: {sec['cut']} cut solids")
+    # (tag, view, section, name fragments shown besides the garage, camera swing about Z)
+    renders, frags = [], []
+    for key, _, add in STAGES:
+        frags += list(add)
+        renders.append((key, "room", False, list(frags), 150))
+    renders += [("6_totes", "room", False, None, 150), ("front", "viewRear", False, None, 0), ("section", "viewLeft", True, None, 0)]
     for tag, view, section, only, swing in renders:
         png = f"{out}/{version}_{tag}.png"
-        r = fc.run(RENDER % dict(d=json.dumps(dict(doc=doc, view=view, swing=swing, section=section, only=only, png=png, w=1600, h=1000))),
-                   f"render {tag}")
+        r = fc.run(RENDER % dict(d=json.dumps(dict(doc=doc, view=view, swing=swing, section=section, only=only, always=garage,
+                                                   png=png, w=1600, h=1000))), f"render {tag}")
         if only:
-            assert r["shown"] == sum(1 for n in want if any(n.startswith(p) for p in only)) > 0, r
+            assert r["shown"] == sum(1 for n in want if n in garage or any(p in n for p in only)), r
         print(f"  render: {png}")
     s = fc.run(SAVE % dict(d=json.dumps(dict(doc=doc, fcstd=f"{out}/tote_bench_{version}.FCStd"))), "save")
     print(f"  saved {s['saved']}")
@@ -103,5 +107,5 @@ def main(version: str, detail: bool):
 if __name__ == "__main__":
     import sys
     vs = sys.argv[1:] or list(ACTIVE_VERSIONS)
-    for k, v in enumerate(vs):
-        main(v, detail=(v == "desk"))
+    for v in vs:
+        main(v)
