@@ -86,7 +86,7 @@ def test_under_minimum_current_fails():
 
 def test_closer_than_focus_fails():
     with pytest.raises(AssertionError, match="inside the lens's closest focus"):
-        P.validate(wd=90.0, min_leaf=(90.0, 60.0))   # 90 mm also shrinks the leaf area; isolate the focus check
+        P.validate(wd=90.0, min_leaf=(90.0, 50.0))   # 90 mm also shrinks the leaf area; isolate the focus check
 
 
 def test_ring_in_view_cone_fails():

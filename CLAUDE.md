@@ -18,6 +18,7 @@ projects/<name>/      one part or family: params.py, one file per part, tests/, 
                       standoff_plate/ is the worked example of the convention (plate and tray).
                       tote_rack/, raised_bed/ are bought-and-cut assemblies, not prints.
                       nft_table/ is a bought PVC + 2020 kit with printed PETG interfaces.
+                      leaf_imager/ is a leaf NDVI imager: SPEC.md, sourced LEDs, five printed parts.
                       camera_reader/ is a bought Pi stand (meshes in ref/) with printed optics.
 coupons/              calibration coupon: optional, for tuning a fit.
 docs/FINDINGS.md      kernel/library/tooling facts with reproductions (F-numbers). Read before fighting the kernel.

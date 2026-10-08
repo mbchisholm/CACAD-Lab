@@ -1,14 +1,14 @@
 r"""Leaf NDVI imager v0 (SPEC.md): every number.
 
-A Camera Module 2 NoIR on the roof's underside looks straight down at a leaf on a
-drawer, 100 mm away, in a dark chamber. One flat PCB ring of SMD LEDs, five bands,
-lights the leaf at 45 deg from 60 mm up and 60 mm out (CIE 45/0). The Pi 4B sits on
+A Camera Module 2 NoIR on the roof's underside looks straight down at a leaf on the
+base, 100 mm away, in a dark chamber that lifts off the base. One flat PCB ring of SMD
+LEDs, five bands, lights the leaf at 45 deg from 60 mm up and 60 mm out (CIE 45/0). The Pi 4B sits on
 the roof. A white PTFE strip in the leaf plane, along one field edge, cancels LED
 drift in every frame; a black, NIR-dark platen sits under the leaf.
 
 This file holds the optics, the ring, the drive and the envelope the parts will be
-drawn into. The parts themselves (chamber, ring clamp, roof, carrier, drawer,
-hold-down) come next and read only `derive()`.
+drawn into. The printed parts (base, chamber, hold-down, roof, carrier) read only
+`derive()`.
 
 Frame: Z up, Z = 0 the leaf plane (platen top, PTFE strip face). Origin on the
 optical axis. +X along the field's long side (the sensor's 3280 px). The strip runs
@@ -40,7 +40,8 @@ from __future__ import annotations
 import math
 from types import MappingProxyType
 
-from cacad.registries.materials import FIT_CLEAR, NOZZLE
+from cacad.registries.materials import (BED, FDM_HOLE_ALLOWANCE, FIT_CLEAR, FLOOR, INSERT_BORE_M3, INSERT_DEPTH_M3,
+                                        INSERT_LEN_M3, INSERT_WALL_M3, LAYER, NOZZLE, WALL)
 
 TAGS = ("STANDARD", "VENDOR", "INFERRED", "DESIGN", "CONVENIENCE", "PLACEHOLDER")
 
@@ -66,6 +67,8 @@ CAMERA = MappingProxyType(dict(
     sensor_px=((3280, 2464), "VENDOR", _RPI_DOCS),
     binned_px=((1640, 1232), "VENDOR", _RPI_DOCS + ": 2x2 binned mode"),
     focus_min=(100.0, "VENDOR", _RPI_DOCS + ": focus 'Adjustable', 'approx 10 cm to infinity'"),
+    image_x=("board y", "INFERRED", "the image's long (3280 px) axis runs parallel to the connector edge: the module's "
+                                    "normal landscape use, ribbon down. Sets the field's long side along assembly X"),
     ribbon_len=(150.0, "INFERRED", "raspberrypi.com Camera Module 2 product page: '15cm ribbon cable'; the NoIR page "
                                    "states none, and it is the same board"),
 ))
@@ -133,7 +136,7 @@ COMMON = MappingProxyType(dict(
     beam_match=(15.0, "DESIGN", "SPEC: the same beam in every band; full angles within this of each other"),
     min_leaf=((100.0, 60.0), "DESIGN", "SPEC: a whole basil or small lettuce leaf"),
     strip_w=(8.0, "DESIGN", "SPEC: PTFE strip width, along the +Y field edge"),
-    strip_gap=(2.0, "DESIGN", "leaf area to strip: the hold-down frame's edge sits here"),
+    strip_clear=(1.0, "DESIGN", "hold-down frame's +Y bar shadow to the strip: the strip stays lit from every LED"),
     strip_t=(5.0, "DESIGN", "SPEC: PTFE >= 5 mm so its reflectance stops depending on the backing (Labsphere, Ghosh 2020)"),
     wall_clear=(2.0, "DESIGN", "field edge at the leaf plane to the chamber's inner wall: the camera sees no wall"),
     # --- ring ---
@@ -144,13 +147,45 @@ COMMON = MappingProxyType(dict(
     pcb_t=(1.6, "DESIGN", "our own fabbed board: the fab's default FR-4"),
     pad_margin=(4.0, "DESIGN", "LED package edge to the PCB's inner or outer edge: pads, traces, a clamp band"),
     cone_margin=(3.0, "DESIGN", "view cone to the ring PCB's inner hole"),
-    ledge_w=(4.0, "DESIGN", "chamber ledge the PCB rim rests on; the clamp bears on the same band"),
-    fit=(FIT_CLEAR, "DESIGN", "cacad.registries.materials.FIT_CLEAR: radial, PCB edge to the printed chamber"),
+    ledge_w=(4.0, "DESIGN", "chamber ledge the PCB rim rests on, 45 deg corbel under it"),
+    ledge_t=(2.0, "DESIGN", "flat band of the ledge above its corbel"),
+    boss_c=(8.0, "DESIGN", "square corner boss for an M3 insert: >= insert bore + 2 x vendor wall (7.2)"),
+    pcb_engage_min=(3.0, "DESIGN", "M3 thread into the insert: one diameter"),
+    fit=(FIT_CLEAR, "DESIGN", "cacad.registries.materials.FIT_CLEAR: radial, printed part to a bought or printed mate"),
+    # --- chamber, base (platen), hold-down (z = 0 is the leaf plane). The chamber lifts off the base: a drawer would
+    # need a full-width opening in the front wall to pass the pins, frame and strip, and its lintel a 140 mm bridge ---
+    wall=(2.4, "DESIGN", "chamber walls: 6 perimeters; the black lining does the light-tightness (camera_reader rule)"),
+    flock_t=(1.0, "DESIGN", "platen lining over the base top: its top is the leaf plane; a thinner foil "
+                            "(Acktar ~0.1) sits within the 4.8 mm depth of field"),
+    pocket_floor=(1.2, "DESIGN", "materials.FLOOR: base under the PTFE pocket"),
+    rim_h=(8.0, "DESIGN", "base rim around the chamber's foot: locates it on all four sides, laps the joint"),
+    rim_wall=(2.4, "DESIGN", "base rim thickness"),
+    notch=((10.0, 8.0), "DESIGN", "petiole notch W x H above the leaf plane, chamber wall and base rim; foam-lined"),
+    frame_bar=(4.0, "DESIGN", "hold-down frame bar width over the leaf's edge"),
+    frame_t=(2.0, "DESIGN", "hold-down frame thickness: its 45 deg shadow is this wide"),
+    pin_d=(4.0, "DESIGN", "frame locating pins on the base"),
+    pin_h=(3.0, "DESIGN", "pin height above the base top"),
+    pin_clear=(2.0, "DESIGN", "pin edge outside the field at the leaf plane: pins stay out of the picture"),
+    tab_wall=(2.4, "DESIGN", "frame tab material around the pin hole"),
+    tongue=((1.6, 2.0), "DESIGN", "chamber top tongue W x H into the roof's groove: locates the roof, laps the joint"),
     # --- stack above the lens ---
-    carrier_t=(3.0, "DESIGN", "camera carrier plate between the camera PCB back and the roof underside"),
-    roof_t=(3.0, "DESIGN", "roof plate"),
+    cam_pcb_t=((0.8, 1.6), "DESIGN", "Camera Module 2 PCB thickness is unpublished; the M2 screws fit any in this range"),
+    cam_gap_min=(4.0, "DESIGN", "camera PCB back to the carrier: room for a back-side FFC connector up to 3.5 mm "
+                                "(unpublished; camera_reader estimated 2.5)"),
+    cam_boss_wall=(1.6, "DESIGN", "materials.WALL around the M2 clearance bore"),
+    carrier_t=(5.0, "DESIGN", "carrier plate: holds the M2 nut pockets (top) and M3 nut pockets (bottom)"),
+    carrier_margin=(1.6, "DESIGN", "carrier edge beyond its outermost pocket or the camera board"),
+    roof_t=(4.0, "DESIGN", "roof plate: groove depth + 1.6 web"),
     pi_standoff=(6.0, "DESIGN", "roof top to Pi PCB underside: air under the Pi"),
-    trap_len=(25.0, "DESIGN", "extra ribbon the roof's light trap adds over a straight pass"),
+    pi_slot_clear=(4.0, "DESIGN", "ribbon slot to the Pi's SD-card end: room for the card's overhang (UNVERIFIED ~2.5)"),
+    nut_clear=(0.3, "DESIGN", "hex pocket across flats over the nut (standoff_plate); nuts are captive, not pressed"),
+    nut_extra=(dict(M2=1.6, M2_5=0.2, M3=1.2), "DESIGN", "pocket depth over the nut height: the screw-tip window"),
+    thread_past_nut=(1.0, "DESIGN", "screw tip beyond the nut's far face"),
+    ribbon_w=(16.0, "INFERRED", "15-way 1.0 mm pitch FFC, 15 mm of contacts plus edges; camera_reader used 16"),
+    slot=((18.0, 4.0), "DESIGN", "roof ribbon slot X x Y: ribbon + 1 each side; a felt flap closes it"),
+    ribbon_bend=(1.0, "DESIGN", "camera connector edge to the slot: the ribbon turns up here"),
+    cable_hole=((60.0, 60.0, 6.0), "DESIGN", "LED wires through the roof (x, y, d): outside the Pi, over no boss"),
+    trap_len=(25.0, "DESIGN", "extra ribbon allowance over a straight pass (felt flap, any detour)"),
     bend_allow=(10.0, "DESIGN", "ribbon taken up by its bends"),
     ribbon_slack=(20.0, "DESIGN", "SPEC validate 5: path <= ribbon - 20 mm"),
     # --- drive ---
@@ -165,18 +200,21 @@ COMMON = MappingProxyType(dict(
     camera_current=(300.0, "DESIGN", "allowance for the camera module and a DS18B20, mA"),
 ))
 
+# Bought fasteners: ISO 7045 pan head screws, ISO 4032 nuts, ISO 273 medium clearance (+ the FDM allowance when the
+# hole is printed). Lengths are the ISO 7045 preferred ladder.
+_ISO = "ISO 7045 (dk, k max), ISO 4032 (s, m), ISO 273 medium"
+SCREWS = MappingProxyType(dict(
+    M2=(dict(d=2.0, clear=2.4, head_dk=4.0, head_k=1.6, nut_s=4.0, nut_m=1.6, lengths=(4, 5, 6, 8, 10, 12, 16, 20)),
+        "STANDARD", _ISO),
+    M2_5=(dict(d=2.5, clear=2.9, head_dk=5.0, head_k=2.0, nut_s=5.0, nut_m=2.0, lengths=(4, 5, 6, 8, 10, 12, 16, 20)),
+          "STANDARD", _ISO),
+    M3=(dict(d=3.0, clear=3.4, head_dk=5.6, head_k=2.4, nut_s=5.5, nut_m=2.4, lengths=(4, 5, 6, 8, 10, 12, 16, 20)),
+        "STANDARD", _ISO),
+))
+
 SIZES = MappingProxyType(dict(V0=dict()))
 ACTIVE_SIZES = ("V0",)
-
-# Print orientation per part (PARAMS_CONVENTION rule 9), from SPEC's Parts table. Geometry not drawn yet.
-PRINT_ORIENTATION = MappingProxyType(dict(
-    chamber=dict(up="+Z", bed_face="bottom rim", known_overhangs=()),
-    ring_clamp=dict(up="+Z", bed_face="clamp top", known_overhangs=()),
-    roof=dict(up="+Z", bed_face="roof underside", known_overhangs=()),
-    carrier=dict(up="-Z", bed_face="carrier face against the roof", known_overhangs=()),
-    drawer=dict(up="+Z", bed_face="drawer bottom", known_overhangs=()),
-    hold_down=dict(up="+Z", bed_face="frame underside", known_overhangs=()),
-))
+PARTS = ("base", "chamber", "hold_down", "roof", "carrier")
 
 E24 = (1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1)
 
@@ -197,7 +235,8 @@ def _tagged(tables) -> list:
 
 
 def _tables():
-    return [("CAMERA", CAMERA), ("PI4B", PI4B), ("COMMON", COMMON)] + [(f"LEDS.{b}", LEDS[b]) for b in BANDS]
+    return ([("CAMERA", CAMERA), ("PI4B", PI4B), ("COMMON", COMMON), ("SCREWS", SCREWS)]
+            + [(f"LEDS.{b}", LEDS[b]) for b in BANDS])
 
 
 def irradiance_ratio(beam_full: float, leds: list, half: tuple) -> float:
@@ -240,10 +279,14 @@ def derive(size: str = "V0", **overrides) -> dict:
     d["dof_full"] = 2 * cam["f_number"] * cam["pixel"] * mag           # 1 px blur, u >> f
     d["dof_binned"] = 2 * cam["f_number"] * 2 * cam["pixel"] * mag
     d["focus_margin"] = c["wd"] - cam["focus_min"]
-    # leaf area and strip inside field_use of the half-field; the strip along +Y
+    # leaf area, hold-down frame and strip inside field_use of the half-field; the strip along +Y, beyond the frame's
+    # +Y bar and that bar's shadow. The longest shadow is from the LED across the ring (y = -ring_r), which sees the
+    # bar's edge (taken at y = uy, conservative) at its shallowest elevation, not 45 deg.
     ux, uy = c["field_use"] * hx, c["field_use"] * hy
-    d["strip_y"] = (uy - c["strip_w"], uy)
-    d["leaf_area"] = ((-ux, ux), (-uy, uy - c["strip_w"] - c["strip_gap"]))
+    d["frame_shadow"] = c["frame_t"] * (uy + c["ring_r"]) / (c["ring_h"] - c["frame_t"])
+    d["strip_gap"] = c["frame_bar"] + d["frame_shadow"] + c["strip_clear"]
+    d["strip_x"], d["strip_y"] = (-ux, ux), (uy - c["strip_w"], uy)
+    d["leaf_area"] = ((-ux, ux), (-uy, uy - c["strip_w"] - d["strip_gap"]))
     d["leaf_size"] = (2 * ux, d["leaf_area"][1][1] - d["leaf_area"][1][0])
 
     # --- ring ---------------------------------------------------------------------------------------------
@@ -276,19 +319,151 @@ def derive(size: str = "V0", **overrides) -> dict:
     }
     d["inner_governed_by"], d["inner"] = max(needs.items(), key=lambda kv: kv[1])
     d["inner_needs"] = needs
-    d["pcb_side"] = d["inner"] - 2 * c["fit"]                 # square PCB, round hole
+    S, w, f = d["inner"], c["wall"], c["fit"]
+    d["pcb_side"] = S - 2 * f                                  # square PCB, round hole
     d["pcb_outer_band"] = d["pcb_side"] / 2 - (c["ring_r"] + max(pkg_max) / 2)   # LED edge to the PCB edge
-    d["z_lens"] = c["wd"]
-    d["z_roof"] = c["wd"] + cam["depth"] + c["carrier_t"]     # roof underside = chamber inside height
+    d["outer"] = S + 2 * w
+    scr = {k: v[0] for k, v in SCREWS.items()}
+    d["screws"] = scr
 
-    # --- ribbon: camera connector (back of the board, lens on the axis, connector toward +X) to the Pi's CSI ---
-    cam_conn = (cam["connector_x"][1] - cam["lens_xy"][0], 0.0)          # mouth at the board's connector edge
+    # --- z levels below the leaf plane ----------------------------------------------------------------------
+    d["z_base_top"] = -c["flock_t"]                           # platen surface under the lining; the chamber stands here
+    d["z_strip_floor"] = -c["strip_t"]                        # PTFE strip face at z = 0
+    d["z_base_bot"] = d["z_strip_floor"] - c["pocket_floor"]
+    d["z_rim_top"] = d["z_base_top"] + c["rim_h"]
+
+    # --- ledge and corner insert bosses carry the PCB; M3 screws through its corner holes ----------------------
+    d["z_ledge"] = (d["z_pcb"] - c["ledge_t"], d["z_pcb"])
+    d["z_ledge_corbel_bot"] = d["z_ledge"][0] - c["ledge_w"]
+    ai = S / 2 - c["boss_c"] / 2
+    d["insert_xy"] = [(sx * ai, sy * ai) for sx in (-1, 1) for sy in (-1, 1)]
+    d["boss_block_h"] = INSERT_DEPTH_M3 + FLOOR
+    d["z_boss_corbel_bot"] = d["z_pcb"] - d["boss_block_h"] - c["boss_c"]
+    d["insert_wall"] = c["boss_c"] / 2 - INSERT_BORE_M3 / 2
+    d["pcb_hole_d"] = scr["M3"]["clear"]                       # drilled in FR-4: no FDM allowance
+    room = INSERT_DEPTH_M3 - 0.5 + c["pcb_t"]
+    fits = [L for L in scr["M3"]["lengths"] if c["pcb_t"] + c["pcb_engage_min"] <= L <= room]
+    d["pcb_screw"] = max(fits) if fits else None
+    d["pcb_engage"] = d["pcb_screw"] - c["pcb_t"] if d["pcb_screw"] else None
+
+    # --- chamber: open tube on the base, tongue on top, petiole notch in the front wall ------------------------
+    nw, nh = c["notch"]
+    d["notch_x"], d["notch_z"] = (-nw / 2, nw / 2), (d["z_base_top"], nh)
+    d["z_cam_back"] = c["wd"] + cam["depth"]
+
+    # --- carrier: camera bosses under it, M2 nuts in its top, M3 nuts (roof screws) in its bottom --------------
+    # Camera board frame -> assembly: X = by - lens_by, Y = lens_bx - bx (connector edge toward -Y, image_x).
+    lbx, lby = cam["lens_xy"]
+    to_asm = lambda bx, by: (by - lby, lbx - bx)               # noqa: E731
+    d["cam_holes"] = [to_asm(*h) for h in cam["holes"]]
+    d["cam_xy"] = ((-lby, cam["size"][1] - lby), (lbx - cam["size"][0], lbx))   # board footprint, assembly X, Y
+    d["cam_conn_y"] = lbx - cam["connector_x"][1]              # the connector edge: the ribbon leaves toward -Y
+    m2, m3, m25 = scr["M2"], scr["M3"], scr["M2_5"]
+    hexr = lambda s_, cl=c["nut_clear"]: (s_ + cl) / (2 * math.cos(math.radians(30)))   # noqa: E731
+    d["cam_bore"] = m2["clear"] + FDM_HOLE_ALLOWANCE
+    d["cam_boss_r"] = d["cam_bore"] / 2 + c["cam_boss_wall"]
+    d["m2_pocket"] = dict(r=hexr(m2["nut_s"]), depth=m2["nut_m"] + c["nut_extra"]["M2"])
+    d["m3_pocket"] = dict(r=hexr(m3["nut_s"]), depth=m3["nut_m"] + c["nut_extra"]["M3"])
+    d["m25_pocket"] = dict(r=hexr(m25["nut_s"]), depth=m25["nut_m"] + c["nut_extra"]["M2_5"])
+    # camera gap: raised in layer steps from its minimum until one stocked M2 fits every PCB thickness in range:
+    # tip past the nut's far face at the thickest board, tip no higher than the carrier top at the thinnest
+    t0, t1 = c["cam_pcb_t"]
+    gap, d["cam_screw"] = c["cam_gap_min"], None
+    for _ in range(100):
+        lo = t1 + gap + c["carrier_t"] - d["m2_pocket"]["depth"] + m2["nut_m"]
+        hi = t0 + gap + c["carrier_t"]
+        ok = [L for L in m2["lengths"] if lo - 1e-9 <= L <= hi + 1e-9]
+        if ok:
+            d["cam_screw"] = ok[0]
+            break
+        gap = round(gap + LAYER, 6)
+    d["cam_gap"] = gap
+    d["cam_gap_governed_by"] = "back-side connector room" if gap == c["cam_gap_min"] else "stocked M2 length"
+    d["z_carrier"] = (d["z_cam_back"] + gap, d["z_cam_back"] + gap + c["carrier_t"])
+    d["z_roof"] = d["z_carrier"][1]                            # roof underside = chamber wall top
+    d["z_roof_top"] = d["z_roof"] + c["roof_t"]
+    (cx0, cx1), (cy0, cy1) = d["cam_xy"]
+    d["m3_carrier_xy"] = [(sx * (cx1 + c["carrier_margin"] + d["m3_pocket"]["r"]),
+                           sum(y for _, y in d["cam_holes"]) / len(d["cam_holes"])) for sx in (-1, 1)]
+    hx_c = d["m3_carrier_xy"][1][0] + d["m3_pocket"]["r"] + c["carrier_margin"]
+    hy0 = min(y for _, y in d["cam_holes"]) - d["cam_boss_r"] - c["carrier_margin"]
+    hy1 = max(cy1, max(y for _, y in d["cam_holes"]) + d["cam_boss_r"]) + c["carrier_margin"]
+    d["carrier_xy"] = ((-hx_c, hx_c), (hy0, hy1))
+    stack = c["roof_t"] + c["carrier_t"]
+    ok = [L for L in m3["lengths"] if stack - d["m3_pocket"]["depth"] + m3["nut_m"] - 1e-9 <= L <= stack + 1e-9]
+    d["roof_screw"] = ok[0] if ok else None
+    d["m3_bore"] = m3["clear"] + FDM_HOLE_ALLOWANCE
+
+    # --- roof: groove over the tongue, ribbon slot, Pi bosses (nut at the top), cable hole -----------------------
+    tw, th = c["tongue"]
+    d["tongue_z"] = (d["z_roof"], d["z_roof"] + th)
+    d["groove"] = dict(w=tw + 2 * f, depth=th + f)
+    d["roof_web"] = c["roof_t"] - d["groove"]["depth"]
+    sw, sd = c["slot"]
+    d["slot_y"] = (d["cam_conn_y"] - c["ribbon_bend"] - sd, d["cam_conn_y"] - c["ribbon_bend"])
+    d["slot_x"] = (-sw / 2, sw / 2)
+    # Pi rotated +90 deg about Z: its long axis along Y, its SD-card end (x = 0) facing the slot, the CSI connector
+    # on the ribbon's line (X = 0). Pi frame -> assembly: X = pi_xc - (y - W/2), Y = pi_y0 + x.
     x0, x1, y0, y1, csi_h = pi["csi"]
-    csi = ((x0 + x1) / 2 - pi["size"][0] / 2, (y0 + y1) / 2 - pi["size"][1] / 2)   # Pi centred on the roof
-    flat = abs(csi[0] - cam_conn[0]) + abs(csi[1] - cam_conn[1])
-    rise = c["carrier_t"] + c["roof_t"] + c["pi_standoff"] + pi["pcb_t"] + csi_h
-    d["ribbon_path"] = flat + rise + c["trap_len"] + c["bend_allow"]
+    W = pi["size"][1]
+    d["pi_xc"] = (y0 + y1) / 2 - W / 2
+    d["pi_y0"] = d["slot_y"][1] + c["pi_slot_clear"]
+    pi_asm = lambda px, py: (d["pi_xc"] - (py - W / 2), d["pi_y0"] + px)   # noqa: E731
+    d["pi_to_asm"] = pi_asm
+    d["pi_holes"] = [pi_asm(*h) for h in pi["holes"]]
+    d["pi_xy"] = ((d["pi_xc"] - W / 2, d["pi_xc"] + W / 2), (d["pi_y0"], d["pi_y0"] + pi["size"][0]))
+    d["z_pi_bot"] = d["z_roof_top"] + c["pi_standoff"]
+    d["z_pi_top"] = d["z_pi_bot"] + pi["pcb_t"]
+    d["pi_boss_r"] = d["m25_pocket"]["r"] + WALL
+    d["pi_bore"] = m25["clear"] + FDM_HOLE_ALLOWANCE
+    need = pi["pcb_t"] + d["m25_pocket"]["depth"] + c["thread_past_nut"]
+    ok = [L for L in m25["lengths"] if L >= need - 1e-9]
+    d["pi_screw"] = ok[0] if ok else None
+    d["pi_bore_depth"] = d["pi_screw"] - pi["pcb_t"] + 0.5      # blind from the boss top: no hole into the chamber
+    d["pi_bore_room"] = c["pi_standoff"] + c["roof_t"] - FLOOR
+
+    # --- base (platen), hold-down frame ---------------------------------------------------------------------------
+    d["base_half"] = d["outer"] / 2 + f + c["rim_wall"]         # square base, rim all round
+    d["rim_in"] = d["outer"] / 2 + f
+    d["strip_pocket"] = dict(x=(-ux - f, ux + f), y=(d["strip_y"][0] - f, d["strip_y"][1] + f),
+                             z=(d["z_strip_floor"], d["z_base_top"]))
+    (lx0, lx1), (ly0, ly1) = d["leaf_area"]
+    fb = c["frame_bar"]
+    d["frame"] = dict(x=(lx0 - fb, lx1 + fb), y=(ly0 - fb, ly1 + fb), z=(0.0, c["frame_t"]), window=d["leaf_area"])
+    fcy = (d["frame"]["y"][0] + d["frame"]["y"][1]) / 2
+    d["pin_x"] = hx + c["pin_clear"] + c["pin_d"] / 2
+    d["pins"] = [(sx * d["pin_x"], fcy) for sx in (-1, 1)]
+    d["pin_z"] = (d["z_base_top"], d["z_base_top"] + c["pin_h"])
+    d["tab_hole_d"] = c["pin_d"] + 2 * f
+    tr = d["tab_hole_d"] / 2 + c["tab_wall"]
+    d["tabs"] = [dict(x=tuple(sorted((sx * (lx1 + fb), sx * (d["pin_x"] + tr)))), y=(fcy - tr, fcy + tr))
+                 for sx in (-1, 1)]
+    d["flock"] = dict(x=(-S / 2 + f, S / 2 - f), y=(-S / 2 + f, S / 2 - f))   # lining inside the chamber's foot
+
+    # --- ribbon: connector edge -> slot -> up past the Pi's end -> over the Pi to the CSI connector ---------------
+    slot_cy = sum(d["slot_y"]) / 2
+    run = d["cam_conn_y"] - slot_cy
+    rise = d["z_pi_top"] + csi_h - d["z_cam_back"]
+    over = pi_asm((x0 + x1) / 2, (y0 + y1) / 2)[1] - slot_cy
+    d["ribbon_parts"] = dict(run=run, rise=rise, over=over, bends=c["bend_allow"], trap=c["trap_len"])
+    d["ribbon_path"] = sum(d["ribbon_parts"].values())
     d["ribbon_budget"] = cam["ribbon_len"] - c["ribbon_slack"]
+
+    # --- print orientation (PARAMS_CONVENTION rule 9): exceptions are declared bridges, by z -------------------
+    d["print_orientation"] = dict(
+        base=dict(up=(0, 0, 1), bed_face="base bottom", bed_z=d["z_base_bot"], known_overhangs=[], exceptions=[]),
+        chamber=dict(up=(0, 0, 1), bed_face="wall bottom edge", bed_z=d["z_base_top"],
+                     known_overhangs=["petiole notch top: a 10 mm bridge"], exceptions=[("notch top", nh)]),
+        hold_down=dict(up=(0, 0, 1), bed_face="frame underside", bed_z=0.0, known_overhangs=[], exceptions=[]),
+        roof=dict(up=(0, 0, 1), bed_face="roof underside", bed_z=d["z_roof"],
+                  known_overhangs=["groove ceiling: a 2.4 mm bridge"],
+                  exceptions=[("groove ceiling", d["z_roof"] + d["groove"]["depth"])]),
+        carrier=dict(up=(0, 0, -1), bed_face="carrier top, against the roof", bed_z=d["z_roof"],
+                     known_overhangs=["M2 nut pocket ceilings (open to the bed): bridged annuli"],
+                     exceptions=[("M2 pocket ceiling", d["z_roof"] - d["m2_pocket"]["depth"])]),
+    )
+    d["bed"] = BED
+    d["max_overhang_deg"] = 45.0
 
     # --- drive: one MOSFET per band, one resistor per LED ----------------------------------------------------
     d["drive"] = {}
@@ -343,7 +518,58 @@ def validate(size: str = "V0", **overrides) -> dict:
         assert v["p_r"] <= d["r_load"] * d["r_rating"], f"{b}: resistor {v['p_r']:.2f} W over {d['r_load']} x {d['r_rating']} W"
         assert d["v_supply"] - L["vf_max"] - d["vds_max"] > 0, f"{b}: no headroom at the maximum Vf"
     assert d["supply_ma"] <= d["pi"]["supply"], f"5 V draw {d['supply_ma']:.0f} mA over the {d['pi']['supply']:.0f} mA supply"
+
+    # --- mechanics ---
+    assert d["insert_wall"] >= INSERT_WALL_M3, f"corner boss leaves {d['insert_wall']:.2f} around the insert"
+    assert d["pcb_screw"] is not None, "no stocked M3 reaches one diameter into the insert without bottoming"
+    for L, name in ((d["cam_screw"], "camera M2"), (d["roof_screw"], "roof-carrier M3"), (d["pi_screw"], "Pi M2.5")):
+        assert L is not None, f"no stocked {name} screw fits its stack"
+    assert d["pi_bore_depth"] <= d["pi_bore_room"], "Pi screw bore would open into the chamber"
+    assert d["roof_web"] >= FLOOR, f"roof web over the groove {d['roof_web']:.2f} < {FLOOR}"
+    for k in ("m2_pocket", "m3_pocket"):
+        assert c_web(d, k) >= FLOOR, f"carrier web over the {k} {c_web(d, k):.2f} < {FLOOR}"
+    # the ribbon turns up beyond the carrier, and the slot sits outside the carrier and the Pi
+    assert d["slot_y"][1] < d["carrier_xy"][1][0], "ribbon slot under the carrier"
+    assert d["slot_y"][1] < d["pi_xy"][1][0], "ribbon slot under the Pi"
+    assert d["slot_x"][1] - d["slot_x"][0] >= d["ribbon_w"] + 1.0, "slot narrower than the ribbon"
+    # Pi bosses and the cable hole over the roof, clear of the groove; Pi screws clear of the carrier
+    half_in = d["inner"] / 2 - d["groove"]["w"]
+    for x, y in d["pi_holes"]:
+        assert abs(x) + d["pi_boss_r"] <= half_in and abs(y) + d["pi_boss_r"] <= half_in, f"Pi boss ({x:.1f}, {y:.1f}) off the roof"
+    cxh, cyh, cd = d["cable_hole"]
+    (px0, px1), (py0, py1) = d["pi_xy"]
+    assert not (px0 - cd < cxh < px1 + cd and py0 - cd < cyh < py1 + cd), "cable hole under the Pi"
+    assert max(abs(cxh), abs(cyh)) + cd / 2 <= half_in - 1.0, "cable hole over the wall or the groove"
+    sx_, sy_ = d["insert_xy"][-1]   # the PCB corner screw the wires drop beside
+    assert math.dist((abs(cxh), abs(cyh)), (sx_, sy_)) >= d["screws"]["M3"]["head_dk"] / 2 + cd / 2 + 1.0, \
+        "LED wires drop onto a PCB corner screw head"
+    # frame and pins inside the chamber's foot, pins out of the picture, the strip outside the frame and its shadow
+    assert d["tabs"][1]["x"][1] <= d["inner"] / 2 - d["fit"] - 0.5, "frame tab past the chamber wall"
+    assert d["pin_x"] - d["pin_d"] / 2 >= d["field"][0] / 2 + d["pin_clear"] - 1e-9
+    assert d["frame"]["y"][1] + d["frame_shadow"] + d["strip_clear"] <= d["strip_y"][0] + 1e-9, "strip in the frame's shadow"
+    assert d["frame"]["y"][0] >= d["flock"]["y"][0] and d["strip_pocket"]["y"][1] <= d["flock"]["y"][1]
+    assert d["z_rim_top"] <= d["notch_z"][1], "rim taller than the chamber's petiole notch"
+    # every part fits the bed
+    for name, size_ in part_sizes(d).items():
+        assert all(v <= B for v, B in zip(sorted(size_), sorted(d["bed"]))), f"{name} {size_} does not fit the bed"
     return d
+
+
+def c_web(d: dict, pocket: str) -> float:
+    """Carrier plate left over a nut pocket."""
+    return d["carrier_t"] - d[pocket]["depth"]
+
+
+def part_sizes(d: dict) -> dict:
+    """Envelope of each printed part (X, Y, Z), for the bed check."""
+    o = d["outer"]
+    return dict(
+        base=(2 * d["base_half"], 2 * d["base_half"], d["z_rim_top"] - d["z_base_bot"]),
+        chamber=(o, o, d["tongue_z"][1] - d["z_base_top"]),
+        hold_down=(d["tabs"][1]["x"][1] * 2, d["frame"]["y"][1] - d["frame"]["y"][0], d["frame_t"]),
+        roof=(o, o, d["roof_t"] + d["pi_standoff"]),
+        carrier=(d["carrier_xy"][0][1] * 2, d["carrier_xy"][1][1] - d["carrier_xy"][1][0], d["carrier_t"] + d["cam_gap"]),
+    )
 
 
 def report(size: str = "V0") -> str:
