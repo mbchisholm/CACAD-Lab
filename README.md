@@ -159,6 +159,15 @@ bands for NDVI. See its `SPEC.md`.
 
 ![FreeCAD: leaf imager V0, chamber and roof translucent](docs/img/freecad_leaf_imager.png)
 
+### Birdhouse
+
+`projects/birdhouse/`: a solar nest box with an ESP32-CAM face down in the
+roof. It wakes every 10 minutes on a power timer, lights the nest with 850 nm
+IR and uploads one frame. `params.py` carries the pin map and the energy
+budget.
+
+![FreeCAD: nest box V0, cap translucent](docs/img/freecad_birdhouse.png)
+
 ### Larger assemblies, not printed
 
 The same conventions (one `params.py`, analytic checks, FreeCAD as the viewer)
@@ -270,6 +279,7 @@ printed interface is designed around it.
 | sen6x_enclosure | passes, checked against the vendor STEP |
 | camera_reader | V0 passes; LEDs not yet picked |
 | leaf_imager | V0 passes, five printed parts |
+| birdhouse | V0 passes, five printed parts; power budget closes on estimates |
 | nft_table, tote_rack, raised_bed | pass; FreeCAD positions agree with params |
 
 Known issues:
