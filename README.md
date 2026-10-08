@@ -22,7 +22,7 @@ bridge that lets an enclosure follow a KiCad board when the board changes.
 | `cacad/freecad/` | The RPC client for FreeCAD, a shape check from STEP and BREP, re-derivation of placements inside FreeCAD, and the KiCad-board-to-STEP freeze. |
 | `projects/<name>/` | `params.py` (every number), one file per part, `tests/`, and `out/` (gitignored). |
 | `tools/` | `board_from_eagle.py` turns a vendor Eagle `.brd` into a registry entry; `verify_mcp.py` runs a part through build123d-mcp from a shell. |
-| `docs/` | `PARAMS_CONVENTION.md` and `params_template.py` (how a params file is written). |
+| `docs/` | `PARAMS_CONVENTION.md` (how a params file is written), `templates/` (what `cacad.new` copies), `FINDINGS.md`, `PRINT_LOG.md`. |
 | `archive/` | Parked work, kept for its findings. Not installed, not tested. |
 |`.mcp.json` | Build123d-mcp and freecad-mcp servers |
 

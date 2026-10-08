@@ -23,7 +23,8 @@ projects/<name>/      one part or family: params.py, one file per part, tests/, 
 coupons/              calibration coupon: optional, for tuning a fit.
 docs/FINDINGS.md      kernel/library/tooling facts with reproductions (F-numbers). Read before fighting the kernel.
 docs/PRINT_LOG.md     manufacturing assumptions and print results (nothing printed yet).
-docs/PARAMS_CONVENTION.md   how a params.py is written; docs/params_template.py is the skeleton.
+docs/PARAMS_CONVENTION.md   how a params.py is written.
+docs/templates/       printed/ and bought/ project skeletons that `python -m cacad.new <name> [--bought]` copies.
 tools/board_from_eagle.py   vendor Eagle .brd -> Board() block with holes, drill, keepouts, source.
 tools/verify_mcp.py   drive a part through build123d-mcp outside a session (renders, find_holes).
 archive/              parked: cable_gland/, cacad_threads/, nft_rack_v1/. Not installed, not tested.
@@ -98,6 +99,14 @@ hardware comes in as STEP under a project's `ref/` (gitignored): a KiCad board
 via `cacad.freecad.kicad_freeze`, a vendor model otherwise; community models
 give heights and envelopes only, never holes (F18). Pushing an edge to a
 `.kicad_pcb` writes the file: commit first, select the sketch, announce (F16).
+
+## Starting a project
+
+`.venv/bin/python -m cacad.new <name>` (add `--bought` for a bought-and-cut
+assembly) writes README, params, a part file and tests that pass on creation.
+`cacad/tests/test_project_contract.py` then enforces the shape: a README with
+Status / Sources / Run under 80 lines, tests, a `STATUS`, no private paths, no
+tracked binaries. Long-form material goes in `NOTES.md` or `SPEC.md`.
 
 ## Adding a board, connector, reservoir or material
 

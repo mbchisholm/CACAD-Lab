@@ -1,0 +1,11 @@
+from projects.$name import params
+
+
+def test_validates():
+    params.validate()
+
+
+def test_every_number_has_a_source():
+    for table in (params.STOCK, params.DESIGN):
+        for key, (value, tag, source) in table.items():
+            assert tag and source, key

@@ -1,0 +1,31 @@
+"""Three layers: geometry + function (check_part), manufacturability (walls,
+declared orientation, overhang), and the arithmetic of every size."""
+from cacad.checks.orientation import check_declared_orientation
+from cacad.checks.overhang import check_overhang
+from cacad.checks.printability import check_walls_vs_nozzle
+from projects.$name import params
+from projects.$name.$name import check_part
+
+
+def test_geometry_and_function(size, part):
+    check_part(size, part)
+
+
+def test_every_size_validates():
+    for size in params.SIZES:
+        params.validate(size)
+
+
+def test_walls_vs_nozzle(d):
+    check_walls_vs_nozzle(d["walls"], dict(nozzle_d=d["nozzle_d"]))
+
+
+def test_declared_orientation(d, part):
+    check_declared_orientation(part, d["print_orientation"]["part"])
+
+
+def test_no_undeclared_overhang(d, part):
+    o = d["print_orientation"]["part"]
+    rep = check_overhang(part, dict(up=o["up"], bed_z=o["bed_z"], max_deg=d["max_overhang_deg"],
+                                    nozzle_d=d["nozzle_d"], exceptions=o["overhang_exceptions"]))
+    assert not rep["exceptions_found"], rep

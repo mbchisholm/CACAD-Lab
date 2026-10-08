@@ -1,0 +1,28 @@
+# $name
+
+One or two sentences: what this is, what it carries or holds, and where it
+goes. Say "Not printed yet." while that is true.
+
+![render](../../docs/img/$name.png)
+
+## Status
+
+`STATUS` in `params.py` says concept, passes, printed or parked. Here: what
+passes, what is open, in two or three lines.
+
+## Sources
+
+Where the numbers come from: the standards, vendor sheets and board files
+`params.py` cites, and which values are DESIGN choices or UNVERIFIED.
+Anything unpublished and how the part tolerates it.
+
+## Run
+
+```
+.venv/bin/python projects/$name/params.py     # prints the design
+.venv/bin/python projects/$name/$name.py      # -> out/*.step, *.stl
+.venv/bin/python -m pytest projects/$name
+```
+
+Long-form material (full parts list, spec, working log) goes in `NOTES.md` or
+`SPEC.md`, not here. Keep this file under 80 lines.

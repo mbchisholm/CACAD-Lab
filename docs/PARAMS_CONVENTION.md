@@ -1,12 +1,13 @@
 # PARAMS_CONVENTION — one file owns every number
 
 What worked on the cable gland (now `archive/cable_gland/`), written as the
-rule, with the reason each rule exists. `params_template.py` is the skeleton;
+rule, with the reason each rule exists. `docs/templates/printed/params.py.tmpl` is the skeleton (`python -m cacad.new <name>` copies it);
 `projects/standoff_plate/params.py` is the live example.
 
 ## Shape of the file
 
 ```
+STATUS          concept | passes | printed | parked (cacad/tests/test_project_contract.py checks it)
 COMMON          family-wide rules and clearances (MappingProxyType: read-only)
 SIZES           the family axis: one dict per size, inputs only
 ACTIVE_SIZES    the sizes build/test actually run
