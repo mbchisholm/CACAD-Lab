@@ -16,9 +16,6 @@ radius, hex across corners, clamp force), `cantilever.py` and
 `materials_strain.py` (finger root strain against a bulk/across-layer
 allowable), `probes_thread.py` (`assert_thread_present`).
 
-`README_draft_notes.md`: the README rewrite notes that the current README
-was built from.
-
 To run the gland again: `uv pip install -e ".[archive]"`, copy the
 `cacad_threads/` modules back into `cacad/` (restore the `__init__` exports
 and `cacad.registries.materials` strain table), and run it from
