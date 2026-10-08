@@ -232,7 +232,7 @@ not `Contents/MacOS/FreeCADCmd`.
 
 An engraved outline groove (2 layers deep) cut before a boss was added left
 a 0.4 mm void where the groove crossed the boss footprint. Start the boss
-below the groove floor (`projects/mount_plate/mount_plate.py`) or engrave
+below the groove floor (`archive/mount_plate/mount_plate.py`) or engrave
 last.
 
 ## F21. build123d-mcp `render_view` at the default angle can hide a feature — OBSERVED (2026-09-14)
@@ -358,30 +358,6 @@ CB-2-0616 (2016) and VALTECH (Dec 2024).
 Dec 2024) and notes the other editions' value where they differ. Socket depth is never typed: it follows from
 H - G (ells, tees), (L - N)/2 (couplings, unions), (C - B)/2 (valves), and is measured on the geometry against the
 ASTM D2466 minimum.
-
-## TODO — manufacturing facts that are not kernel facts
-
-FINDINGS entries above are geometry/kernel facts; these are manufacturing
-assumptions. None of them gates a print: clearances come from ISO 273 plus a
-DESIGN FDM allowance, insert bores from the insert vendor, printed-to-PVC
-fits from published FDM guidance (`cacad/registries/materials.py`), and a
-part is designed to tolerate them (clamped, sealed, or free; never
-press-fit).
-
-- [ ] **Optional: tune the clearances with the coupon** (`python coupons/fdm_coupon.py`
-  → `coupons/out/fdm_coupon.stl`: five M5 clearance holes 5.10..5.30, five M3
-  heat-set insert bores 3.8..4.2 × 6 deep on a raised pad, one 20 mm cube;
-  PETG, 0.4 nozzle, labelled and dated). If it is printed, record the results
-  here and date any change to `FDM_HOLE_ALLOWANCE`, `FIT_CLEAR` or the insert
-  bores in `cacad/registries/materials.py`.
-- [ ] Sliver exclusion threshold (`nozzle_d²`) and the 60° flank acceptance
-  are slicer-side assumptions, not measured.
-- [ ] **Slicer settings: brim and stringing.** On the cable gland's first
-  print the brim made the threaded parts hard to fit together, and the
-  covers tested showed stringy overlap. Not measured, and the settings used
-  were not recorded. Before the next fit print, record the Bambu Studio
-  profile (brim type and gap, retraction, travel, temperature), and check
-  whether any mating face touches the bed where a brim would sit.
 
 ## F31. A cylinder tangent to a wall fuses into a valid solid that meshes non-manifold — CONFIRMED (2026-10-04)
 

@@ -1,0 +1,27 @@
+# $name
+
+One or two sentences: what is built, from what stock, and where it goes.
+Bought-and-cut: the manufacturability layer is a cut plan, screw lengths and
+where each number came from. Nothing is printed unless a printed interface
+says so.
+
+![render](../../docs/img/$name.png)
+
+## Status
+
+`STATUS` in `params.py` says concept, passes, printed or parked. Here: what
+passes and what is open.
+
+## Sources
+
+Standards, vendor sheets and catalogue pages `params.py` cites, and which
+values are UNVERIFIED (measure the real stock before cutting).
+
+## Run
+
+```
+.venv/bin/python projects/$name/params.py     # prints the design and cut list
+.venv/bin/python -m pytest projects/$name
+```
+
+Keep this file under 80 lines; long-form material goes in `NOTES.md`.

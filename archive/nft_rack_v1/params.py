@@ -1,7 +1,7 @@
 r"""NFT rack family. Two layouts share the channel, the feed tube and the frame section:
 
-    growing_up_pro  inactive. Multi-level frame after the AM Hydro "Get Growing UP Pro" bundle (vault:
-                    T1TRTA/attachments/Amhydro3rack.pdf, page 2 text and page 3 BOM, 1/1/23): a flat level and two
+    growing_up_pro  inactive. Multi-level frame after the AM Hydro "Get Growing UP Pro" bundle (author's notes:
+                    the vendor's Amhydro 3-rack PDF, page 2 text and page 3 BOM, 1/1/23): a flat level and two
                     pitched levels of 52 in channels, a placeholder collector, no reservoir.
     nft_table       ACTIVE. One pitched level of six Growrilla 100x50 channels, 2 m, lids at 250 mm, on a 2020 table;
                     an HDX 27 gal tote under the low end; supply from a submersible pump up a vinyl hose, a ball
@@ -16,7 +16,7 @@ in PLUMBING or a reservoir registry field that is still None.
 
     AMHYDRO      stated by AM Hydro (PDF text or BOM)
     INFERRED     follows from a published number or drawing, not stated (say from what)
-    VAULT        from the T1TRTA grow-system notes (file named)
+    NOTES        the author's own design notes; not independently sourced
     STANDARD     a published standard (named)
     SUBSTITUTE   a real catalogue part standing in for AM Hydro's unknown one (the table uses it as the part itself)
     VENDOR       published by the vendor of the part this model uses (page named)
@@ -62,7 +62,7 @@ from projects.tote_rack.params import TOTES
 
 IN = 25.4
 
-TAGS = ("AMHYDRO", "INFERRED", "VAULT", "STANDARD", "SUBSTITUTE", "VENDOR", "DESIGN", "CONVENIENCE", "PLACEHOLDER")
+TAGS = ("AMHYDRO", "INFERRED", "NOTES", "STANDARD", "SUBSTITUTE", "VENDOR", "DESIGN", "CONVENIENCE", "PLACEHOLDER")
 
 # ---------------------------------------------------------------------------
 # Channel and frame parts. key -> (value mm, tag, source).
@@ -73,36 +73,36 @@ SPEC = MappingProxyType({
                 "Drawn as a solid 20 x 20 bar, slots not modelled. Not AM Hydro's steel frame. Stiffness not sized"),
     # channel: AM Hydro GroClean section unknown; Growrilla 100x50 stands in
     "channel_w": (100.0, "SUBSTITUTE", "Growrilla NFT channel 100x50: width 100 mm "
-                  "(growrillahydroponics.com, vault clipping 2025-05-04)"),
+                  "(growrillahydroponics.com, vendor page captured 2025-05-04)"),
     "channel_h": (48.0, "SUBSTITUTE", "Growrilla NFT channel 100x50: height 48 mm (same page; the IT page also says "
                   "48). Taken as the body without the lid. Bottom 'special design' not published: flat floor drawn"),
     "channel_t": (2.5, "SUBSTITUTE", "Growrilla NFT channel 100x50: thickness 2.5 mm (same page)"),
     "lid_t": (2.5, "INFERRED", "Growrilla lid thickness not stated; taken as the 2.5 mm channel thickness"),
-    "site_hole_d": (48.0, "SUBSTITUTE", "Growrilla lid hole diameter 48 mm, for its 5 cm net pot (vault clipping). "
+    "site_hole_d": (48.0, "SUBSTITUTE", "Growrilla lid hole diameter 48 mm, for its 5 cm net pot (vendor page capture). "
                     "Growrilla's IT channel page says 'Diametro fori 40mm': conflict, clipping used as instructed"),
     "cap_t": (2.5, "PLACEHOLDER", "Growrilla end cap and drain cap geometry not published; drawn as a plate of "
               "the channel thickness closing each end"),
     "drain_od": (32.0, "SUBSTITUTE", "Growrilla drain cap: '32mm outlet size', takes 'any 32mm PP push-fit fitting' "
                  "(drain cap page). Outlet position, length and wall not published"),
     # growing_up_pro plumbing
-    "manifold_od": (1.315 * IN, "STANDARD", "1 in PVC Sch 40, ASTM D1785: OD 1.315 in. Size from the vault "
-                    "(multiLVLRack.md: 1 in PVC supply), not AM Hydro's manifold"),
+    "manifold_od": (1.315 * IN, "STANDARD", "1 in PVC Sch 40, ASTM D1785: OD 1.315 in. Size from the author's notes "
+                    "(author's multi-level rack notes: 1 in PVC supply), not AM Hydro's manifold"),
     "manifold_wall": (0.133 * IN, "STANDARD", "1 in PVC Sch 40, ASTM D1785: minimum wall 0.133 in"),
     "manifold_len": (60 * IN, "AMHYDRO", "BOM: 5' Finishing Manifolds (3). growing_up_pro only; the table derives it"),
     "collector_od": (50.0, "PLACEHOLDER", "BOM: 5' Covered Collector (3); section unknown. Drawn as a 50 mm round "
                      "envelope so the drains land on something. growing_up_pro only"),
     "collector_len": (60 * IN, "AMHYDRO", "BOM: 5' Covered Collector (3). growing_up_pro only"),
-    "feed_tube_od": (3 / 8 * IN, "VAULT", "3/8 in vinyl feed tube (multiLVLRack.md), taken as OD; ID unknown: "
+    "feed_tube_od": (3 / 8 * IN, "NOTES", "3/8 in vinyl feed tube (author's multi-level rack notes), taken as OD; ID unknown: "
                      "solid envelope"),
-    # rules from the vault
-    "plant_clear_min": (8 * IN, "VAULT", "multiLVLRack.md: 8-10 in vertical clearance between levels (low end). "
+    # rules from the author's notes
+    "plant_clear_min": (8 * IN, "NOTES", "author's multi-level rack notes: 8-10 in vertical clearance between levels (low end). "
                         "Lights are not modelled, so this is lid top to the next level's underside"),
-    "slope_min": (1 / 40, "VAULT", "NFT/vinylDOwn.md 'Slope': 1:30 to 1:40 ratio (also NFT 2Rail 4x4 Fencepost "
+    "slope_min": (1 / 40, "NOTES", "author's NFT notes 'Slope': 1:30 to 1:40 ratio (also NFT 2Rail 4x4 Fencepost "
                   "System.md). Default 1:40 from the session prompt"),
-    "slope_max": (1 / 30, "VAULT", "NFT/vinylDOwn.md: 1:30 to 1:40; multiLVLRack.md: 1/30"),
-    "flow_min_lpm": (1.0, "VAULT", "NFT/vinylDOwn.md 'Optimal Flow Rates': 1/4 to 1/2 gal/min (1 to 2 L) per channel. "
-                     "multiLVLRack.md says '1-2 GPM total system': not used"),
-    "flow_max_lpm": (2.0, "VAULT", "NFT/vinylDOwn.md: 1 to 2 L/min per channel"),
+    "slope_max": (1 / 30, "NOTES", "author's NFT notes: 1:30 to 1:40; author's multi-level rack notes: 1/30"),
+    "flow_min_lpm": (1.0, "NOTES", "author's NFT notes 'Optimal Flow Rates': 1/4 to 1/2 gal/min (1 to 2 L) per channel. "
+                     "author's multi-level rack notes says '1-2 GPM total system': not used"),
+    "flow_max_lpm": (2.0, "NOTES", "author's NFT notes: 1 to 2 L/min per channel"),
     # this model's own choices
     "manifold_gap": (5.0, "DESIGN", "air between the manifold and the channel's high end cap, in Y"),
     "collector_gap": (5.0, "DESIGN", "air between the collector and the back posts' outer face, in Y"),
@@ -128,7 +128,7 @@ CHANNEL_KINDS = MappingProxyType({
               src=("SUBSTITUTE", "Growrilla 125 mm hole spacing with 48 mm holes: 10 sites in a 52 in channel. "
                    "AM Hydro's 24 at 2 in does not fit 48 mm holes (3 mm web). 4 x 10 = 40 nursery sites, not 96")),
     "G": dict(label="growrilla", sites=8, pitch=250.0,
-              src=("VENDOR", "Growrilla pre-drilled lid, 'Hole spacing 1: 250mm', '8 net pots / 2mt' (vault clipping). "
+              src=("VENDOR", "Growrilla pre-drilled lid, 'Hole spacing 1: 250mm', '8 net pots / 2mt' (vendor page capture). "
                    "Holes drawn centred on the 2 m lid, 125 mm from each end: INFERRED, positions not published")),
 })
 
@@ -186,7 +186,7 @@ PLUMBING = MappingProxyType({
                                 "socket depth so the collar seats on the bushing face"),
                         insert_env=(_i(0.75), "INFERRED", "insert drawn at the hose ID (contact envelope); barb ribs not drawn")),
     "hose_34": dict(what="3/4 in ID clear PVC hose, pump to riser", ref=(
-        "Kuriyama Kuri Tec K010-1216X100 (products.kuriyama.com), vault: 3/4 vinyl"),
+        "Kuriyama Kuri Tec K010-1216X100 (products.kuriyama.com), author's notes: 3/4 vinyl"),
         id=(_i(0.75), "VENDOR", "Nominal ID 3/4 in"),
         od=(_i(1.0), "VENDOR", "Nominal OD 1 in; wall 1/8 in"),
         bend_r=(3 * _i(1.0), "DESIGN", "K010 bend radius not published. Excelon RNT 3/4 x 1 (US Plastic 59022): "
@@ -297,20 +297,20 @@ RACK_SOURCES = {
         levels=("INFERRED", "PDF: propagation trays below, 20 channels on the top two levels (10 each). Nursery "
                 "channels in the middle of level 2: read off the render, not stated"),
         channel_len=("AMHYDRO", "BOM: Gro Clean NFT Channel (52\" Finishing / Nursery Sections)"),
-        slope=("VAULT", "vinylDOwn.md 1:30 to 1:40, default 1:40; AM Hydro's slope unknown"),
+        slope=("NOTES", "NFT notes: 1:30 to 1:40, default 1:40; AM Hydro's slope unknown"),
         level_z0=("CONVENIENCE", "even split of 92 in: AM Hydro level heights unknown. Awaits measurement"),
         level_pitch=("CONVENIENCE", "even split of 92 in: AM Hydro level spacing unknown. Awaits measurement"),
     ),
     "nft_table": dict(
         levels=("DESIGN", "owner's choice 2026-10-01: one level, 6 Growrilla channels at the 250 mm lid"),
-        channel_len=("VENDOR", "Growrilla 100x50: 'Channel lenght: 2 meters', uncut bar and lid (vault clipping)"),
-        slope=("VAULT", "vinylDOwn.md 1:30 to 1:40, default 1:40"),
+        channel_len=("VENDOR", "Growrilla 100x50: 'Channel lenght: 2 meters', uncut bar and lid (vendor page capture)"),
+        slope=("NOTES", "NFT notes: 1:30 to 1:40, default 1:40"),
         work_h=("DESIGN", "owner's choice 2026-10-01: channel floor 36 in above the floor at the high end (US "
                 "counter-height convention, not a standard)"),
         channel_pitch=("DESIGN", "owner's choice 2026-10-01: channels 250 mm apart across, the lid's own pitch (square grid)"),
         overhang_front=("DESIGN", "channel high end 100 mm in front of the front posts: room for the cap and feed hole"),
         overhang_back_min=("DESIGN", "least back overhang: keeps the drain cap off the back rail"),
-        reservoir=("VAULT", "cacad.registries.reservoirs HDX_27GAL: the tote on hand. Caliper fields None until measured"),
+        reservoir=("NOTES", "cacad.registries.reservoirs HDX_27GAL: the tote on hand. Caliper fields None until measured"),
         tote_label=("VENDOR", "projects/tote_rack TOTES['HDX_207585'] label envelope 28.6 x 19.6 x 15.2 in with lid. "
                     "HD SKU 207585 now sells model 999-27G-HDX (interior at bottom 22.98 x 14.02 x 14.30 in); the older "
                     "'Strong Box' under the same SKU is 30.125 x 20.25 x 13.813 in. Measure the tote you have"),
@@ -347,7 +347,7 @@ NOT_MODELLED = {
     ),
     "nft_table": (
         "lights and net pots (sites shown as lid holes)",
-        "feed tube grommets/barbs at the manifold (vault: microgrommets) and the feed tube's bore (ID unknown)",
+        "feed tube grommets/barbs at the manifold (author's notes: microgrommets) and the feed tube's bore (ID unknown)",
         "clips and supports for the manifold, riser, hose run, collector and return pipe; frame brackets and fasteners",
         "the bores of the drain cap outlet, the pump barb and the 460-007 adapter (solid envelopes)",
         "tote rim lip, feet and ribs; the tote's walls drawn straight-drafted from the published bottom interior",

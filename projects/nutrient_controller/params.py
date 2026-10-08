@@ -37,6 +37,8 @@ from cacad.registries.materials import (BED, FDM_HOLE_ALLOWANCE, FIT_CLEAR, INSE
                                         INSERT_WALL_M3, LAYER, NOZZLE, clearance_bore)
 from cacad.registries.reservoirs import HDX_27GAL
 
+STATUS = "passes"   # concept | passes | printed | parked
+
 # ---------------------------------------------------------------------------
 # Fasteners. ISO 7045 pan head (M2-M3), ISO 4762 socket head (M5), ISO 4032
 # nuts, ISO 10511 nylon-insert nut, ISO 7089 washer. `lengths` is the stocked

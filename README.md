@@ -1,9 +1,11 @@
 # CACAD: Computer-Aided Computer-Aided Design
 
-This repo is a collection of my experiments using AI agents for 3D design, a
-genre I'm calling Computer-Aided Computer-Aided Design (lol). Parts are written in Python with
-[build123d](https://build123d.readthedocs.io/), checked by tests, and
-exported for the slicer. FreeCAD is used as the viewer for assemblies // renderings. I can also use freecad as a middleman for automatically editing enclosures when the kicad geometry of a pcb changes.
+My experiments using AI agents for 3D design, a genre I'm calling
+Computer-Aided Computer-Aided Design. Parts are Python in
+[build123d](https://build123d.readthedocs.io/), checked by tests and exported
+for the slicer. FreeCAD is the viewer for assemblies and renders, and the
+bridge that lets an enclosure follow a KiCad board when the board changes.
+
 ## Repo Structure
 
 `cacad/` is the shared set of reusable widgets & methods, `projects/` contains individual examples
@@ -20,8 +22,8 @@ exported for the slicer. FreeCAD is used as the viewer for assemblies // renderi
 | `cacad/freecad/` | The RPC client for FreeCAD, a shape check from STEP and BREP, re-derivation of placements inside FreeCAD, and the KiCad-board-to-STEP freeze. |
 | `projects/<name>/` | `params.py` (every number), one file per part, `tests/`, and `out/` (gitignored). |
 | `tools/` | `board_from_eagle.py` turns a vendor Eagle `.brd` into a registry entry; `verify_mcp.py` runs a part through build123d-mcp from a shell. |
-| `docs/` | `PARAMS_CONVENTION.md` and `params_template.py` (how a params file is written). |
-| `archive/` | Junk I'm waiting  |
+| `docs/` | `PARAMS_CONVENTION.md` (how a params file is written), `templates/` (what `cacad.new` copies), `FINDINGS.md`, `PRINT_LOG.md`. |
+| `archive/` | Parked work, kept for its findings. Not installed, not tested. |
 |`.mcp.json` | Build123d-mcp and freecad-mcp servers |
 
 ## How a part gets made
@@ -61,25 +63,6 @@ in whatever length. It exports a 5/8/10/12/15 mm ladder and each length on
 its own. Small, but it's the part every board project needs, and it reads
 the same clearance constant as everything else, so when the coupon changes
 that constant the spacers change with it.
-
-### Mount plates and enclosure trays
-
-![Mount plate for an ADS1115 with integrated bosses](docs/img/mount_plate.png)
-
-`projects/mount_plate/` was the first attempt at building from the board
-registry; `REVIEW.md` there lists what was wrong with it and how the
-standoff plate family replaced it. `mount_plate([(BOARDS["ADS1115"], (0, 0))], screw="M2", standoff=8)`
-gives a plate sized to the boards you list, clearance holes at the registry's
-hole pattern, an engraved outline and embossed name, and either a flat plate
-or bosses of the height you ask for. `enclosure.py` is the same idea with
-walls and a cable slot.
-
-![Enclosure tray for two ADS1115 boards with a cable slot](docs/img/enclosure_tray.png)
-
-Both are valid solids and both would fail to hold the board: nothing captures
-a screw, the two boards' connectors face each other across 6 mm, and every
-height is a guess. They stay as the first sketch; the standoff plate below
-replaces them.
 
 ### Standoff plate
 
@@ -130,8 +113,8 @@ three buttons. It hangs beside any tote or bucket on a printed clamp over the
 rim, so the container is never drilled; a bolted-through-the-wall revision
 stays in params as the alternative. Every bought part is sourced from a vendor
 sheet or board file, and the assembly checks run the clamp across a 2 to 35 mm
-container wall. Its README walks through the modelling approach and the
-build123d methods. It supersedes the `enclosure_atlas` spec, which was waiting
+container wall. `MODELLING.md` there walks through the modelling approach and the
+build123d methods. It supersedes the `archive/enclosure_atlas` spec, which was waiting
 on caliper measurements.
 
 ![Nutrient controller on a container rim](docs/img/nutrient_controller_b2_front.png)
@@ -259,7 +242,7 @@ aren't on the install path.
 
 ## Where it stands
 
-2026-10-07: 177 tests pass on main. Nothing since the gland has been printed.
+2026-10-07: 199 tests pass. Nothing since the gland has been printed.
 Caliper gates are gone: where a bought part's geometry is unpublished, a
 printed interface is designed around it.
 

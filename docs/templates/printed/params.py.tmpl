@@ -1,0 +1,80 @@
+"""$name: one line on what this part is and what it carries.
+
+Every number lives here; nothing downstream holds one. The rules are in
+docs/PARAMS_CONVENTION.md and projects/standoff_plate/params.py is the worked
+example.
+
+    .venv/bin/python projects/$name/params.py      # prints the design
+"""
+from __future__ import annotations
+
+import math
+from types import MappingProxyType
+
+from cacad.registries.materials import CLEAR_LOOSE, LAYER, NOZZLE, WALL
+
+STATUS = "concept"   # concept | passes | printed | parked
+
+COMMON = MappingProxyType(
+    dict(
+        # named clearances (mm): say which two surfaces each one separates
+        screw_clearance=CLEAR_LOOSE,   # diametral: bore - screw nominal (ISO 273 medium + FDM allowance, materials.py)
+        # geometry rules
+        wall=WALL,                     # 4 perimeters
+        margin=3.0,                    # bore edge to plate edge
+        # manufacturing rules
+        nozzle_d=NOZZLE,
+        layer=LAYER,
+        min_wall=1.2,                  # functional floor; 2 * nozzle_d is the printable floor
+        max_overhang_deg=60.0,
+        material="PETG",
+        bbox_tol=0.05,
+    )
+)
+
+PRINT_ORIENTATION = MappingProxyType(dict(
+    # bed_z is a number or the name of a derived key; name every ceiling that is allowed to bridge
+    part=dict(up=(0, 0, 1), bed_face="bottom face", bed_z="0", known_overhangs=[], overhang_exceptions=[]),
+))
+
+SIZES = {
+    # Inputs only. A bought dimension names its standard; a guess says UNVERIFIED.
+    "S1": dict(screw_d=3.0, plate_t_min=3.0),   # ISO 4762 M3; DESIGN plate thickness
+}
+
+ACTIVE_SIZES = ("S1",)
+
+
+def derive(size: str, **overrides) -> dict:
+    """Every dimension the build scripts need. Overrides are for what-if tables only."""
+    s = dict(SIZES[size])
+    c = dict(COMMON)
+    for k, v in overrides.items():
+        (s if k in s else c)[k] = v
+    d = dict(size=size, **s, **c)
+
+    d["bore_d"] = s["screw_d"] + c["screw_clearance"]
+    d["plate_w"] = d["bore_d"] + 2 * c["margin"]
+    d["plate_t"] = math.ceil(s["plate_t_min"] / c["layer"]) * c["layer"]   # whole layers
+    d["print_orientation"] = {k: dict(v, bed_z=float(v["bed_z"])) for k, v in PRINT_ORIENTATION.items()}
+    d["walls"] = {"bore to plate edge": c["margin"]}
+    return d
+
+
+def validate(size: str) -> dict:
+    """Raise AssertionError on anything not buildable or not usable. No warnings."""
+    d = derive(size)
+    for name, w in d["walls"].items():
+        assert w >= d["min_wall"], f"{size}: wall {name} = {w:.2f} < {d['min_wall']}"
+        assert w >= 2 * d["nozzle_d"], f"{size}: wall {name} = {w:.2f} < 2 x nozzle"
+    assert STATUS in ("concept", "passes", "printed", "parked"), f"STATUS {STATUS!r} not recognised"
+    return d
+
+
+if __name__ == "__main__":
+    for size in SIZES:
+        try:
+            d = validate(size)
+            print(f"{size}: ok  plate {d['plate_w']:.2f} x {d['plate_w']:.2f} x {d['plate_t']:.2f}, bore {d['bore_d']:.2f}")
+        except AssertionError as e:
+            print(f"{size}: FAIL: {e}")
