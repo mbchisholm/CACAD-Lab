@@ -8,6 +8,45 @@ from its plug (`cacad.registries.connectors`). Built to test whether the
 shared library and the params convention extend past the cable gland; the
 tray is the rescope of `archive/mount_plate/` (see its `REVIEW.md`).
 
+`DESIGN.md` has the rules: standoff height, connectors, mount holes, the
+declared ceiling and placements.
+
+## Status
+
+STATUS is `passes`. Active and passing (2026-09-21): `ADS1115`, `INA219`,
+`TCA9548A`, `FEATHER` (flat plates), `ADS1115x2_tray`, and `SENSOR_HUB_tray`
+(INA219 + 2 × ADS1115 + TCA9548A in one column, 35.7 × 90.9 × 16.4, 14 bosses,
+six openings). Added 2026-10-07:
+- `SEN0244`: DFRobot Gravity analog TDS, M3 × 10 + ISO 4032 nuts, 48 × 45 × 9.0
+  with M3 mount holes. Holes 35 × 25 from DFRobot's layout PDF; the hole
+  diameter is scaled from that drawing, not dimensioned.
+- `EZO_ISO_x2`: two Atlas isolated EZO carriers (pH + EC), M2 × 10,
+  81 × 48 × 8.8 with M3 mount holes. The carrier hole is 3.0, so M3 is refused;
+  Atlas's STEP placed on it intersects nothing.
+
+Failing by rule, on purpose:
+- `ADS1115x2`: inner connectors face each other 6.5 mm apart, the plug needs 15.
+- `ADS1115_V1`, `BME280`: holes on one edge, and the family has no rest under a
+  free edge.
+- `UNO_R3`: the registry has no `nearest_pin` yet.
+- `FEATHER_tray`: the USB-C plug envelope is not in the connector registry; the
+  Feather joins the hub tray when it is.
+
+Nothing prints for fit until the coupons are measured: `screw_clearance` is
+`CLEAR_LOOSE` (a guess) and `nut_pocket_clearance` 0.30 has no coupon at all.
+
+## Sources
+
+Screws and nuts are ISO 4762 and ISO 4032. Board outlines, holes and pin
+keepouts come from the vendor's Eagle file through `tools/board_from_eagle.py`
+where one exists (Adafruit), otherwise from the vendor's drawing or STEP, with
+the source in `cacad/registries/boards.py`. Connector plugs are in
+`cacad/registries/connectors.py`. Clearances are ISO 273 plus a DESIGN FDM
+allowance (`cacad.registries.materials`); UNVERIFIED values in `params.py`
+never pass a part that has to fit. Vendor STEPs live in `ref/` (gitignored).
+
+## Layout
+
 ```
 params.py   PLATES (which boards, where, which screw, tray or not), SCREWS (ISO 4032 / 4762),
             derive(plate), validate(plate)
@@ -16,58 +55,10 @@ plate.py    build_plate, build_hardware (boards, screws, nuts, plugs and unplugg
 tests/      geometry + function, walls measured on sections, orientation, overhang, screw stack
 ```
 
+## Run
+
 ```
 .venv/bin/python projects/standoff_plate/params.py     # design review printout, every plate
 .venv/bin/python projects/standoff_plate/plate.py      # ACTIVE_PLATES -> out/*.step, *.stl, *.3mf
 .venv/bin/python -m pytest projects/standoff_plate -q
 ```
-
-Standoff height is `max(underside clearance, stock screw length)`: the screw
-must pass through the nut and stop `screw_tip_min` above the bed face, and
-the standoff rises in layer steps until a stocked length lands in that
-window. For the ADS1115 the screw ladder governs (5.20 vs 4.50).
-
-Connectors: a plug must be able to come out. `validate()` fails when a
-connector faces another board closer than plug length + `finger_room`; a
-connector facing a wall gets an opening `plug_w + 2 × opening_clearance`
-wide from `opening_below` under the board top to the rim. The rim is the
-board top + the tallest top-side thing (connector or header, whichever the
-registry and the caliper say) + `lid_clearance`. No lid yet.
-
-Mount holes (`mount=dict(screw="M3", sides="X" | "Y")`, flat plates only):
-four plain through bores, one per plate corner, `mount_inset` (head radius
-+ `mount_head_seat`) from both edges. On the two mount sides the plate grows
-a strip so each head sits wholly outside every board outline with
-`mount_access_clearance` to spare, and `check_plate` proves a head-sized
-driver column reaches it straight down past the boards and their screws.
-Pick the sides no connector faces; `validate()` refuses a connector that
-faces one. The clamp is `plate_t`; the screw length is set by what the
-plate mounts to.
-
-Declared ceiling: the annulus above each nut pocket (4.3 mm hex, bridged).
-The nut bears on it. If bridging sags in practice, the alternative is a
-sacrificial layer across the pocket, drilled out after printing.
-
-Placements are `(board, (x, y), rot)` with `rot` a multiple of 90; the
-registry board is rotated once in `derive()` and nothing downstream rotates
-anything. A two-hole board is accepted when its hole line passes through the
-board centre (TCA9548A), refused when the holes are on one edge (ADS1115_V1,
-BME280): the family has no rest for a cantilevered edge.
-
-Status (2026-09-21): active and passing — `ADS1115`, `INA219`, `TCA9548A`,
-`FEATHER` (flat plates), `ADS1115x2_tray`, and `SENSOR_HUB_tray` (INA219 +
-2 × ADS1115 + TCA9548A in one column, 35.7 × 90.9 × 16.4, 14 bosses, six
-openings). Added 2026-10-07: `SEN0244` (DFRobot Gravity analog TDS, M3 × 10
-+ ISO 4032 nuts, 48 × 45 × 9.0 with M3 mount holes, holes 35 × 25 from DFRobot's layout PDF; the
-hole diameter is scaled from that drawing, not dimensioned) and `EZO_ISO_x2`
-(two Atlas isolated EZO carriers, pH + EC, M2 × 10, 81 × 48 × 8.8 with M3 mount holes; the
-carrier hole is 3.0 so M3 is refused; Atlas's STEP placed on it intersects
-nothing). Failing by rule — `ADS1115x2` (inner connectors face each other
-6.5 mm apart, plug needs 15), `ADS1115_V1` and `BME280` (holes on one edge),
-`UNO_R3` (no `nearest_pin`), `FEATHER_tray` (USB-C plug envelope not yet in
-the connector registry; the Feather joins the hub tray when it is).
-`ADS1115_V1` (two-hole revision) fails `validate()` by design: the board
-cantilevers and this family has no rest under a free edge. `UNO_R3` fails
-until the registry has its `nearest_pin`. Nothing prints for fit until the
-coupons are measured: `screw_clearance` is `CLEAR_LOOSE` (a guess) and
-`nut_pocket_clearance` 0.30 has no coupon at all.

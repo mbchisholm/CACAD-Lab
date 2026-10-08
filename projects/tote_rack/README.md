@@ -9,6 +9,24 @@ and member IDs are kept, so its bounding-box table (S7) is a test.
 Lumber, not a print: the manufacturability layer is the cut plan against
 8 ft stock and each joint's screw against the stocked ladder.
 
+## Status
+
+STATUS is `passes` for the spec's example rack: geometry and function, the
+spec's S7 bounding-box table, the cut plan, the screws and the open front all
+pass. `RACKS["hdx_207585"]`, the rack for the actual bin, fails `validate()`
+by name until the bin's rim width, body width and lip thickness are known
+(see *The actual bin*). Nothing is cut yet.
+
+## Sources
+
+Lumber sizes are ALSC PS 20 dressed sizes; screws are #8 with 6D penetration.
+The frame layout, coordinates and member IDs come from the "Garage Tote Bin
+Storage Rack" spec named above, which is not in this repo. UNVERIFIED tote
+dimensions are the spec's example tote, not the bin on hand. The HDX 207 585
+vendor model (Parasolid .x_t, unreadable here) and label photo live in `ref/` (gitignored).
+
+## Layout
+
 ```
 params.py   LUMBER (ALSC PS 20 dressed sizes), SCREWS (#8, 6D penetration), RACKS (tote and pitch inputs, S4),
             derive(rack), validate(rack); the printout is the design review and cut list
@@ -18,8 +36,9 @@ freecad_view.py  STEP -> FreeCAD Assembly (front-left leg grounded, coloured by 
 build_sheet.py   shop sheets: one SVG per distinct member with its cut length and every pilot hole dimensioned
             from end A, plus out/build_sheet_<rack>.md (cut plan per stick, drill, assembly steps, screws)
 tests/      geometry + function, spec S7 table reproduced, cut plan, screws, open front, sheets cover every screw
-ref/        (gitignored) the HDX 207 585 vendor model (Parasolid .x_t, unreadable here) and its label photo
 ```
+
+## Run
 
 ```
 .venv/bin/python projects/tote_rack/params.py     # design review and cut list, every rack
@@ -29,8 +48,7 @@ ref/        (gitignored) the HDX 207 585 vendor model (Parasolid .x_t, unreadabl
 .venv/bin/python projects/tote_rack/build_sheet.py     # -> out/sheets/*.svg, out/build_sheet_<rack>.md
 ```
 
-The sheets are plain SVG; to see one as PNG without adding a rasterizer, render it through FreeCAD's Qt
-(`PySide.QtSvg.QSvgRenderer`) over the RPC server, or open it in a browser.
+The sheets are plain SVG: open one in a browser, or render it through FreeCAD's `PySide.QtSvg.QSvgRenderer`.
 
 Change the tote or pitch in params, re-run `rack.py`, then `freecad_view.py`;
 it rebuilds the FreeCAD document from the new STEP. Do not edit parts or

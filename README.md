@@ -113,7 +113,7 @@ three buttons. It hangs beside any tote or bucket on a printed clamp over the
 rim, so the container is never drilled; a bolted-through-the-wall revision
 stays in params as the alternative. Every bought part is sourced from a vendor
 sheet or board file, and the assembly checks run the clamp across a 2 to 35 mm
-container wall. Its README walks through the modelling approach and the
+container wall. `MODELLING.md` there walks through the modelling approach and the
 build123d methods. It supersedes the `archive/enclosure_atlas` spec, which was waiting
 on caliper measurements.
 
@@ -242,7 +242,7 @@ aren't on the install path.
 
 ## Where it stands
 
-2026-10-07: 177 tests pass on main. Nothing since the gland has been printed.
+2026-10-07: 199 tests pass. Nothing since the gland has been printed.
 Caliper gates are gone: where a bought part's geometry is unpublished, a
 printed interface is designed around it.
 

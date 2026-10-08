@@ -1,8 +1,8 @@
 """Every project follows the same shape, and nothing private or heavy is
 tracked. Scaffold a project with `python -m cacad.new <name>` and this passes.
 
-LEGACY_README lists projects whose README predates the template (sections
-Status, Sources, Run; under 80 lines). The list only shrinks."""
+Every README has Status, Sources and Run sections and stays under 80 lines;
+long-form material goes in DESIGN.md, NOTES.md or SPEC.md."""
 import importlib
 import re
 import subprocess
@@ -15,8 +15,6 @@ PROJECTS = sorted(p for p in (REPO / "projects").iterdir() if p.is_dir() and (p 
 STATUSES = ("concept", "passes", "printed", "parked")
 README_SECTIONS = ("## Status", "## Sources", "## Run")
 README_MAX_LINES = 80
-LEGACY_README = {"camera_reader", "nft_table", "raised_bed",
-                 "standoff_plate", "tote_rack"}
 
 PRIVATE = [re.compile(p) for p in (r"/Users/[A-Za-z]", "T1" + "TRTA", r"\bvault\b")]
 PRIVATE_OK = {".mcp.json"}   # absolute PYTHONPATH; see issue #16
@@ -42,8 +40,6 @@ def test_project_shape(project):
 
 @pytest.mark.parametrize("project", PROJECTS, ids=lambda p: p.name)
 def test_readme_follows_template(project):
-    if project.name in LEGACY_README:
-        pytest.skip("legacy README; remove from LEGACY_README when rewritten")
     lines = (project / "README.md").read_text().splitlines()
     missing = [s for s in README_SECTIONS if s not in lines]
     assert not missing, f"README missing sections {missing}"
