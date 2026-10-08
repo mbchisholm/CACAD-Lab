@@ -58,9 +58,9 @@ Status (2026-09-21): active and passing — `ADS1115`, `INA219`, `TCA9548A`,
 `FEATHER` (flat plates), `ADS1115x2_tray`, and `SENSOR_HUB_tray` (INA219 +
 2 × ADS1115 + TCA9548A in one column, 35.7 × 90.9 × 16.4, 14 bosses, six
 openings). Added 2026-10-07: `SEN0244` (DFRobot Gravity analog TDS, M3 × 10
-+ ISO 4032 nuts, 48 × 38 × 9.0, holes 35 × 25 from DFRobot's layout PDF; the
++ ISO 4032 nuts, 48 × 45 × 9.0 with M3 mount holes, holes 35 × 25 from DFRobot's layout PDF; the
 hole diameter is scaled from that drawing, not dimensioned) and `EZO_ISO_x2`
-(two Atlas isolated EZO carriers, pH + EC, M2 × 10, 74 × 48 × 8.8; the
+(two Atlas isolated EZO carriers, pH + EC, M2 × 10, 81 × 48 × 8.8 with M3 mount holes; the
 carrier hole is 3.0 so M3 is refused; Atlas's STEP placed on it intersects
 nothing). Failing by rule — `ADS1115x2` (inner connectors face each other
 6.5 mm apart, plug needs 15), `ADS1115_V1` and `BME280` (holes on one edge),
