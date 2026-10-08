@@ -52,6 +52,9 @@ COMMON = MappingProxyType(dict(
     board_wall_gap=1.0,               # board edge to inner wall face (tray)
     lid_clearance=3.0,                # rim above the tallest top-side thing (tray). Design choice, UNVERIFIED
     hole_line_centre_tol=1.0,         # two-hole boards: the hole line passes within this of the outline centre
+    mount_screw_clearance=CLEAR_LOOSE,  # diametral: plate mount bore - mount screw nominal (ISO 273 medium M3)
+    mount_access_clearance=0.5,       # plan: mount screw head edge to the nearest board outline, so a driver goes straight down. DESIGN
+    mount_head_seat=0.5,              # plan: mount screw head edge to the plate edge, the head bears fully on the plate. DESIGN
     # --- geometry rules ---
     boss_wall=WALL,                   # 1.6 = 4 perimeters around the bore
     pocket_web_min=1.2,               # plate material above the nut pocket (bridged ceiling) = min_wall, 6 layers
@@ -116,10 +119,19 @@ PLATES = {
                     board_t=1.6,                # UNVERIFIED: not published, standard FR-4
                     underside_protrusion=3.5,   # DESIGN allowance, UNVERIFIED: underside not drawn
                     top_protrusion=6.0,         # UNVERIFIED: XH header height; tray only
-                    placements=(("SEN0244", (0.0, 0.0)),), tray=False),
+                    placements=(("SEN0244", (0.0, 0.0)),), tray=False,
+                    mount=dict(screw="M3", sides="Y")),   # connectors face ±X: mount strips on ±Y
+    # Two Atlas isolated EZO carriers (pH + EC) side by side, 4 mm apart (DESIGN), SMAs to -Y, headers to +Y.
+    # The board hole is 3.0, so M3 is refused; M2 is on hand (enclosure_atlas/NOTES.md) and M2.5 also passes.
+    "EZO_ISO_x2": dict(screw="M2",
+                       board_t=1.6,                 # Atlas STEP 1.59
+                       underside_protrusion=3.5,    # DESIGN allowance: STEP max 2.51 (4-pin part), SMA 2.0; header tails UNVERIFIED
+                       top_protrusion=10.0,         # Atlas STEP 4-pin part; EZO on its 8.7 sockets UNVERIFIED. Tray only
+                       placements=(("EZO_CARRIER_ISO", (-18.0, 0.0)), ("EZO_CARRIER_ISO", (18.0, 0.0))), tray=False,
+                       mount=dict(screw="M3", sides="X")),   # SMA and header face ±Y: mount strips on ±X
 }
 
-ACTIVE_PLATES = ("ADS1115", "ADS1115x2_tray", "INA219", "TCA9548A", "FEATHER", "SENSOR_HUB_tray", "SEN0244")
+ACTIVE_PLATES = ("ADS1115", "ADS1115x2_tray", "INA219", "TCA9548A", "FEATHER", "SENSOR_HUB_tray", "SEN0244", "EZO_ISO_x2")
 
 
 def _round_up(x: float, step: float) -> float:
@@ -239,8 +251,27 @@ def derive(plate: str, **overrides) -> dict:
     d["margin"] = c["wall"] + c["board_wall_gap"] if s["tray"] else c["plate_margin"]
     xs = [pb["xy"][0] + sx * pb["size"][0] / 2 for pb in d["boards"] for sx in (-1, 1)]
     ys = [pb["xy"][1] + sy * pb["size"][1] / 2 for pb in d["boards"] for sy in (-1, 1)]
-    d["plate_x0"], d["plate_x1"] = min(xs) - d["margin"], max(xs) + d["margin"]
-    d["plate_y0"], d["plate_y1"] = min(ys) - d["margin"], max(ys) + d["margin"]
+    # mount holes: a strip on two opposite sides (the ones no connector faces), wide enough that the
+    # mount screw head sits wholly outside every board outline (driver access) and wholly on the plate
+    mx = my = d["margin"]
+    d["mount"] = mount = s.get("mount")
+    if mount:
+        ms = d["mount_spec"] = dict(SCREWS[mount["screw"]])
+        d["mount_bore_d"] = ms["d"] + c["mount_screw_clearance"]
+        d["mount_head_r"] = ms["head_dk"] / 2
+        d["mount_inset"] = d["mount_head_r"] + c["mount_head_seat"]                    # hole centre to plate edge
+        d["mount_strip"] = d["mount_head_r"] + c["mount_access_clearance"] + d["mount_inset"]   # board outline to plate edge
+        if mount["sides"] == "X":
+            mx = max(mx, d["mount_strip"])
+        else:
+            my = max(my, d["mount_strip"])
+    d["margin_x"], d["margin_y"] = mx, my
+    d["plate_x0"], d["plate_x1"] = min(xs) - mx, max(xs) + mx
+    d["plate_y0"], d["plate_y1"] = min(ys) - my, max(ys) + my
+    # one hole in each plate corner, inset from both edges; the strip puts it beyond the boards on the mount sides
+    e = d.get("mount_inset", 0.0)
+    d["mount_holes"] = [(x, y) for x in (d["plate_x0"] + e, d["plate_x1"] - e)
+                        for y in (d["plate_y0"] + e, d["plate_y1"] - e)] if mount else []
     d["plate_size"] = (d["plate_x1"] - d["plate_x0"], d["plate_y1"] - d["plate_y0"])
     d["plate_centre"] = ((d["plate_x0"] + d["plate_x1"]) / 2, (d["plate_y0"] + d["plate_y1"]) / 2)
     d["holes"] = [h for pb in d["boards"] for h in pb["holes"]]
@@ -271,6 +302,10 @@ def derive(plate: str, **overrides) -> dict:
         "plate edge (pocket corner to plate edge)": min(
             min(d["plate_x1"] - x, x - d["plate_x0"], d["plate_y1"] - y, y - d["plate_y0"]) for x, y in d["holes"]) - d["pocket_r"],
     }
+    if mount:
+        d["walls"]["mount hole to plate edge"] = d["mount_inset"] - d["mount_bore_d"] / 2
+        d["walls"]["mount hole to nut pocket (pocket corner)"] = min(
+            math.dist(m, h) for m in d["mount_holes"] for h in d["holes"]) - d["mount_bore_d"] / 2 - d["pocket_r"]
     if s["tray"]:
         d["walls"]["tray wall"] = c["wall"]
         for o in d["openings"]:   # material between an opening and the nearest plate corner, past the corner radius
@@ -326,6 +361,17 @@ def validate(plate: str) -> dict:
             assert cn["distance"] >= cn["reach"], (
                 f"{plate}: {cn['kind']} at ({cn['xy'][0]:.2f}, {cn['xy'][1]:.2f}) faces {cn['faces']} {cn['distance']:.2f} away; "
                 f"plug needs {cn['reach']:.1f} (plug {cn['mating'].plug_len} + finger room {d['finger_room']})")
+    if d["mount"]:
+        assert not d["tray"], f"{plate}: mount holes in a tray floor: not designed"
+        assert d["mount"]["sides"] in ("X", "Y"), f"{plate}: mount sides {d['mount']['sides']!r} is not 'X' or 'Y'"
+        # the mount head sits on the plate top beside the bosses: it may not overlap one
+        gap = min(math.dist(m, h) for m in d["mount_holes"] for h in d["holes"]) - d["mount_head_r"] - d["boss_r"]
+        assert gap >= 0, f"{plate}: mount screw head overlaps a boss by {-gap:.2f}"
+        # a connector facing a mount side would put its plug and cable over the mount heads
+        for cn in d["connectors"]:
+            faces_mount_side = (cn["facing"][0] != 0) == (d["mount"]["sides"] == "X")
+            assert not faces_mount_side, (
+                f"{plate}: {cn['kind']} on {cn['board']} faces the {cn['faces']} mount side")
     if d["tray"]:
         for side in _SIDES.values():   # openings on one wall may not overlap or merge through their clearance
             spans = sorted(_opening_span(d, o) for o in d["openings"] if o["side"] == side)
@@ -360,6 +406,9 @@ def report(plate: str) -> str:
              f"  nut pocket s {d['pocket_s']:.2f} depth {d['pocket_depth']:.2f}, web {d['pocket_web']:.2f}; "
              f"screw tip {d['screw_tip_z']:.2f} above bed, {d['screw_beyond_nut']:.2f} past the nut",
              "  walls " + ", ".join(f"{k} {v:.2f}" for k, v in d["walls"].items())]
+    if d["mount"]:
+        lines.append(f"  mount: {len(d['mount_holes'])} x {d['mount']['screw']} on the {d['mount']['sides']} sides, bore {d['mount_bore_d']:.2f}, "
+                     f"{d['mount_inset']:.2f} from the plate edges, strip {d['mount_strip']:.2f} beyond the boards, clamp {d['plate_t']:.2f}")
     for cn in d["connectors"]:
         lines.append(f"  {cn['kind']} on {cn['board']} at ({cn['xy'][0]:.2f}, {cn['xy'][1]:.2f}) faces {cn['faces']} at {cn['distance']:.2f}, "
                      + (f"reach {cn['reach']:.1f}" if cn["reach"] is not None else "plug envelope unknown"))

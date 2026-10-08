@@ -262,5 +262,29 @@ PERMAPROTO_QUARTER = Board(
     nearest_top_copper=None,
 )
 
+# Atlas Scientific Electrically Isolated EZO Carrier Board Gen 2 (one EZO
+# circuit; EZOs have no mounting holes of their own). Outline 32 x 42 and hole
+# pitch 24 x 34 from the Atlas datasheet electrically-isolated-ezo-carrier-board.pdf
+# V1.6 p.2 (files.atlas-scientific.com, read 2026-10-07; Atlas ships #4-40
+# screws on 11 mm standoffs). Atlas's own STEP model
+# (Electrically-Isolated-EZO-Carrier-Board.zip, same site) gives what the
+# drawing does not: holes centred, 4 from every edge (corner r 4 on each
+# hole), hole dia 3.0, PCB 1.59. Board frame: +Y = 5-pin header end, -Y = SMA.
+# In the STEP, not on the Gen 2 drawing: a 4-pin part on the -X long edge
+# (x -15.35..-9.35, y -12.10..-0.60, 10.0 above the top, 2.51 below); kept as an
+# envelope. The SMA reaches 9.6 past the -Y edge and 2.0 below the underside.
+# Placed on EZO_ISO_x2 without its standoffs, the STEP intersects neither plate,
+# screws nor nuts (interference 0.0, 2026-10-07).
+EZO_CARRIER_ISO = Board(
+    name="EZO_CARRIER_ISO",
+    size=(32.0, 42.0),
+    holes=_rect_pattern(24.0, 34.0),             # ±12, ±17
+    hole_dia=3.0,                                # Atlas STEP; #4-40 (2.84) is the vendor screw: M3 does not pass
+    source="Atlas electrically-isolated-ezo-carrier-board.pdf V1.6 p.2 + Atlas STEP model, files.atlas-scientific.com, 2026-10-07",
+    thickness=1.59,                              # Atlas STEP
+    nearest_pin=6.54,                            # 5-pin header pin (-5.61, 15.63) to hole (-12, 17), Atlas STEP
+    nearest_top_copper=4.90,                     # 4-pin part body to hole (-12, -17); nearest SMD pad is 5.76
+)
+
 BOARDS = {b.name: b for b in (ADS1115, ADS1115_V1, UNO_R3, TENTACLE_T2, INA219, TCA9548A, BME280, FEATHER_ESP32S3, OLED_938,
-                                     MOSFET_5648, RELAY_4409, SEN0244, PERMAPROTO_QUARTER)}
+                                     MOSFET_5648, RELAY_4409, SEN0244, PERMAPROTO_QUARTER, EZO_CARRIER_ISO)}
