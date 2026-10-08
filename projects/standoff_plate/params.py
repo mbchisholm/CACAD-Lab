@@ -55,6 +55,8 @@ COMMON = MappingProxyType(dict(
     mount_screw_clearance=CLEAR_LOOSE,  # diametral: plate mount bore - mount screw nominal (ISO 273 medium M3)
     mount_access_clearance=0.5,       # plan: mount screw head edge to the nearest board outline, so a driver goes straight down. DESIGN
     mount_head_seat=0.5,              # plan: mount screw head edge to the plate edge, the head bears fully on the plate. DESIGN
+    rest_pad_d=4.0,                   # solid pad under the hole-less end of a board whose holes are all on one end. DESIGN
+                                      # (as nutrient_controller's rest_pad_d)
     # --- geometry rules ---
     boss_wall=WALL,                   # 1.6 = 4 perimeters around the bore
     pocket_web_min=1.2,               # plate material above the nut pocket (bridged ceiling) = min_wall, 6 layers
@@ -90,7 +92,8 @@ _ADS = dict(screw="M2",
             top_protrusion=2.5)        # UNVERIFIED: caliper; header insulator if pins are down, pin tips if up
 
 PLATES = {
-    "ADS1115": dict(_ADS, placements=(("ADS1115", (0.0, 0.0)),), tray=False),
+    "ADS1115": dict(_ADS, placements=(("ADS1115", (0.0, 0.0)),), tray=False,
+                    board_t=BOARDS["ADS1115"].thickness),   # Adafruit STEP 1.57 (was 1.6 UNVERIFIED)
     # two boards end to end, 6 mm apart, as projects/mount_plate/enclosure.py had them:
     # the inner STEMMA QT connectors face each other across the gap. Kept to show validate() refusing it.
     "ADS1115x2": dict(_ADS, placements=(("ADS1115", (-15.7, 0.0)), ("ADS1115", (15.7, 0.0))), tray=False),
@@ -129,9 +132,57 @@ PLATES = {
                        top_protrusion=10.0,         # Atlas STEP 4-pin part; EZO on its 8.7 sockets UNVERIFIED. Tray only
                        placements=(("EZO_CARRIER_ISO", (-18.0, 0.0)), ("EZO_CARRIER_ISO", (18.0, 0.0))), tray=False,
                        mount=dict(screw="M3", sides="X")),   # SMA and header face ±Y: mount strips on ±X
+    # --- 2026-10-07: the rest of the analog nutrient node (NUTRIENT_ANALOG below), board thickness from the vendor STEP ---
+    "SURVEYOR_PH": dict(screw="M2_5",                                # hole 3.0: M3 does not pass
+                        board_t=BOARDS["SURVEYOR_PH"].thickness,
+                        underside_protrusion=3.5,   # DESIGN allowance: lowest part in Atlas's STEP is the SMA, 1.91 below
+                        top_protrusion=4.5,         # Atlas STEP: the SMA. Tray only
+                        placements=(("SURVEYOR_PH", (0.0, 0.0)),), tray=False,
+                        mount=dict(screw="M3", sides="Y")),   # SMA and header face ±X: mount strips on ±Y
+    # three pump drivers (acid, nutrient A, nutrient B), 4 mm apart (DESIGN), JST PH inputs to -X, WAGO pump terminals
+    # to +X. Both holes are on the +X end: a rest pad carries the -X end.
+    "MOSFET_5648x3": dict(screw="M2",
+                          board_t=BOARDS["MOSFET_5648"].thickness,
+                          underside_protrusion=3.5,  # DESIGN allowance: Adafruit's STEP has nothing below; the optional JP1/JP3
+                                                     # headers leave tails if fitted
+                          top_protrusion=4.8,        # Adafruit STEP: the WAGO 2060 terminal. Tray only
+                          placements=(("MOSFET_5648", (0.0, -21.78)), ("MOSFET_5648", (0.0, 0.0)), ("MOSFET_5648", (0.0, 21.78))),
+                          # rest pad centre to the nearest through-hole pin (JP1, 2.54 pitch on the -X end): Eagle file
+                          rest_nearest_pin={"MOSFET_5648": 3.81},
+                          screw_pa=True,     # head r 1.9 over top copper at 1.27: PA 6.6 ISO 4762, as nutrient_controller
+                          tray=False, mount=dict(screw="M3", sides="Y")),
+    # Perma-Proto quarter carrying the XIAO ESP32-C3 and the Pololu D24V10F5. Its nearest breadboard via is 3.81 from a
+    # mount hole: only an M2 boss stays the pin margin clear of it (M2.5 and M3 bosses would sit under a soldered lead).
+    "PERMAPROTO": dict(screw="M2",
+                       board_t=BOARDS["PERMAPROTO_QUARTER"].thickness,
+                       underside_protrusion=3.5,    # DESIGN allowance: trimmed through-hole leads (XIAO and regulator headers)
+                       top_protrusion=10.0,         # PLACEHOLDER: XIAO on its headers. Tray only
+                       placements=(("PERMAPROTO_QUARTER", (0.0, 0.0)),), tray=False,
+                       mount=dict(screw="M3", sides="Y")),
 }
 
-ACTIVE_PLATES = ("ADS1115", "ADS1115x2_tray", "INA219", "TCA9548A", "FEATHER", "SENSOR_HUB_tray", "SEN0244", "EZO_ISO_x2")
+# sprout-cut env `nutrient-analog-xiao` (platformio.ini, read 2026-10-07): the boards of the analog nutrient node,
+# one plate each. pH (Surveyor) and TDS (SEN0244) on one ADS1115, three pump drivers, the XIAO + 5 V regulator on
+# the Perma-Proto. The OLED is not on a plate: it sits behind the box cover's window (nutrient_controller/cover.py).
+# The DS18B20 is a probe on a cable. To swap a board, edit its PLATES row; the FreeCAD view and the vendor checks follow.
+NUTRIENT_ANALOG = ("SEN0244", "SURVEYOR_PH", "ADS1115", "MOSFET_5648x3", "PERMAPROTO")
+
+# Vendor STEP models, in this project's ref/ (gitignored, fetched 2026-10-07). `rot` turns the STEP about Z into the
+# registry board frame; vendor.py then checks the outline, the thickness and every hole against the registry.
+# A board with no row here (SEN0244: DFRobot publishes none) shows as its registry envelope.
+VENDOR_STEPS = MappingProxyType({
+    "ADS1115": dict(path="ref/vendor_step/adafruit/1085 ADS1115 ADC.step", rot=0,
+                    source="github.com/adafruit/Adafruit_CAD_Parts, 1085 ADS1115 ADC"),
+    "MOSFET_5648": dict(path="ref/vendor_step/adafruit/5648 MOSFET Driver.step", rot=0,
+                        source="github.com/adafruit/Adafruit_CAD_Parts, 5648 MOSFET Driver"),
+    "PERMAPROTO_QUARTER": dict(path="ref/vendor_step/adafruit/1608 perma-proto quarter.step", rot=90,
+                               source="github.com/adafruit/Adafruit_CAD_Parts, 1608 perma-proto quarter"),
+    "SURVEYOR_PH": dict(path="ref/vendor_step/atlas_ph/pH-Gravity.step", rot=0,
+                        source="files.atlas-scientific.com/pH-Gravity.zip"),
+})
+
+ACTIVE_PLATES = ("ADS1115", "ADS1115x2_tray", "INA219", "TCA9548A", "FEATHER", "SENSOR_HUB_tray", "SEN0244", "EZO_ISO_x2",
+                 "SURVEYOR_PH", "MOSFET_5648x3", "PERMAPROTO")
 
 
 def _round_up(x: float, step: float) -> float:
@@ -275,6 +326,18 @@ def derive(plate: str, **overrides) -> dict:
     d["plate_size"] = (d["plate_x1"] - d["plate_x0"], d["plate_y1"] - d["plate_y0"])
     d["plate_centre"] = ((d["plate_x0"] + d["plate_x1"]) / 2, (d["plate_y0"] + d["plate_y1"]) / 2)
     d["holes"] = [h for pb in d["boards"] for h in pb["holes"]]
+    # rest pads: a board whose holes all lie on one side of its centre (MOSFET 5648) is carried at the other end by a
+    # solid pad, boss-high, under each hole mirrored through the board centre
+    d["rest_r"] = c["rest_pad_d"] / 2
+    d["rests"] = []
+    for pb in d["boards"]:
+        hs = pb["board"].holes
+        for ax in (0, 1):
+            if all(h[ax] > 0 for h in hs) or all(h[ax] < 0 for h in hs):
+                for h in hs:
+                    m = (-h[0], h[1]) if ax == 0 else (h[0], -h[1])
+                    rx, ry = _rot(m, pb["rot"])
+                    d["rests"].append(dict(board=pb["name"], local=m, xy=(pb["xy"][0] + rx, pb["xy"][1] + ry)))
     # how far a boss reaches past its board's edge (ADS1115: holes 2.54 from the edge, boss r 2.8 -> 0.26)
     d["boss_beyond_board"] = max(max(abs(hx - pb["xy"][0]) + d["boss_r"] - pb["size"][0] / 2,
                                      abs(hy - pb["xy"][1]) + d["boss_r"] - pb["size"][1] / 2, 0.0)
@@ -336,13 +399,23 @@ def validate(plate: str) -> dict:
         assert b.nearest_pin is not None, f"{plate}: {b.name}.nearest_pin unknown; the boss radius cannot be bounded"
         assert d["boss_r"] <= b.nearest_pin - d["boss_pin_margin"], (
             f"{plate}: {b.name} boss r {d['boss_r']:.2f} reaches within {d['boss_pin_margin']} of a pin at {b.nearest_pin}")
-        if b.nearest_top_copper is not None:
-            assert sc["head_dk"] / 2 <= b.nearest_top_copper, (
-                f"{plate}: {b.name} head r {sc['head_dk'] / 2:.2f} overlaps top copper at {b.nearest_top_copper}")
+        if b.nearest_top_copper is not None:   # a metal head may not touch top copper; a PA (nylon) head may (screw_pa)
+            assert sc["head_dk"] / 2 <= b.nearest_top_copper or d.get("screw_pa"), (
+                f"{plate}: {b.name} head r {sc['head_dk'] / 2:.2f} overlaps top copper at {b.nearest_top_copper}; "
+                f"a PA screw of the same standard (screw_pa=True) is the fix")
         # the holes must surround the board's centre: two holes on the centreline hold a board (TCA9548A);
-        # two holes on one edge cantilever the rest of it (ADS1115_V1, BME280) and this family has no rest feature
+        # holes all on one end cantilever the rest of it, so a rest pad carries that end (MOSFET 5648, ADS1115_V1, BME280)
         assert len(b.holes) >= 2, f"{plate}: {b.name} has {len(b.holes)} holes"
-        if len(b.holes) == 2:
+        rests = [r for r in d["rests"] if r["board"] == b.name]
+        if rests:
+            near = d.get("rest_nearest_pin", {}).get(b.name)
+            assert near is not None, f"{plate}: {b.name} rest pad: nearest pin to it unknown; read it from the board file"
+            assert d["rest_r"] <= near - d["boss_pin_margin"], (
+                f"{plate}: {b.name} rest pad r {d['rest_r']:.2f} reaches within {d['boss_pin_margin']} of a pin at {near}")
+            for r in rests:   # the pad seats under the board: it may overhang the edge no more than a boss may
+                over = max(abs(r["local"][0]) + d["rest_r"] - b.size[0] / 2, abs(r["local"][1]) + d["rest_r"] - b.size[1] / 2)
+                assert over <= d["boss_wall"] - d["nozzle_d"], f"{plate}: {b.name} rest pad reaches {over:.2f} past the board edge"
+        elif len(b.holes) == 2:
             (ax, ay), (bx, by) = b.holes
             off = abs((bx - ax) * ay - (by - ay) * ax) / math.hypot(bx - ax, by - ay)   # centre (0, 0) to the hole line
             assert off <= d["hole_line_centre_tol"], (
@@ -387,18 +460,18 @@ def validate(plate: str) -> dict:
     # a commercial 4.5 OD standoff overhangs that edge by 0.41 and is what those boards ship on.
     assert d["boss_beyond_board"] <= d["boss_wall"] - d["nozzle_d"], (
         f"{plate}: boss reaches {d['boss_beyond_board']:.2f} past the board edge; less than a nozzle width of seat on that side")
-    # bosses of different boards may not merge
-    hs = d["holes"]
+    # bosses and rest pads of different boards may not merge
+    hs = [(h, d["boss_r"]) for h in d["holes"]] + [(r["xy"], d["rest_r"]) for r in d["rests"]]
     for i in range(len(hs)):
         for j in range(i + 1, len(hs)):
-            gap = math.dist(hs[i], hs[j]) - d["boss_d"]
-            assert gap >= d["min_wall"] or gap < -1e-9, f"{plate}: bosses {i},{j} nearly touch (gap {gap:.2f})"
+            gap = math.dist(hs[i][0], hs[j][0]) - hs[i][1] - hs[j][1]
+            assert gap >= d["min_wall"] or gap < -1e-9, f"{plate}: bosses/pads {i},{j} nearly touch (gap {gap:.2f})"
     return d
 
 
 def report(plate: str) -> str:
     d = derive(plate)
-    lines = [f"{plate}: {d['screw']} x {d['screw_len']}, {len(d['holes'])} bosses",
+    lines = [f"{plate}: {d['screw']} x {d['screw_len']}{' PA (nylon)' if d.get('screw_pa') else ''}, {len(d['holes'])} bosses",
              f"  plate {d['plate_size'][0]:.2f} x {d['plate_size'][1]:.2f} x {d['plate_t']:.2f}, bore {d['bore_d']:.2f}, boss OD {d['boss_d']:.2f}",
              f"  standoff {d['standoff_h']:.2f} governed by '{d['standoff_governed_by']}' "
              + ", ".join(f"{k} {v:.2f}" for k, v in d["standoff_needs"].items()),
@@ -409,6 +482,9 @@ def report(plate: str) -> str:
     if d["mount"]:
         lines.append(f"  mount: {len(d['mount_holes'])} x {d['mount']['screw']} on the {d['mount']['sides']} sides, bore {d['mount_bore_d']:.2f}, "
                      f"{d['mount_inset']:.2f} from the plate edges, strip {d['mount_strip']:.2f} beyond the boards, clamp {d['plate_t']:.2f}")
+    if d["rests"]:
+        lines.append(f"  rest pads: {len(d['rests'])} x d {2 * d['rest_r']:.1f} under the hole-less ends, "
+                     + ", ".join(f"{b} pin at {p}" for b, p in d.get("rest_nearest_pin", {}).items()))
     for cn in d["connectors"]:
         lines.append(f"  {cn['kind']} on {cn['board']} at ({cn['xy'][0]:.2f}, {cn['xy'][1]:.2f}) faces {cn['faces']} at {cn['distance']:.2f}, "
                      + (f"reach {cn['reach']:.1f}" if cn["reach"] is not None else "plug envelope unknown"))
