@@ -15,11 +15,11 @@ PROJECTS = sorted(p for p in (REPO / "projects").iterdir() if p.is_dir() and (p 
 STATUSES = ("concept", "passes", "printed", "parked")
 README_SECTIONS = ("## Status", "## Sources", "## Run")
 README_MAX_LINES = 80
-LEGACY_README = {"camera_reader", "leaf_imager", "nft_table", "nutrient_controller", "raised_bed",
-                 "standoff_plate", "tote_rack", "sen6x_enclosure"}
+LEGACY_README = {"camera_reader", "nft_table", "raised_bed",
+                 "standoff_plate", "tote_rack"}
 
 PRIVATE = [re.compile(p) for p in (r"/Users/[A-Za-z]", "T1" + "TRTA", r"\bvault\b")]
-PRIVATE_OK = {".mcp.json"}   # absolute PYTHONPATH; see the open item in the cleanup PR
+PRIVATE_OK = {".mcp.json"}   # absolute PYTHONPATH; see issue #16
 BINARY_EXT = {".fcstd", ".step", ".stp", ".stl", ".3mf", ".pdf", ".zip", ".brd", ".kicad_pcb"}
 MAX_BYTES = 1_000_000
 
