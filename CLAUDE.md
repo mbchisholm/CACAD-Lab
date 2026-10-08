@@ -20,6 +20,8 @@ projects/<name>/      one part or family: params.py, one file per part, tests/, 
                       nft_table/ is a bought PVC + 2020 kit with printed PETG interfaces.
                       leaf_imager/ is a leaf NDVI imager: SPEC.md, sourced LEDs, five printed parts.
                       camera_reader/ is a bought Pi stand (meshes in ref/) with printed optics.
+                      garage/ is the site: the quirks a build stands on (lip, floor), with sources.
+                      workbench/ is a 2x4 + ply bench over 4 totes, back legs on the garage lip.
 coupons/              calibration coupon: optional, for tuning a fit.
 docs/FINDINGS.md      kernel/library/tooling facts with reproductions (F-numbers). Read before fighting the kernel.
 docs/PARAMS_CONVENTION.md   how a params.py is written; docs/params_template.py is the skeleton.
