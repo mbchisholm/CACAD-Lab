@@ -402,3 +402,21 @@ for sink in (0.0, 0.6):
 **Rule.** A boss, column or rib that leans on a wall overlaps it (projects/nutrient_controller sinks 0.6 mm), never
 touches it tangentially. The 3MF export is the check that catches it; `is_valid` and `single_solid` do not. Same
 family as F28: contact without a shared face.
+
+## F32. `export_step` refuses a solid fresh from `import_step` — CONFIRMED (2026-10-07)
+
+**Symptom.** `export_step(import_step("ref/SEN6x.step"), "x.step")` raised `RuntimeError: Failed to write STEP
+file` (build123d 0.11.1). The same solid inside `Compound([s])`, or rebuilt as `Solid(s.wrapped)`, exported.
+**Reproduction.**
+```python
+from build123d import *
+s = import_step("projects/sen6x_enclosure/ref/SEN6x.step")   # one Solid; vendor STEP, SolidWorks AP203
+type(s.parent).__name__                                       # 'Compound': the file's root
+export_step(s, "x.step")                                      # RuntimeError
+s.parent = None; export_step(s, "x.step")                     # ok
+```
+**Cause.** `import_step` unwraps a one-solid file to the Solid but leaves it an anytree child of the root Compound
+it was read into. Copying attributes onto a clean `Solid(s.wrapped)` one at a time, only `_NodeMixin__parent`
+breaks the export. `rotate`/`moved` copy the parent along.
+**Consequence.** Detach (`s.parent = None`) right after `import_step` before any shape from it is exported on its
+own. Inside a Compound it exports fine, which hides the problem in assembly exports.
