@@ -6,7 +6,7 @@ open to the bed face. With `tray=True` the plate grows walls to a derived
 rim and every board-edge connector in the registry gets a U-opening sized
 from its plug (`cacad.registries.connectors`). Built to test whether the
 shared library and the params convention extend past the cable gland; the
-tray is the rescope of `projects/mount_plate/` (see its `REVIEW.md`).
+tray is the rescope of `archive/mount_plate/` (see its `REVIEW.md`).
 
 ```
 params.py   PLATES (which boards, where, which screw, tray or not), SCREWS (ISO 4032 / 4762),

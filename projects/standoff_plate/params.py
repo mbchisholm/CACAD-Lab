@@ -91,7 +91,7 @@ _ADS = dict(screw="M2",
 
 PLATES = {
     "ADS1115": dict(_ADS, placements=(("ADS1115", (0.0, 0.0)),), tray=False),
-    # two boards end to end, 6 mm apart, as projects/mount_plate/enclosure.py had them:
+    # two boards end to end, 6 mm apart, as archive/mount_plate/enclosure.py had them:
     # the inner STEMMA QT connectors face each other across the gap. Kept to show validate() refusing it.
     "ADS1115x2": dict(_ADS, placements=(("ADS1115", (-15.7, 0.0)), ("ADS1115", (15.7, 0.0))), tray=False),
     # two boards side by side along their long edges, 4 mm apart; every connector faces an end wall
@@ -122,7 +122,7 @@ PLATES = {
                     placements=(("SEN0244", (0.0, 0.0)),), tray=False,
                     mount=dict(screw="M3", sides="Y")),   # connectors face ±X: mount strips on ±Y
     # Two Atlas isolated EZO carriers (pH + EC) side by side, 4 mm apart (DESIGN), SMAs to -Y, headers to +Y.
-    # The board hole is 3.0, so M3 is refused; M2 is on hand (enclosure_atlas/NOTES.md) and M2.5 also passes.
+    # The board hole is 3.0, so M3 is refused; M2 is on hand (archive/enclosure_atlas/NOTES.md) and M2.5 also passes.
     "EZO_ISO_x2": dict(screw="M2",
                        board_t=1.6,                 # Atlas STEP 1.59
                        underside_protrusion=3.5,    # DESIGN allowance: STEP max 2.51 (4-pin part), SMA 2.0; header tails UNVERIFIED
