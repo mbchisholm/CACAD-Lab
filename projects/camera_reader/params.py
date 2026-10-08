@@ -34,6 +34,8 @@ from types import MappingProxyType
 from cacad.registries.materials import (BED, FDM_HOLE_ALLOWANCE, FIT_CLEAR, INSERT_BORE_M3, INSERT_LEN_M3,
                                         INSERT_WALL_M3, NOZZLE, clearance_bore)
 
+STATUS = "passes"   # concept | passes | printed | parked
+
 # ---------------------------------------------------------------------------
 # The bought stand, measured on the designer's meshes (ref/stand/upright.stl,
 # base.stl) by sectioning, in the flat print frame. INFERRED: the designer

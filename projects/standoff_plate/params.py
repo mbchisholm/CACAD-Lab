@@ -26,6 +26,8 @@ from cacad.registries.boards import BOARDS
 from cacad.registries.connectors import MATINGS
 from cacad.registries.materials import CLEAR_LOOSE, LAYER, NOZZLE, WALL
 
+STATUS = "passes"   # concept | passes | printed | parked
+
 # ---------------------------------------------------------------------------
 # Bought hardware. ISO 4032 hex nuts (s = across flats, m = height) and
 # ISO 4762 socket-head cap screws (dk = head dia, k = head height, lengths =

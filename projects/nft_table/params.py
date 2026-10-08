@@ -39,6 +39,8 @@ from cacad.registries import materials as MAT
 from cacad.registries.reservoirs import RESERVOIRS
 from projects.nft_table import shapes as S
 
+STATUS = "passes"   # concept | passes | printed | parked
+
 IN = 25.4
 G = 9.80665
 TAGS = ("STANDARD", "VENDOR", "NOTES", "INFERRED", "DESIGN", "CONVENIENCE", "PLACEHOLDER")
