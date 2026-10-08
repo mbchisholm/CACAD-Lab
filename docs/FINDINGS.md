@@ -396,3 +396,20 @@ it was read into. Copying attributes onto a clean `Solid(s.wrapped)` one at a ti
 breaks the export. `rotate`/`moved` copy the parent along.
 **Consequence.** Detach (`s.parent = None`) right after `import_step` before any shape from it is exported on its
 own. Inside a Compound it exports fine, which hides the problem in assembly exports.
+
+## F33. FreeCAD `saveImage` right after a view change captures the camera mid-animation — OBSERVED (2026-10-07)
+
+**Symptom.** In projects/workbench/freecad_view.py, `v.viewLeft(); v.fitAll(); v.saveImage(...)` in one
+`execute_code` call saved a tilted view; `setViewDirection` and a rotated `viewIsometric` did the same. The model
+was right: every solid's bounding box matched params to 0.01 mm.
+**Reproduction.** FreeCAD 1.1.3 GUI, "Use navigation animations" on (the default):
+```python
+v = Gui.ActiveDocument.ActiveView
+v.viewLeft(); v.fitAll(); v.saveImage("/tmp/a.png", 1200, 800, "White")   # tilted, part-way to Left
+App.ParamGet("User parameter:BaseApp/Preferences/View").SetBool("UseNavigationAnimations", False)
+v.viewIsometric(); v.viewLeft(); v.fitAll(); v.saveImage("/tmp/b.png", 1200, 800, "White")   # true Left view
+```
+**Cause.** Not isolated. Best reading: the named views animate the camera, and `saveImage` renders whatever
+the camera holds at that moment.
+**Rule.** A scripted render turns `UseNavigationAnimations` off, renders, and restores the user's setting.
+Then look at the PNG: a tilted floor line or wall edge means the camera was caught mid-animation.
