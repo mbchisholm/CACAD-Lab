@@ -49,3 +49,15 @@ plate, the screws, the nuts, the mount screws or the boards beside it. Two
 tests prove the check bites: a board sunk 0.5 mm, and the MOSFET STEP turned
 180°. A board with no STEP on the machine shows as its registry envelope, and
 its vendor test skips with the source named.
+
+## ANALOG_NODE (2026-10-08)
+
+The analog front end of nutrient_controller L1 on one open plate, 111.8 x
+48 x 8.8: SEN0244, ADS1115 and Surveyor pH in a row, 6 mm apart, each turned
+90 degrees so both probe connectors (XH, SMA) face -Y. On a wall the probe
+leads hang down and the signal headers face up, one jumper from the ADS1115
+between them. M2 x 10 for all three (it passes 2.5, 3.0 and 3.05), with an
+ISO 7089 M2 washer on the two 3.0 holes. Every connector faces +-Y, so the
+mount strips are on +-X: four M4 / #8 holes, bore 4.7 (ISO 273 medium + the
+FDM allowance; a plate may now name its own mount bore). Vendor STEPs
+(Adafruit, Atlas) are checked on the single-board plates (`vendor.py`).

@@ -131,3 +131,8 @@ draft) with keyholes on a plate that follows the wall.
   B2's M3 insert bosses under the carrier (OD 8.0) reached 1.19 into the pin margin, a check that had been
   skipped while `nearest_pin` was unknown. DESIGN: the four vias nearest each carrier hole (8 in all) stay
   unsoldered. The nearest usable via is 6.35 away, so the boss clears the margin by 1.35.
+- 2026-10-08: L1, the lean rework (concept D and the OLED dropped). Analog plate ANALOG_NODE in standoff_plate,
+  logic box + lid in lean_box.py, flat mount with keyhole ears, pumps a later print. The checks caught: the M2 boss
+  with the FDM allowance (5.8) reaching the Perma-Proto's via margin (bore back to 2.4, as standoff_plate); a cable
+  notch 1.19 from a lid column; the cavity height following the driver stack instead of the carrier under the lid
+  column (now a max()); the flipped lid landing on the body in the print set (now placed by bounding box, checked).

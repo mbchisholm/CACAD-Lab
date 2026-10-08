@@ -56,7 +56,7 @@ not built.
 ![B1 front](../../docs/img/nutrient_controller_b1_front.png)
 ![B1 from the tote side: bolt holes, cable window, tube slot](../../docs/img/nutrient_controller_b1_back.png)
 
-## B2: rim clamp (active)
+## B2: rim clamp (alternative)
 
 The post plate bolts to a printed C-hook through two vertical slots, which
 set the box top anywhere from 29 to 41 mm below the rim. The hook's bridge
@@ -70,6 +70,36 @@ down on its bridge, so the jaw and leg are plain walls on the printer.
 
 ![Section through the hook: inner jaw, container wall, pad, M6, knob, post plate, box](../../docs/img/nutrient_controller_b2_section.png)
 ![The hook seen from the jaw side: cable groove on the bridge, throat, slot for a hook bolt](../../docs/img/nutrient_controller_b2_clamp.png)
+
+## L1: lean, flat-mounted (active, 2026-10-08)
+
+The analog node in two prints, without the display, buttons or pumps on the
+box. Concept D's instrument panel and B2's rim clamp both made the mount and
+the front panel the design; L1 makes them as plain as possible.
+
+**Analog plate** (`standoff_plate` ANALOG_NODE, 111.8 x 48 x 8.8): SEN0244,
+ADS1115 and Surveyor pH in a row, 6 mm apart, each turned so its probe
+connector faces -Y. All three take M2 x 10 into captured ISO 4032 nuts; the
+3.0 holes get an M2 washer. Four corner holes take M4 / #8 screws.
+
+**Logic box** (`lean_box.py`, 97.9 x 86.1 x 28.2 + 2.4 lid): the
+Perma-Proto on the left and the three MOSFET drivers stacked on the right,
+their JST PH ends facing the carrier across 10.5 mm (plug + finger room).
+Below them, an 18 mm cable zone holds the 722A jack body and the cable
+bends. The bottom wall carries five 6 x 6 notches (I2C to the plate,
+DS18B20, P1-P3) and the jack hole. Layout, cavity size and depth are derived:
+the cavity height is the max() of the driver stack and the carrier under a
+lid column, and the depth is the max() of the tallest part plus wire room
+and a stocked M3 x 30 landing in its nut pocket. The lid screws into M3 nuts
+in four corner columns, from the back face, like the board nuts.
+
+**Orientations.** Wall (cables down: the one that sheds water), bench or
+shelf (back down), under a shelf or table top (lid down). Keyhole ears take
+the same screws, standing 5.5 proud, so the box lifts off. The lid is not a
+seal: the notches face down on a wall, and the box is meant for splash, not
+spray.
+
+![L1 print set: box on its back, lid face down, analog plate](../../docs/img/nutrient_controller_l1_print_set.png)
 
 ## Limits
 
