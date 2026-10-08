@@ -71,7 +71,7 @@ the script.
 
 6. **ACTIVE_SIZES gates work.** Inactive sizes still pass `validate()` (their
    arithmetic is cheap and catches rule drift), but nothing builds or tests
-   them until the owner adds them. Promotion is a one-line diff.
+   them until you add them. Promotion is a one-line diff.
 
 7. **Competing requirements meet in `max()`.** A height, travel or length that
    several requirements need is `max()` of the individually derived needs,

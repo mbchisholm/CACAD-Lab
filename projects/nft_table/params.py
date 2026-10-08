@@ -278,7 +278,7 @@ def hv(key: str):
 # ---------------------------------------------------------------------------
 # Layout and printed-part inputs: key -> (value, tag, source). derive(**overrides) replaces values by key.
 # ---------------------------------------------------------------------------
-_SPEC_PROMPT = "owner's v2 spec (2026-10-01)"
+_SPEC_PROMPT = "author's v2 spec (2026-10-01)"
 LAYOUT = MappingProxyType({
     # ---- channels and frame
     "slope": (1 / 40, "DESIGN", f"{_SPEC_PROMPT}: 1:40, inside the notes' 1:30-1:40"),
@@ -295,7 +295,7 @@ LAYOUT = MappingProxyType({
              "brackets (30 mm down the leg); P5 ears clear the rail"),
     # ---- structure
     "defl_op": (360.0, "DESIGN", "operating load: rail deflection limit L/360"),
-    "defl_flood": (200.0, "DESIGN", "flooded (drain blocked) load: rail deflection limit L/200 (owner's decision 2026-10-01: "
+    "defl_flood": (200.0, "DESIGN", "flooded (drain blocked) load: rail deflection limit L/200 (author's decision 2026-10-01: "
                    "six legs, the flooded load gated)"),
     "fall_margin": (1.0, "DESIGN", "under the flooded load the channel floor still falls at least this much between rails"),
     "leg_K": (2.0, "DESIGN", "leg effective length factor: fixed base, free top (no credit for the frame)"),

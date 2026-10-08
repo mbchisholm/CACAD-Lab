@@ -1,7 +1,7 @@
 """M3 PCB standoff spacers — round, unthreaded, printed standing (axis = Z).
 
 Bore = M3 nominal + CLEAR_LOOSE (calibrated after the coupon; 0.40 until then).
-Lengths are a ladder; once one is chosen it belongs in constants.py.
+Lengths are a ladder; once one is chosen it belongs in a params.py.
 """
 from build123d import *
 from cacad.registries.materials import CLEAR_LOOSE

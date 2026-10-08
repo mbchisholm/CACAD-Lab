@@ -110,7 +110,7 @@ PARTS = MappingProxyType(dict(
     cuvette_10=dict(tag="INFERRED", source="standard macro cuvette 12.5 x 12.5 x 45 (NOTES spec lists it; "
                                            "vendor TODO there). UNVERIFIED until a vendor is picked",
                     h=45.0, w=12.5, d=12.5, inside_w=10.0, path=10.0, cap_h=8.0),
-    diffuser=dict(tag="DESIGN", source="NOTES spec: 3 mm opal (white) acrylic, cut to size by the owner",
+    diffuser=dict(tag="DESIGN", source="NOTES spec: 3 mm opal (white) acrylic, cut to size by the builder",
                   t=3.0, t_tol=0.3),    # UNVERIFIED: cast acrylic sheet is commonly +/-10 %
     led=dict(tag="UNVERIFIED", source="generic 5 mm (T-1 3/4) LED; part numbers are an open item in the spec",
              body_d=5.0, flange_d=5.8, flange_t=1.0, lead_pitch=2.54, body_len=8.6),
@@ -232,7 +232,7 @@ def derive(size: str = "V0", **overrides) -> dict:
     bz1 = cap_top + c["head_room"]
     d["box"] = dict(x=bx, y=by, z=(bz0, bz1), floor_top=floor_top, y_front_in=y_front_in, y_mask=y_mask,
                     y_diff=y_diff, y_rib=y_rib, y_led_in=y_led_in, inner_half_w=inner_half_w)
-    # Diffuser sheet, cut by the owner: full inner width and from the floor to the wall top, less the fit
+    # Diffuser sheet, cut by the builder: full inner width and from the floor to the wall top, less the fit
     d["diffuser_cut"] = (2 * inner_half_w - 2 * c["fit"], bz1 - floor_top - c["fit"])
 
     # --- ray envelope: lens pupil to every window, at a given Y ---------------------
