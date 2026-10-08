@@ -15,7 +15,7 @@ PROJECTS = sorted(p for p in (REPO / "projects").iterdir() if p.is_dir() and (p 
 STATUSES = ("concept", "passes", "printed", "parked")
 README_SECTIONS = ("## Status", "## Sources", "## Run")
 README_MAX_LINES = 80
-LEGACY_README = {"camera_reader", "leaf_imager", "nft_table", "nutrient_controller", "raised_bed",
+LEGACY_README = {"camera_reader", "leaf_imager", "nft_table", "raised_bed",
                  "standoff_plate", "tote_rack", "sen6x_enclosure"}
 
 PRIVATE = [re.compile(p) for p in (r"/Users/[A-Za-z]", "T1" + "TRTA", r"\bvault\b")]
