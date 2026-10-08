@@ -117,6 +117,11 @@ because a wall opening for an unsourced plug is a guess.
 
 ![Sensor hub tray: INA219, two ADS1115, TCA9548A](docs/img/sensor_hub_tray.png)
 
+Newer plates carry the DFRobot SEN0244 TDS board and two Atlas EZO carriers,
+with corner holes to screw the plate down.
+
+![FreeCAD: EZO_ISO_x2 and SEN0244 plates with boards, screws and mount screws](docs/img/freecad_standoff_plates.png)
+
 ### Nutrient controller
 
 `projects/nutrient_controller/` is a reservoir controller box: XIAO ESP32-C3,
@@ -131,6 +136,28 @@ on caliper measurements.
 
 ![Nutrient controller on a container rim](docs/img/nutrient_controller_b2_front.png)
 
+![FreeCAD: B2 clamped on a tote wall](docs/img/freecad_nutrient_controller.png)
+
+### SEN6x enclosure
+
+`projects/sen6x_enclosure/`: a two-part PETG box around Sensirion's own STEP
+of the SEN6x air-quality sensor, with the cable led out under one wall.
+
+![FreeCAD: SEN6x enclosure, lid translucent, cable by pin](docs/img/freecad_sen6x_enclosure.png)
+
+### Camera reader
+
+`projects/camera_reader/`: printed optics that turn a bought Pi 4B + Camera v2
+stand into a cuvette photometer.
+
+![FreeCAD: camera reader V0](docs/img/freecad_camera_reader.png)
+
+### Leaf imager
+
+`projects/leaf_imager/`: a dark chamber that images a leaf under five LED
+bands for NDVI. See its `SPEC.md`.
+
+![FreeCAD: leaf imager V0, chamber and roof translucent](docs/img/freecad_leaf_imager.png)
 
 ### Larger assemblies, not printed
 
@@ -147,7 +174,9 @@ layer is cut plans, screw lengths and where each number came from.
   The first version (an AM Hydro three-level rack and this table, both caliper-
   gated) is in `archive/nft_rack_v1/`.
 
-![NFT table, one level](docs/img/nft_table.png)
+![FreeCAD: tote rack, 4 × 27 gal](docs/img/freecad_tote_rack.png)
+![FreeCAD: raised bed, 4 × 2 ft](docs/img/freecad_raised_bed.png)
+![FreeCAD: NFT table, one level](docs/img/freecad_nft_table.png)
 
 ## build123d
 
@@ -230,11 +259,20 @@ aren't on the install path.
 
 ## Where it stands
 
-The gland was printed and didn't fit; nothing else has been printed. The
-coupon is exported and unprinted, so `CLEAR_LOOSE` and the other values in
-`cacad/registries/materials.py` are guesses marked TODO. The standoff plate
-for the ADS1115 is built, tested and rendered, and waits on two caliper
-readings (board thickness, header tail length) and the coupon. Known issues:
+2026-10-07: 177 tests pass on main. Nothing since the gland has been printed.
+Caliper gates are gone: where a bought part's geometry is unpublished, a
+printed interface is designed around it.
+
+| project | state |
+|---|---|
+| standoff_plate | 8 plates and trays pass; 5 refused by rule |
+| nutrient_controller | B2 rim clamp passes |
+| sen6x_enclosure | passes, checked against the vendor STEP |
+| camera_reader | V0 passes; LEDs not yet picked |
+| leaf_imager | V0 passes, five printed parts |
+| nft_table, tote_rack, raised_bed | pass; FreeCAD positions agree with params |
+
+Known issues:
 `cacad.export_3mf` reaches into two private `Mesher` methods, fine on
 build123d 0.11.1 and maybe not after; FreeCAD's TechDraw section view has
 taken FreeCAD down three times on multi-solid parts (F9), so sections come
