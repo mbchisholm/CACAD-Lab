@@ -43,7 +43,7 @@ gondolas, 150 mm of plant headroom above the rim, and a light picked by us.
 | P4 | Tray corner guide: the tray drops in with 4 mm all round (2 of each hand) | 8 | built, checked |
 | P5 | Tower head: hub disc joining the three spokes, the gearbox face mount | 2 | built, checked |
 | P6 | Home sensor bracket and arm magnet cup | 2 + 2 | to draw |
-| P7 | Light hangers under the bridge, with height steps | 2 | envelope |
+| P7 | Light hangers under the ridge, with height steps | 2 | envelope |
 | P8 | Nacelle: a cone over each gearmotor, landing on the spokes | 2 | envelope |
 | P9 | Electronics bay on the spine, and the feet | 1 + 4 | to draw |
 | P10 | Leg shoe: leg to foot crossbar | 4 | envelope |
