@@ -24,7 +24,7 @@ from types import MappingProxyType
 
 from cacad.registries.boards import BOARDS
 from cacad.registries.connectors import MATINGS
-from cacad.registries.materials import CLEAR_LOOSE, LAYER, NOZZLE, WALL
+from cacad.registries.materials import CLEAR_LOOSE, LAYER, NOZZLE, WALL, clearance_bore
 
 STATUS = "passes"   # concept | passes | printed | parked
 
@@ -38,6 +38,9 @@ SCREWS = MappingProxyType(dict(
     M2=dict(d=2.0, pitch=0.40, nut_s=4.0, nut_m=1.6, head_dk=3.8, head_k=2.0, lengths=(4, 5, 6, 8, 10, 12, 16, 20)),
     M2_5=dict(d=2.5, pitch=0.45, nut_s=5.0, nut_m=2.0, head_dk=4.5, head_k=2.5, lengths=(4, 5, 6, 8, 10, 12, 16, 20)),
     M3=dict(d=3.0, pitch=0.50, nut_s=5.5, nut_m=2.4, head_dk=5.5, head_k=3.0, lengths=(5, 6, 8, 10, 12, 16, 20, 25)),
+    # mount screws into wood: ISO 7045 M4 pan head (dk 8.0, k 3.1). A #8 pan-head wood screw (ASME B18.6.1: 0.164 in
+    # = 4.17, head 0.311 in = 7.9) is the same envelope; nut row (ISO 4032) for completeness
+    M4=dict(d=4.0, pitch=0.70, nut_s=7.0, nut_m=3.2, head_dk=8.0, head_k=3.1, lengths=(12, 16, 20, 25, 30)),
 ))
 
 COMMON = MappingProxyType(dict(
@@ -161,6 +164,22 @@ PLATES = {
                        top_protrusion=10.0,         # PLACEHOLDER: XIAO on its headers. Tray only
                        placements=(("PERMAPROTO_QUARTER", (0.0, 0.0)),), tray=False,
                        mount=dict(screw="M3", sides="Y")),
+    # 2026-10-08, the lean nutrient controller (nutrient_controller/lean_params.py): the whole analog front end on one
+    # open plate that screws flat to a wall or bench beside the logic box. TDS | ADC | pH in a row, every board turned
+    # so both probe connectors (SEN0244 XH, Surveyor SMA) face -Y: on a wall the probe leads hang straight down, the
+    # signal headers face up, and the ADS1115 in the middle is one short jumper from each. One screw size for all
+    # three: M2 passes every hole (ADS1115 2.5 plated, Surveyor 3.0, SEN0244 3.05); on the two 3.0 holes an
+    # ISO 7089 M2 washer (d2 5.0, inside both boards' top copper at 4.57 and 6.40) gives the head a full seat.
+    "ANALOG_NODE": dict(screw="M2",
+                        board_t=1.6,                # the thickest: SEN0244 UNVERIFIED 1.6 (Surveyor 1.59, ADS1115 1.57)
+                        underside_protrusion=3.5,   # DESIGN allowance, as the single-board plates
+                        top_protrusion=7.0,         # JST XH header (connectors.JST_XH2). Tray only
+                        placements=(("SEN0244", (-30.89, 0.0), 90), ("ADS1115", (0.0, 0.0), 90),
+                                    ("SURVEYOR_PH", (30.89, 0.0), 90)),   # 6 mm between boards: DESIGN, jumper room
+                        tray=False,
+                        # every connector faces +-Y, so the mount strips go on +-X. M4 / #8 wood screw, ISO 273
+                        # medium + FDM allowance (materials.clearance_bore), not CLEAR_LOOSE: a #8 (4.17) binds in 4.4
+                        mount=dict(screw="M4", sides="X", bore=clearance_bore("M4"))),
 }
 
 # sprout-cut env `nutrient-analog-xiao` (platformio.ini, read 2026-10-07): the boards of the analog nutrient node,
@@ -184,7 +203,7 @@ VENDOR_STEPS = MappingProxyType({
 })
 
 ACTIVE_PLATES = ("ADS1115", "ADS1115x2_tray", "INA219", "TCA9548A", "FEATHER", "SENSOR_HUB_tray", "SEN0244", "EZO_ISO_x2",
-                 "SURVEYOR_PH", "MOSFET_5648x3", "PERMAPROTO")
+                 "SURVEYOR_PH", "MOSFET_5648x3", "PERMAPROTO", "ANALOG_NODE")
 
 
 def _round_up(x: float, step: float) -> float:
@@ -310,7 +329,7 @@ def derive(plate: str, **overrides) -> dict:
     d["mount"] = mount = s.get("mount")
     if mount:
         ms = d["mount_spec"] = dict(SCREWS[mount["screw"]])
-        d["mount_bore_d"] = ms["d"] + c["mount_screw_clearance"]
+        d["mount_bore_d"] = mount.get("bore", ms["d"] + c["mount_screw_clearance"])   # a plate may name its own bore
         d["mount_head_r"] = ms["head_dk"] / 2
         d["mount_inset"] = d["mount_head_r"] + c["mount_head_seat"]                    # hole centre to plate edge
         d["mount_strip"] = d["mount_head_r"] + c["mount_access_clearance"] + d["mount_inset"]   # board outline to plate edge
