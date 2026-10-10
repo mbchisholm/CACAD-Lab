@@ -49,6 +49,7 @@ The fasteners are listed in `SPEC.md` under *Parts*.
 ```
 .venv/bin/python projects/leaf_imager/params.py     # the design, printed and validated
 .venv/bin/python projects/leaf_imager/assembly.py   # assembly checks + out/*.step, *.stl, V0.3mf
+.venv/bin/python projects/leaf_imager/freecad_assembly.py   # out/leaf_imager_V0.FCStd, exploded view (needs the RPC server)
 .venv/bin/python -m pytest projects/leaf_imager
 ```
 
