@@ -33,7 +33,7 @@ env), added 2026-10-07, one plate per board:
   Two bosses and two rest pads per board.
 - `PERMAPROTO`: the XIAO ESP32-C3 + Pololu carrier, M2, 49.2 × 63.8 × 8.8.
 
-Vendor STEPs (Adafruit, Atlas) are checked on them (`vendor.py`, DESIGN.md).
+`ANALOG_NODE` (2026-10-08) puts SEN0244, ADS1115 and pH on one plate (DESIGN.md).
 
 Failing by rule, on purpose:
 - `ADS1115x2`: inner connectors face each other 6.5 mm apart, the plug needs 15.

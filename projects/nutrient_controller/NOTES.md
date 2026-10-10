@@ -135,3 +135,8 @@ draft) with keyholes on a plate that follows the wall.
   AUTO / OFF / PRIME toggles and the pump heads on the front, one encoder knob. Layout and fit checks pass:
   56 solids, no overlap. Vendor: Adafruit 878 and 4991 STEPs, APEM Q datasheet (ref/). UNVERIFIED: the C&K
   7000 toggle and Hexseal boot sizes, the encoder thread, the NKP head diameter, the display back parts.
+- 2026-10-08: L1, the lean rework (concept D and the OLED dropped). Analog plate ANALOG_NODE in standoff_plate,
+  logic box + lid in lean_box.py, flat mount with keyhole ears, pumps a later print. The checks caught: the M2 boss
+  with the FDM allowance (5.8) reaching the Perma-Proto's via margin (bore back to 2.4, as standoff_plate); a cable
+  notch 1.19 from a lid column; the cavity height following the driver stack instead of the carrier under the lid
+  column (now a max()); the flipped lid landing on the body in the print set (now placed by bounding box, checked).
