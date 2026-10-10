@@ -8,7 +8,12 @@ gondolas, 150 mm of plant headroom above the rim, and a light picked by us.
 
 ## Concept
 
-- A Ferris wheel with two cabins. Two end towers each hold a gearmotor and a rotor arm.
+- A Ferris wheel with two cabins between two A-frame towers.
+- Each tower is three 2020 spokes, two legs and a mast. The spokes aim at the axis and end 45 mm short of it. There
+  they bolt to a round printed hub disc (P5).
+- The gearmotor bolts to P5 and passes between the spoke ends into a printed nacelle (P8). Its torque reacts into
+  all three spokes.
+- One ridge beam on the mast tops carries the light. One spine joins the feet. No cage, no side rails.
 - A gondola hangs from each end of the arms on a plain pivot (ISO 7379 shoulder screw in a printed bore). Gravity
   keeps it level.
 - No shaft or rod crosses the growing volume. The arms sit outboard of the tray ends, so the light sees only plants.
@@ -22,7 +27,7 @@ gondolas, 150 mm of plant headroom above the rim, and a light picked by us.
 ### Bought
 | | Item | Source |
 |---|---|---|
-| B1 | 2020 extrusion (HFS5 type): base, towers, bridge, arms, gondola rails, posts | Misumi FA 2010 p.2239 |
+| B1 | 2020 extrusion (HFS5 type): legs, masts, feet, ridge, spine, arms, gondola rails, posts; 4× Misumi HBLFSN5 brackets | Misumi FA 2010 p.2239, p.2245 |
 | B2 | 2× StepperOnline 17HS15-1584S-MG50 (NEMA 17, 50:1 planetary, 10 Nm permissible), one per tower | reseller spec table, UNVERIFIED drawing |
 | B3 | 2× Pololu #2693 8 mm hub; 4× ISO 7379 Ø8 × 16 shoulder screw; ISO 7089 8 washers; ISO 4032 M6/M3 nuts; ISO 4762 M5 × 10/12 + HNTAJ5 T-nuts | standards |
 | B4 | 3× Barrina T5 2 ft 10 W bars, linked, switched by a relay | barrina-led.com; length UNVERIFIED |
@@ -35,12 +40,13 @@ gondolas, 150 mm of plant headroom above the rim, and a light picked by us.
 | P1 | Rotor hub: Pololu hub to arm, keyed into the slot | 2 | built, checked |
 | P2 | Pivot plate on each arm end: shoulder stop face and captive M6 nut | 4 | built, checked |
 | P3 | Gondola hanger on each post top: the plain-bearing pivot | 4 | built, checked |
-| P4 | Tray fences at the gondola corners (tray drops in loose) | 8 | envelope |
-| P5 | Motor plate: gearbox face to the tower's motor rails | 2 | envelope |
+| P4 | Tray corner guide: the tray drops in with 4 mm all round (2 of each hand) | 8 | built, checked |
+| P5 | Tower head: hub disc joining the three spokes, the gearbox face mount | 2 | built, checked |
 | P6 | Home sensor bracket and arm magnet cup | 2 + 2 | to draw |
 | P7 | Light hangers under the bridge, with height steps | 2 | envelope |
-| P8 | Tower skins: hide the motors and wiring (the "elegant" part) | 4 | to draw |
-| P9 | Electronics bay in a base foot, and the feet | 1 + 4 | to draw |
+| P8 | Nacelle: a cone over each gearmotor, landing on the spokes | 2 | envelope |
+| P9 | Electronics bay on the spine, and the feet | 1 + 4 | to draw |
+| P10 | Leg shoe: leg to foot crossbar | 4 | envelope |
 
 ## Electronics and firmware
 
@@ -66,4 +72,6 @@ gondolas, 150 mm of plant headroom above the rim, and a light picked by us.
   - The Pololu #2693 hole pattern, which feeds P1.
   - The T5 bar length.
 - Pivot friction is UNVERIFIED. The worst stick-slip estimate is 0.37°. Grease the shoulder.
-- Draw P4–P9. P8 decides the look.
+- Racking along X is resisted only by the brackets at the ridge and spine corners. Add a second spine, or diagonal
+  ties, if it sways in use.
+- Draw P6–P10. P8's finish and P7's light hood decide most of what is left of the look.

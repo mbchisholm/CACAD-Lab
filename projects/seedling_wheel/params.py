@@ -1,6 +1,8 @@
 r"""Seedling wheel: two 1020 trays on a two-gondola Ferris wheel that swaps which tray is under the light.
 
-Two end towers each carry a gearmotor and a rotor arm. A gondola hangs from each end of the arms on plain pivots and
+Two end towers, each an A of three 2020 spokes (two legs and a mast) meeting at a round printed hub disc (P5), carry
+a gearmotor under a printed nacelle (P8) and a rotor arm. One ridge beam joins the masts and carries the light; one
+spine joins the feet. A gondola hangs from each end of the arms on plain pivots and
 stays level by gravity; turning the rotor 180 deg swaps the trays. Nothing crosses the growing volume: the arms are
 outboard of the tray ends, so the light above the top tray sees only plants. The ESP32 runs both motors from one
 STEP/DIR pair and homes each tower on its own hall sensor (SPEC.md).
@@ -10,10 +12,11 @@ axis's vertical plane. Gondola-local frame: origin on the pivot axis, Z down to 
 
         light bars   ===========================   z_light
                          .-- P3 + pivot --.         z_axis + R  (rotor at 0 deg: gondola A up)
-        tower |  arm |  [ tray A, plants  ]  | arm | tower
-              |  hub o------------------------o hub|           z_axis
-              |      |  [ tray B, shaded  ]  |     |           z_axis - R
-        base  =============================================    z = 0 .. a2020
+   ridge ===|==========================================|===    z_ridge
+       mast |  arm |  [ tray A, plants  ]  | arm |  mast
+    P8 <|P5 o------------------------------------o P5|> P8      z_axis
+       legs/ \     |  [ tray B, shaded  ]  |     / \ legs     z_axis - R
+   foot ---------- spine ------------------------------- foot  z = 0 .. a
 
 Every input is a (value, TAG, source) triple (PARAMS_CONVENTION rule 5). STATUS is concept: UNVERIFIED values (tray
 mass, light bar length, the gearbox and hub drawings) are allowed for ideation and named in `derive()["unverified"]`;
@@ -75,6 +78,9 @@ MOTOR = MappingProxyType(dict(
     body_len=(39.0, "UNVERIFIED", "17HS15 body length; check the maker's drawing"),
     gearbox_len=(52.0, "UNVERIFIED", "MG gearbox length to its face; check the maker's drawing"),
     shaft=((8.0, 20.0), "UNVERIFIED", "MG output shaft d x length; check the maker's drawing"),
+    face_holes=((31.0, "M3", 5.0), "UNVERIFIED", "gearbox face: 4 x M3 on a 31 mm square, 5 deep, assumed like the "
+                                                 "NEMA 17 motor face; check the maker's drawing before printing P5"),
+    pilot=(22.0, "UNVERIFIED", "gearbox pilot boss diameter assumed like the NEMA 17 motor's 22"),
 ))
 
 HUB = MappingProxyType(dict(
@@ -118,7 +124,9 @@ COMMON = MappingProxyType(dict(
     # --- growing volume ---
     headroom=(150.0, "DESIGN", "owner's choice: plant tops this far above the tray rim (transplant-size seedlings)"),
     tray_clear=(4.0, "DESIGN", "tray rim to a locating fence, each side: the tray drops in free (never pressed)"),
-    fence_t=(3.0, "DESIGN", "P4 fence thickness (envelope only this round)"),
+    fence_t=(3.0, "DESIGN", "P4 fence wall: 7.5 perimeters"),
+    p4_pad_t=(5.0, "DESIGN", "P4 pad on the crossbar top: M5 x 10 into its slot"),
+    p4_wing=(30.0, "DESIGN", "P4 fence length along each tray side, past the tray corner"),
     # the tray drops between P4 fences: end_clear = tray_clear + fence_t puts the end fence on the crossbar's face
     # --- gondola ---
     rail_y=(90.0, "DESIGN", "long rails' centres: under the tray's inner floor, so they carry it whatever its taper"),
@@ -141,13 +149,21 @@ COMMON = MappingProxyType(dict(
     key=((5.6, 1.8), "DESIGN", "P1 key into the arm's slot, W x H: takes the drive torque in shear, not friction"),
     key_gap=(14.0, "DESIGN", "key interrupted within this of the axis: clear of the M3 nut pockets"),
     cb_clear=(1.0, "DESIGN", "counterbore diameter over the head; depth k + 0.4 so heads sit below the face"),
-    # --- tower, base, light ---
-    ground_gap=(25.0, "DESIGN", "lowest point of the sweep above the base rails"),
+    # --- towers: an A of three 2020 spokes aimed at the axis, joined by P5; ridge and spine ---
+    ground_gap=(25.0, "DESIGN", "lowest point of the sweep above the spine"),
     light_gap=(40.0, "DESIGN", "highest point of the sweep to the light bars' underside"),
-    tower_y=(100.0, "DESIGN", "tower verticals' centres"),
-    base_y=(260.0, "DESIGN", "base long rails' centres: the footprint"),
-    motor_plate_t=(6.0, "DESIGN", "P5 plate the gearbox face bolts to"),
-    hub_gap=(2.0, "DESIGN", "hub to P5"),
+    foot_y=(250.0, "DESIGN", "leg feet centres on the foot crossbar: the footprint half-width"),
+    foot_over=(30.0, "DESIGN", "foot crossbar beyond the leg's foot"),
+    spoke_r0=(45.0, "DESIGN", "spoke ends this far from the axis: the gearmotor passes between them in the tower slice"),
+    spoke_screws=((55.0, 72.0), "DESIGN", "P5's two M5 on each spoke, radii from the axis"),
+    head_d=(160.0, "DESIGN", "P5 hub disc diameter: reaches the outer M5 with a wall"),
+    head_t=(10.0, "DESIGN", "P5 thickness: M5 x 10 into the spokes' slots"),
+    hub_gap=(2.0, "DESIGN", "Pololu hub to P5"),
+    pod=((50.0, 36.0, 2.4, 6.0), "DESIGN", "P8 nacelle: rim radius on the spokes, end radius, wall, end gap past the motor"),
+    hanger_x=(200.0, "DESIGN", "P7 light hangers under the ridge, at +/- this x"),
+    hanger_t=(10.0, "DESIGN", "P7 depth between the ridge and the bars' tops"),
+    bracket=((30.0, 20.0, 4.5), "VENDOR", "Misumi HBLFSN5 tabbed bracket legs 30, width 20, base 4.5 (FA 2010 p.2245, "
+                                          "nft_table): the mast-ridge and spine-foot joints"),
     # --- motion ---
     t_swap=(40.0, "DESIGN", "seconds for the 180 deg swap"),
     t_ramp=(5.0, "DESIGN", "S-curve ramp at each end, s"),
@@ -166,6 +182,9 @@ PRINT_ORIENTATION = MappingProxyType(dict(
     p2_pivot=dict(up=(0, 0, 1), bed_face="arm face", bed_z="0",
                   known_overhangs=["M6 nut pocket ceiling (bridged hex)"], overhang_exceptions="p2_pocket_ceiling"),
     p3_hanger=dict(up=(0, 0, 1), bed_face="post face", bed_z="0", known_overhangs=[], overhang_exceptions=None),
+    p4_corner=dict(up=(0, 0, 1), bed_face="pad underside on the crossbar", bed_z="0", known_overhangs=[],
+                   overhang_exceptions=None),
+    p5_head=dict(up=(0, 0, 1), bed_face="spoke face", bed_z="0", known_overhangs=[], overhang_exceptions=None),
 ))
 
 SIZES = {"T1020": dict()}    # one size: the 1020 flat
@@ -224,9 +243,9 @@ def derive(size: str = "T1020", **overrides) -> dict:
     d["x_arm"] = (d["x_p2"][1], d["x_p2"][1] + a)
     d["x_p1"] = (d["x_arm"][1], d["x_arm"][1] + c["p1_t"])
     d["x_hub"] = (d["x_p1"][1], d["x_p1"][1] + d["hub"]["t"])
-    d["x_p5"] = (d["x_hub"][1] + c["hub_gap"], d["x_hub"][1] + c["hub_gap"] + c["motor_plate_t"])
-    d["x_tower"] = (d["x_p5"][1], d["x_p5"][1] + a)     # tower verticals and motor rails, inboard face on P5
-    d["shaft_need"] = c["motor_plate_t"] + c["hub_gap"] + d["hub"]["t"] * 0.75
+    d["x_p5"] = (d["x_hub"][1] + c["hub_gap"], d["x_hub"][1] + c["hub_gap"] + c["head_t"])
+    d["x_tower"] = (d["x_p5"][1], d["x_p5"][1] + a)     # the spokes' slice; their inboard faces carry P5
+    d["shaft_need"] = c["head_t"] + c["hub_gap"] + d["hub"]["t"] * 0.75
     d["length"] = 2 * d["x_tower"][1]
 
     # M5 screw stacks into the HFS5 slot (nft_table rule): tip past the T-nut, off the slot floor
@@ -236,8 +255,9 @@ def derive(size: str = "T1020", **overrides) -> dict:
     d["bore5"] = clearance_bore("M5")
     d["slot_p"] = (x["slot_lip"] - (x["tnut_h"] - x["tnut_body"]) + x["tnut_h"], x["slot_depth"])
     d["screws5"] = {}
-    for part, t_plate in (("P3", d["p3_t"]), ("P2", d["p2_t"]), ("P1", c["p1_t"])):
-        under = t_plate - d["cb_depth5"]
+    for part, under in (("P3", d["p3_t"] - d["cb_depth5"]), ("P2", d["p2_t"] - d["cb_depth5"]),
+                        ("P1", c["p1_t"] - d["cb_depth5"]), ("P5", c["head_t"] - d["cb_depth5"]),
+                        ("P4", c["p4_pad_t"])):
         L = min(L for L in f["shcs_lengths"] if L - under >= d["slot_p"][0])
         d["screws5"][part] = dict(L=L, under_head=under, into_slot=L - under)
 
@@ -252,10 +272,20 @@ def derive(size: str = "T1020", **overrides) -> dict:
     d["sweep_top"] = d["z_axis"] + d["R"] + d["env_top"]
     d["sweep_bot"] = d["z_axis"] - d["R"] + d["env_bot"]
     d["z_light"] = d["sweep_top"] + c["light_gap"]       # bar underside
-    d["z_top_rail"] = d["z_light"] + d["light"]["section"] + 10.0   # bars clip under the tower top rails' P7
-    d["height"] = d["z_top_rail"] + a
+    d["z_ridge"] = d["z_light"] + d["light"]["section"] + c["hanger_t"]   # ridge underside: P7 between
+    d["height"] = d["z_ridge"] + a
     d["sweep_y"] = d["R"] + d["w_gondola"] / 2
-    d["width"] = max(2 * c["base_y"] + a, 2 * d["sweep_y"])
+    d["width"] = max(2 * (c["foot_y"] + c["foot_over"]), 2 * d["sweep_y"])
+    # spokes: two legs from the axis to their feet on the foot crossbar's top, and a mast up to the ridge
+    d["leg_angle"] = math.degrees(math.atan2(c["foot_y"], d["z_axis"] - a))
+    d["leg_len"] = math.hypot(c["foot_y"], d["z_axis"] - a) - c["spoke_r0"]
+    d["mast"] = (d["z_axis"] + c["spoke_r0"], d["z_ridge"])
+    m = d["motor"]
+    d["motor_end"] = d["x_tower"][0] + m["gearbox_len"] + m["body_len"]
+    d["motor_half_diag"] = m["flange"] / math.sqrt(2)
+    pr, pe, pw, pg = c["pod"]
+    d["pod_x"] = (d["x_tower"][1], d["motor_end"] + pg + pw)
+    d["length_motors"] = 2 * d["pod_x"][1]
     d["light_to_floor"] = d["z_light"] - (d["z_axis"] + d["R"] + d["z_floor"])
     d["light_to_tops"] = d["light_to_floor"] - d["h_plants"]
 
@@ -283,6 +313,20 @@ def derive(size: str = "T1020", **overrides) -> dict:
     m_frame = 6.0                                                               # UNVERIFIED frame + motors + light
     m_tot = m_frame + 2 * d["m_gondola"] + t["mass_loaded"]
     d["cg_offset"] = t["mass_loaded"] * d["R"] / m_tot
+    # P5 hub disc (local: z = 0 its spoke face, +y up, x across): spoke directions and screw points
+    th = math.radians(d["leg_angle"])
+    spokes = {"mast": (0.0, 1.0), "leg +": (math.sin(th), -math.cos(th)), "leg -": (-math.sin(th), -math.cos(th))}
+    fh = m["face_holes"]
+    d["p5"] = dict(d=c["head_d"], t=c["head_t"], bore=m["pilot"] + 2 * FIT_CLEAR, spokes=spokes,
+                   screws5=[(u * r, v * r) for u, v in spokes.values() for r in c["spoke_screws"]],
+                   holes3=[(sx * fh[0] / 2, sy * fh[0] / 2) for sx in (-1, 1) for sy in (-1, 1)],
+                   bore3=clearance_bore("M3"), cb_d3=f["M3_head"][0] + c["cb_clear"], cb_depth3=f["M3_head"][1] + 0.4)
+    d["p5"]["screw3_L"] = min(L for L in f["shcs_lengths"]
+                              if L >= c["head_t"] - d["p5"]["cb_depth3"] + 0.6 * fh[2] and
+                              L <= c["head_t"] - d["p5"]["cb_depth3"] + fh[2])
+    # P4 corner fence (local: origin at the crossbar's outer top corner, x' inboard negative, y' inward negative)
+    d["p4"] = dict(pad=(a, 40.0, c["p4_pad_t"]), wall=c["fence_t"], h=a + t["D"],
+                   end_y=40.0, side_x=c["fence_t"] + c["tray_clear"] + c["p4_wing"], screw=(a / 2, -20.0))
     d["unverified"] = [f"{tb}.{k}" for tb, T in (("TRAY", TRAY), ("MOTOR", MOTOR), ("HUB", HUB), ("LIGHT", LIGHT),
                                                  ("COMMON", COMMON)) for k, v in T.items() if v[1] == "UNVERIFIED"]
 
@@ -306,6 +350,11 @@ def derive(size: str = "T1020", **overrides) -> dict:
         "P1 hub bore to M3 bore": hub_r - d["p1"]["bore"] / 2 - d["p1"]["bore3"] / 2,
         "P1 M5 counterbore to disc edge": c["p1_d"] / 2 - c["p1_screw_r"] - d["cb_d5"] / 2,
         "P3 M5 counterbore to edge": (c["p3_w"] - d["cb_d5"]) / 2,
+        "P5 pilot bore to M3 bore": math.hypot(*d["p5"]["holes3"][0]) - d["p5"]["bore"] / 2 - d["p5"]["bore3"] / 2,
+        "P5 M5 counterbore to disc edge": c["head_d"] / 2 - max(c["spoke_screws"]) - d["cb_d5"] / 2,
+        "P5 M3 counterbore to pilot bore": math.hypot(*d["p5"]["holes3"][0]) - d["p5"]["cb_d3"] / 2 - d["p5"]["bore"] / 2,
+        "P4 fence": c["fence_t"],
+        "P4 M5 bore to pad edge": a / 2 - d["bore5"] / 2,
     }
     d["print_orientation"] = {
         k: dict(v, bed_z=float(v["bed_z"]),
@@ -351,14 +400,24 @@ def validate(size: str = "T1020") -> dict:
     assert d["torque_sf"] >= c["torque_sf"], f"gearbox margin {d['torque_sf']:.2f} < {c['torque_sf']}"
     assert d["torque_avail"] >= d["torque_per_end"] * c["torque_sf"], "motor cannot lift the imbalance"
     assert d["shaft_need"] <= d["motor"]["shaft"][1], "gearbox shaft too short for P5 + hub"
+    # the tower: the gearmotor passes between the spokes; P8 wraps it and lands on the spokes
+    assert c["spoke_r0"] >= d["motor_half_diag"] + 10.0, "spoke ends crowd the gearmotor"
+    pr, pe, pw, pg = c["pod"]
+    assert pe - pw >= d["motor_half_diag"] + 1.0, "P8 nacelle end does not clear the gearmotor"
+    assert c["spoke_r0"] + 3.0 <= pr, "P8 rim does not land on the spokes"
+    assert c["spoke_r0"] + 5.0 <= min(c["spoke_screws"]), "P5 screw too near the spoke end"
+    assert d["sweep_r_arm"] < d["mast"][1] - d["z_axis"], "arm sweep reaches the ridge"
+    assert c["hanger_x"] + a / 2 < d["light"]["L"] / 2, "P7 hangers miss the bars"
+    assert d["p4"]["end_y"] < d["xbar_len"] / 2 - c["rail_y"] - a / 2, "P4 pad reaches the long rail"
     assert d["swing_deg"] < 0.5, f"swap swings the trays {d['swing_deg']:.2f} deg"
     assert d["arm_stress"] < 30.0, f"arm root {d['arm_stress']:.1f} MPa"
     assert d["rail_sag"] < 1.0, f"tray rails sag {d['rail_sag']:.2f}"
-    assert d["cg_offset"] < c["base_y"] / 2, "tips with one loaded tray at the side"
+    assert d["cg_offset"] < c["foot_y"] / 2, "tips with one loaded tray at the side"
     # printability
     for name, w in d["walls"].items():
         assert w >= d["min_wall"] and w >= 2 * d["nozzle_d"], f"wall {name} = {w:.2f}"
-    for part, dim in (("P1", c["p1_d"]), ("P2", d["p2"]["len"]), ("P3", d["p3"]["top"] - d["p3"]["bot"])):
+    for part, dim in (("P1", c["p1_d"]), ("P2", d["p2"]["len"]), ("P3", d["p3"]["top"] - d["p3"]["bot"]),
+                      ("P5", c["head_d"]), ("P4", d["p4"]["side_x"] + a)):
         assert dim <= BED[0], f"{part} {dim} exceeds the bed"
     assert STATUS in ("concept", "passes", "printed", "parked")
     return d
@@ -372,7 +431,8 @@ if __name__ == "__main__":
             print(f"{size}: FAIL: {e}")
             continue
         print(f"{size}: ok")
-        print(f"  overall          {d['length']:.0f} L x {d['width']:.0f} W x {d['height']:.0f} H mm")
+        print(f"  overall          {d['length']:.0f} L ({d['length_motors']:.0f} over the nacelles) x {d['width']:.0f} W x "
+              f"{d['height']:.0f} H mm; legs {d['leg_angle']:.1f} deg off vertical, {d['leg_len']:.0f} long")
         print(f"  gondola envelope {d['w_gondola']:.1f} W x {d['h_gondola']:.1f} H; R_min {d['R_min']:.1f} -> R {d['R']}")
         print(f"  axis z {d['z_axis']:.1f}; sweep {d['sweep_bot']:.1f} .. {d['sweep_top']:.1f}; light {d['z_light']:.1f}")
         print(f"  light to tray floor {d['light_to_floor']:.0f}, to plant tops at full growth {d['light_to_tops']:.0f}")

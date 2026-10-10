@@ -3,8 +3,8 @@
     .venv/bin/python projects/seedling_wheel/assembly.py [phi_deg]   # checks; out/seedling_wheel_<phi>.step + .3mf
 
 Bought parts are envelopes: 2020 extrusion as a 20 x 20 bar with a 6 x 6 groove in each face (HFS5 slot opening and
-depth), the gearmotor as its 42.3 square, the tray as a straight-walled shell, the plants as the headroom box. P4
-fences, P5 motor plate and P7 light hangers are envelopes until they are drawn.
+depth), the gearmotor as its 42.3 square, the tray as a straight-walled shell, the plants as the headroom box.
+P7 light hangers, P8 nacelles, P10 leg shoes and the Misumi brackets are envelopes until they are drawn.
 `check_assembly(phi)` fails on any overlap between parts that are not designed to touch.
 
 A part file names no filesystem module (F23) and imports params by package path (F24).
@@ -13,13 +13,15 @@ from __future__ import annotations
 
 import math
 
-from build123d import Box, Compound, Cylinder, Location, Part, Plane, RegularPolygon, extrude, Pos
+from build123d import Box, Compound, Cone, Cylinder, Location, Part, Plane, RegularPolygon, extrude, Pos
 
 from cacad import interference_volume
 from projects.seedling_wheel.params import derive
 from projects.seedling_wheel.p1_hub import build_part as build_p1
 from projects.seedling_wheel.p2_pivot import build_part as build_p2
 from projects.seedling_wheel.p3_hanger import build_part as build_p3
+from projects.seedling_wheel.p4_corner import build_part as build_p4
+from projects.seedling_wheel.p5_head import build_part as build_p5
 
 
 def _bar(length: float, d: dict) -> Part:
@@ -61,14 +63,16 @@ def gondola(d: dict, label: str) -> dict:
         p[f"{label} post {s:+d}"] = bar((xm, 0, d["post_z"][0]), (xm, 0, d["post_z"][1]), d)
         # P3 on the post's outboard face: local z -> outboard, local y -> up
         p[f"{label} P3 {s:+d}"] = Plane(origin=(s * d["x_post1"], 0, 0), x_dir=(0, s, 0), z_dir=(s, 0, 0)).location * build_p3(d["size"])
-        # P4 fence envelopes: end fence on the crossbar's inner face, side fence on the crossbar's end
-        xf0, xf1 = t["L"] / 2 + c["tray_clear"], d["x_end0"]
+    # P4 corner guides: one part, mirrored to each corner; local origin on the crossbar's inner top corner, at its end
+    p4 = build_p4(d["size"])
+    for s in (-1, 1):
         for sy in (-1, 1):
-            yf0, yf1 = t["W"] / 2 + c["tray_clear"], t["W"] / 2 + c["tray_clear"] + c["fence_t"]
-            end = box(min(s * xf0, s * xf1), max(s * xf0, s * xf1), *sorted((sy * (yf1 - 40), sy * yf1)), zf - 2 * a, zf + t["D"])
-            side = box(*sorted((s * (xf0 - 40), s * xf0)), *sorted((sy * yf0, sy * yf1)), zf - 2 * a, zf + t["D"])
-            side = side.moved(Location((0, 0, 0)))
-            p[f"{label} P4 {s:+d}{sy:+d}"] = end + side
+            q = p4
+            if s < 0:
+                q = q.mirror(Plane.YZ)
+            if sy < 0:
+                q = q.mirror(Plane.XZ)
+            p[f"{label} P4 {s:+d}{sy:+d}"] = Pos(s * d["x_end0"], sy * d["xbar_len"] / 2, zf - a) * q
     w = 2.0
     p[f"{label} tray"] = box(-t["L"] / 2, t["L"] / 2, -t["W"] / 2, t["W"] / 2, zf, zf + t["D"]) - \
         box(-t["L"] / 2 + w, t["L"] / 2 - w, -t["W"] / 2 + w, t["W"] / 2 - w, zf + w, zf + t["D"] + 1)
@@ -120,30 +124,47 @@ def rotor(d: dict, phi: float) -> dict:
 
 
 def frame(d: dict) -> dict:
+    """Static parts: two A towers (legs, mast, foot), the P5 heads, gearmotors under P8 nacelles, ridge, spine, light."""
     c, a, m = d["c"], d["ext"]["a"], d["motor"]
-    za, zt = d["z_axis"], d["z_top_rail"]
-    by, ty = c["base_y"], c["tower_y"]
+    za, zr = d["z_axis"], d["z_ridge"]
+    fy, fo, r0 = c["foot_y"], c["foot_over"], c["spoke_r0"]
+    bl, bw, bt = c["bracket"]
     p = {}
-    xi = d["x_tower"][0]
+    x0, x1 = d["x_tower"]
     for s in (-1, 1):
-        xt = s * (d["x_tower"][0] + a / 2)
-        p[f"base rail {s:+d}"] = bar((-xi, s * by, a / 2), (xi, s * by, a / 2), d)
-        p[f"bridge {s:+d}"] = bar((-xi, s * ty, zt + a / 2), (xi, s * ty, zt + a / 2), d)
-        p[f"foot {s:+d}"] = bar((xt, -by - a / 2, a / 2), (xt, by + a / 2, a / 2), d)
-        p[f"top rail {s:+d}"] = bar((xt, -ty - a / 2, zt + a / 2), (xt, ty + a / 2, zt + a / 2), d)
+        xt = s * (x0 + a / 2)
+        xi, xo = sorted((s * x0, s * x1))
+        p[f"foot {s:+d}"] = bar((xt, -fy - fo, a / 2), (xt, fy + fo, a / 2), d)
+        p[f"mast {s:+d}"] = bar((xt, 0, d["mast"][0]), (xt, 0, d["mast"][1]), d)
         for sy in (-1, 1):
-            p[f"tower {s:+d}{sy:+d}"] = bar((xt, sy * ty, a), (xt, sy * ty, zt), d)
-        h = m["flange"] / 2 + 1.0 + a / 2
-        for sz in (-1, 1):
-            p[f"motor rail {s:+d}{sz:+d}"] = bar((xt, -ty + a / 2, za + sz * h), (xt, ty - a / 2, za + sz * h), d)
-        x0, x1 = sorted((s * d["x_p5"][0], s * d["x_p5"][1]))
-        p[f"P5 {s:+d}"] = box(x0, x1, -40, 40, za - h - a / 2, za + h + a / 2) - cyl_x(x0, x1, 6.0, 0, za)
-        x0, x1 = sorted((s * d["x_tower"][0], s * (d["x_tower"][0] + m["gearbox_len"] + m["body_len"])))
+            u = (sy * fy, a - za)
+            n = math.hypot(*u)
+            u = (u[0] / n, u[1] / n)
+            far = n + a                                        # past the foot, then cut on the crossbar's top
+            leg = bar((xt, u[0] * r0, za + u[1] * r0), (xt, u[0] * far, za + u[1] * far), d)
+            p[f"leg {s:+d}{sy:+d}"] = leg & box(xi - 1, xo + 1, -fy - 2 * fo, fy + 2 * fo, a, za)
+            # P10 leg shoe (envelope): a plate on the outboard faces of leg and foot
+            xs0, xs1 = sorted((s * x1, s * (x1 + 6.0)))
+            p[f"P10 {s:+d}{sy:+d}"] = box(xs0, xs1, *sorted((sy * (fy - 45), sy * (fy + fo))), 0, 60)
+        p[f"P5 {s:+d}"] = Plane(origin=(s * x0, 0, za), x_dir=(0, -s, 0), z_dir=(-s, 0, 0)).location * build_p5(d["size"])
+        gx0, gx1 = sorted((s * x0, s * d["motor_end"]))
         g = m["flange"] / 2
-        p[f"gearmotor {s:+d}"] = box(x0, x1, -g, g, za - g, za + g)
-        # P7 light hanger envelope under the bridge rails
-        xh = s * 250.0
-        p[f"P7 {s:+d}"] = box(xh - a / 2, xh + a / 2, -ty - a / 2, ty + a / 2, d["z_light"] + d["light"]["section"], zt)
+        p[f"gearmotor {s:+d}"] = box(gx0, gx1, -g, g, za - g, za + g)
+        # P8 nacelle (envelope): a closed cone shell from the spokes' outboard faces over the gearmotor
+        pr, pe, pw, pg = c["pod"]
+        L = d["pod_x"][1] - d["pod_x"][0]
+        loc = Plane(origin=(s * (d["pod_x"][0] + L / 2), 0, za), x_dir=(0, 1, 0), z_dir=(s, 0, 0)).location
+        inner = Pos(0, 0, -pw / 2) * Cone(pr - pw, pe - pw + pw * (pr - pe) / L, L - pw)
+        p[f"P8 {s:+d}"] = loc * (Cone(pr, pe, L) - inner)
+        # Misumi HBLFSN5 brackets (envelopes): mast to ridge, foot to spine, on the inboard corners
+        xb0, xb1 = sorted((s * x0, s * (x0 - bl)))
+        xv0, xv1 = sorted((s * x0, s * (x0 - bt)))
+        p[f"bracket ridge {s:+d}"] = box(xb0, xb1, -bw / 2, bw / 2, zr - bt, zr) + box(xv0, xv1, -bw / 2, bw / 2, zr - bl, zr)
+        p[f"bracket spine {s:+d}"] = box(xb0, xb1, -bw / 2, bw / 2, a, a + bt)
+        xh = s * c["hanger_x"]
+        p[f"P7 {s:+d}"] = box(xh - a / 2, xh + a / 2, -110, 110, d["z_light"] + d["light"]["section"], zr)
+    p["ridge"] = bar((-x1, 0, zr + a / 2), (x1, 0, zr + a / 2), d)
+    p["spine"] = bar((-x0, 0, a / 2), (x0, 0, a / 2), d)
     L, sec = d["light"]["L"], d["light"]["section"]
     n, pitch = d["light"]["count"], d["light"]["pitch"]
     for i in range(n):

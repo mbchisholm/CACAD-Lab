@@ -13,8 +13,10 @@ from projects.seedling_wheel.assembly import assemble, check_assembly, interfere
 from projects.seedling_wheel.p1_hub import check_part as c1
 from projects.seedling_wheel.p2_pivot import check_part as c2
 from projects.seedling_wheel.p3_hanger import check_part as c3
+from projects.seedling_wheel.p4_corner import check_part as c4
+from projects.seedling_wheel.p5_head import check_part as c5
 
-CHECKS = {"p1_hub": c1, "p2_pivot": c2, "p3_hanger": c3}
+CHECKS = {"p1_hub": c1, "p2_pivot": c2, "p3_hanger": c3, "p4_corner": c4, "p5_head": c5}
 
 
 def test_every_size_validates():
@@ -48,6 +50,14 @@ def test_fits_the_bed(built):
     _, part = built
     s = part.bounding_box().size
     assert max(s.X, s.Y) <= BED[0] and s.Z <= BED[2]
+
+
+def test_tray_drops_in_free(d):
+    """The tray sits on the rails with tray_clear to every P4 fence: located, never pressed."""
+    parts = assemble(0.0)
+    for k in ("+1+1", "+1-1", "-1+1", "-1-1"):
+        gap = parts["A tray"][1].distance_to(parts[f"A P4 {k}"][1])
+        assert abs(gap - d["c"]["tray_clear"]) < 1e-3, f"P4 {k}: tray gap {gap:.3f}"
 
 
 def test_sweep_every_degree(d):
@@ -84,7 +94,10 @@ def test_designed_contacts_touch():
     parts = assemble(30.0)
     touch = [("A P3 +1", "A post +1"), ("P2 A+1", "arm +1"), ("P1 +1", "arm +1"), ("Pololu hub +1", "P1 +1"),
              ("shoulder screw A+1", "P2 A+1"), ("washer A+1.0", "A P3 +1"), ("A post +1", "A crossbar +1"),
-             ("A tray", "A rail +1"), ("gearmotor +1", "P5 +1"), ("T5 bar 0", "P7 +1")]
+             ("A tray", "A rail +1"), ("gearmotor +1", "P5 +1"), ("T5 bar 0", "P7 +1"),
+             ("A P4 +1+1", "A crossbar +1"), ("A P4 -1-1", "A crossbar -1"), ("P5 +1", "mast +1"),
+             ("P5 +1", "leg +1+1"), ("P5 -1", "leg -1-1"), ("leg +1+1", "foot +1"), ("mast +1", "ridge"),
+             ("P8 +1", "mast +1"), ("P8 +1", "leg +1-1"), ("spine", "foot -1"), ("P7 -1", "ridge")]
     for a, b in touch:
         assert parts[a][1].distance_to(parts[b][1]) < 1e-3, f"{a} does not touch {b}"
     gap = parts["washer A+1.1"][1].distance_to(parts["P2 A+1"][1])
