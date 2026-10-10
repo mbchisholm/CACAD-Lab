@@ -20,7 +20,7 @@ front (entry hole), +Y the back (mounting lug).
      floor |  [==========================]   |  |  floor_t on the ledge
      ledge [==]                          [==]      z = 0 .. ledge_t
 
-Power (README.md has the wiring): panel -> bq25185 VIN; 18650 on the bq25185's JST; its boosted 5 V feeds the
+Power (DESIGN.md has the wiring): panel -> bq25185 VIN; 18650 on the bq25185's JST; its boosted 5 V feeds the
 TPL5110's VDD; the TPL5110's switched DRV feeds the ESP32-CAM's 5V pin. Every interval the timer powers the camera,
 which boots, lights the IR LEDs for the exposure, takes and uploads a frame, then raises DONE and is switched off.
 
@@ -35,6 +35,8 @@ import math
 from types import MappingProxyType
 
 from cacad.registries.materials import BED, FDM_HOLE_ALLOWANCE, FIT_CLEAR, FLOOR, ISO_273, NOZZLE, WALL
+
+STATUS = "concept"   # concept | passes | printed | parked
 
 TAGS = ("STANDARD", "VENDOR", "INFERRED", "DESIGN", "CONVENIENCE", "PLACEHOLDER")
 
@@ -204,7 +206,7 @@ SIZES = MappingProxyType(dict(V0=dict()))
 ACTIVE_SIZES = ("V0",)
 PARTS = ("body", "floor", "front", "tray", "cap")
 
-# What connects to the ESP32-CAM's pins (README.md, 'Wiring'). (pin, to, why).
+# What connects to the ESP32-CAM's pins (DESIGN.md, 'Wiring'). (pin, to, why).
 WIRING = (
     ("5V", "TPL5110 DRV", "switched 5 V: the camera has power only while the timer says so"),
     ("GND", "common ground", "bq25185 (-), TPL5110 GND, IR string, divider"),
