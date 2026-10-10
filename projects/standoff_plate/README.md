@@ -24,10 +24,21 @@ six openings). Added 2026-10-07:
   81 × 48 × 8.8 with M3 mount holes. The carrier hole is 3.0, so M3 is refused;
   Atlas's STEP placed on it intersects nothing.
 
+The analog nutrient node (`NUTRIENT_ANALOG`, sprout-cut's `nutrient-analog-xiao`
+env), added 2026-10-07, one plate per board:
+- `SEN0244`: the TDS plate above. No vendor STEP.
+- `SURVEYOR_PH`: Atlas Surveyor analog pH, M2.5 (its hole is 3.0), 48 × 45 × 9.0.
+- `ADS1115`: reads both probes. Its `board_t` is now Adafruit's STEP 1.57.
+- `MOSFET_5648x3`: the three pump drivers, M2 PA (nylon), 31.4 × 74.3 × 9.0.
+  Two bosses and two rest pads per board.
+- `PERMAPROTO`: the XIAO ESP32-C3 + Pololu carrier, M2, 49.2 × 63.8 × 8.8.
+
+Vendor STEPs (Adafruit, Atlas) are checked on them (`vendor.py`, DESIGN.md).
+
 Failing by rule, on purpose:
 - `ADS1115x2`: inner connectors face each other 6.5 mm apart, the plug needs 15.
-- `ADS1115_V1`, `BME280`: holes on one edge, and the family has no rest under a
-  free edge.
+- `ADS1115_V1`, `BME280`: holes on one edge; the rest pad that carries the free
+  edge needs the nearest pin to it, and the registry does not have it yet.
 - `UNO_R3`: the registry has no `nearest_pin` yet.
 - `FEATHER_tray`: the USB-C plug envelope is not in the connector registry; the
   Feather joins the hub tray when it is.
@@ -52,7 +63,10 @@ params.py   PLATES (which boards, where, which screw, tray or not), SCREWS (ISO 
             derive(plate), validate(plate)
 plate.py    build_plate, build_hardware (boards, screws, nuts, plugs and unplugging reach as placed
             envelopes), check_plate
-tests/      geometry + function, walls measured on sections, orientation, overhang, screw stack
+vendor.py   vendor STEP models placed on their plates, checked against the registry and for fit
+freecad_view.py   the NUTRIENT_ANALOG plates, boards and screws in one FreeCAD document, bbox cross-check
+tests/      geometry + function, walls measured on sections, orientation, overhang, screw stack,
+            vendor models (with planted defects)
 ```
 
 ## Run
@@ -60,5 +74,7 @@ tests/      geometry + function, walls measured on sections, orientation, overha
 ```
 .venv/bin/python projects/standoff_plate/params.py     # design review printout, every plate
 .venv/bin/python projects/standoff_plate/plate.py      # ACTIVE_PLATES -> out/*.step, *.stl, *.3mf
+.venv/bin/python projects/standoff_plate/vendor.py     # NUTRIENT_ANALOG: vendor checks -> out/*_boards.step, *_screws.step
+.venv/bin/python projects/standoff_plate/freecad_view.py   # then: FreeCAD document NutrientAnalog_plates
 .venv/bin/python -m pytest projects/standoff_plate -q
 ```

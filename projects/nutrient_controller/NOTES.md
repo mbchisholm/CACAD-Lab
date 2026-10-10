@@ -127,3 +127,7 @@ draft) with keyholes on a plate that follows the wall.
 - 2026-10-04: B2, the rim clamp: no hole in the container, any wall or lip 2-35 mm. Assembly checks pass at
   2, 18.5 and 35 mm (46 envelopes, 6 printed parts). The overhang check caught a horizontal hex nut pocket
   (60 deg roof); it now has a 45 deg roof.
+- 2026-10-07: the Perma-Proto's breadboard vias are now in the board registry (nearest 3.81 from a mount hole).
+  B2's M3 insert bosses under the carrier (OD 8.0) reached 1.19 into the pin margin, a check that had been
+  skipped while `nearest_pin` was unknown. DESIGN: the four vias nearest each carrier hole (8 in all) stay
+  unsoldered. The nearest usable via is 6.35 away, so the boss clears the margin by 1.35.

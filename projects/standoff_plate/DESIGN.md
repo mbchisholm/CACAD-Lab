@@ -32,5 +32,20 @@ sacrificial layer across the pocket, drilled out after printing.
 Placements are `(board, (x, y), rot)` with `rot` a multiple of 90; the
 registry board is rotated once in `derive()` and nothing downstream rotates
 anything. A two-hole board is accepted when its hole line passes through the
-board centre (TCA9548A), refused when the holes are on one edge (ADS1115_V1,
-BME280): the family has no rest for a cantilevered edge.
+board centre (TCA9548A). A board whose holes are all on one end (MOSFET 5648)
+gets a solid rest pad (`rest_pad_d`, boss-high, no bore) under each hole
+mirrored through its centre. The plate row must give the distance from that
+pad to the nearest through-hole pin (`rest_nearest_pin`, from the board file),
+or `validate()` refuses it (ADS1115_V1, BME280).
+
+A screw head wider than a board's nearest top copper is refused unless the row
+says `screw_pa=True`: a PA (nylon) screw of the same standard.
+
+Vendor models (`VENDOR_STEPS`, files in the gitignored `ref/vendor_step/`):
+`vendor.py` reads each STEP's PCB solid and requires its outline within 0.05
+of the registry, its thickness within 0.02 of `board_t`, and every registry
+hole within 0.05. Placed on its bosses, the model must not intersect the
+plate, the screws, the nuts, the mount screws or the boards beside it. Two
+tests prove the check bites: a board sunk 0.5 mm, and the MOSFET STEP turned
+180°. A board with no STEP on the machine shows as its registry envelope, and
+its vendor test skips with the source named.

@@ -114,6 +114,9 @@ COMMON = MappingProxyType(dict(
     part_air=2.0,                        # DESIGN: any bought-part envelope to another or to a wall
     board_air=1.0,                       # DESIGN: pin tails under a board to the boss base
     boss_pin_margin=1.0,                 # DESIGN: boss outer radius stays this far inside a board's nearest pin
+    # DESIGN: the carrier's insert bosses (OD 8.0) sit under the four breadboard vias nearest each mount hole (3.81
+    # and 4.58 away, Perma-Proto Eagle file): those 8 vias stay unsoldered. The nearest via a lead may use is 6.35 away.
+    vias_kept_empty=dict(PERMAPROTO_QUARTER=dict(count=8, nearest_used=6.35)),
     nut_pocket_clear=0.3,                # DESIGN: across flats, hex pocket - nut
     nut_pocket_extra=0.8,                # DESIGN: pocket depth - nut m
     keyhole_clear=0.4,                   # DESIGN radial: keyhole - post neck and head
@@ -293,7 +296,10 @@ def derive(size: str, **overrides) -> dict:
             bosses.append(dict(board=key, at=(y, z), od=od, bore=b["bore"], pocket=pocket, insert=insert,
                                screw=b["screw"], length=L, h=boss_h))
         nb = b["board"]
-        b["boss_vs_pin"] = None if nb.nearest_pin is None else nb.nearest_pin - c["boss_pin_margin"] - od / 2
+        kept = c["vias_kept_empty"].get(nb.name)
+        pin = kept["nearest_used"] if kept else nb.nearest_pin
+        b["vias_kept_empty"] = kept["count"] if kept else 0
+        b["boss_vs_pin"] = None if pin is None else pin - c["boss_pin_margin"] - od / 2
         b["head_vs_copper"] = None if nb.nearest_top_copper is None else nb.nearest_top_copper - sc["head_dk"] / 2
         b["nylon_screw"] = b["head_vs_copper"] is not None and b["head_vs_copper"] < 0
     d["bosses"] = bosses
@@ -553,7 +559,8 @@ if __name__ == "__main__":
         for k, b in d["boards"].items():
             print(f"  {k:8s} {b['name']:19s} screw {b['screw']:4s} bore {b['bore']:.2f}  "
                   f"boss-pin {fmt(b['boss_vs_pin'])}  head-copper {fmt(b['head_vs_copper'])}"
-                  f"{'  -> PA screw' if b['nylon_screw'] else ''}")
+                  f"{'  -> PA screw' if b['nylon_screw'] else ''}"
+                  + (f"  ({b['vias_kept_empty']} vias kept empty)" if b["vias_kept_empty"] else ""))
         for k, b in d["boards"].items():
             print(f"  {k:8s} boss {b['boss_h']:.2f} ({b['governed_by']}), top of parts at x {b['top_x']:.1f}")
         lens = sorted({(b['screw'], b['length']) for b in d['bosses']})
