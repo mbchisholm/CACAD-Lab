@@ -22,7 +22,8 @@ pass through a hole; a cable tie inside each notch is the strain relief.
 | file | what is in it |
 |---|---|
 | `lean_params.py`, `lean_box.py` | L1: every number, the box, lid, envelopes, checks, the print set |
-| `DESIGN.md` | concepts A-C, the B1 and B2 box, L1, limits |
+| `panel_params.py`, `panel.py`, `panel_view.py` | concept D (dropped for L1): the instrument panel |
+| `DESIGN.md` | concepts A-D, the B1 and B2 box, L1, limits |
 | `MODELLING.md` | how B was modelled; `NOTES.md` the working log |
 
 ## Status
@@ -40,6 +41,10 @@ Print set (`out/L1_print_set.3mf`, one bed, PETG, no supports): box 125.5 x
 and Surveyor), 2 x M2 x 10 and 6 x M2 x 10 PA nylon + nuts (box), 4 x M3 x
 30 + nuts (lid), 8 x M4 / #8 pan head (mount), Switchcraft 722A jack.
 
+Concept D (`panel.py`, STATUS concept) redraws the front for the full analog
+node as an instrument: red LED readouts, a lamp, toggle and pump head per
+pump, one knob. Its layout and fit checks pass; see DESIGN.md.
+
 ## Sources
 
 Boards from the registry (Adafruit Eagle files and STEPs, DFRobot and Atlas
@@ -53,6 +58,8 @@ tolerated: the XIAO's height on its headers (10.0 allowed), SEN0244's PCB
 ```
 .venv/bin/python projects/nutrient_controller/lean_params.py   # L1: every derived number and the hardware
 .venv/bin/python projects/nutrient_controller/lean_box.py      # build, check, out/L1_print_set.3mf, L1_assembly.step
+.venv/bin/python projects/nutrient_controller/panel.py     # concept D: build, check, out/D_*.step, D_panel.3mf
+.venv/bin/python projects/nutrient_controller/panel_view.py   # then: FreeCAD document NutrientController_D
 .venv/bin/python -m pytest -q projects/nutrient_controller
 ```
 

@@ -71,6 +71,80 @@ down on its bridge, so the jaw and leg are plain walls on the printer.
 ![Section through the hook: inner jaw, container wall, pad, M6, knob, post plate, box](../../docs/img/nutrient_controller_b2_section.png)
 ![The hook seen from the jaw side: cable groove on the bridge, throat, slot for a hook bolt](../../docs/img/nutrient_controller_b2_clamp.png)
 
+## Concept D: the instrument panel (dropped for L1, 2026-10-08)
+
+A redesign of B2's front for the whole analog node: pH and TDS on one ADS1115,
+water temperature, three pumps (acid, nutrient A, nutrient B). It replaces the
+OLED, the three buttons and the LED with an old-school instrument front.
+
+![Concept D, front: three red readouts, POWER and ALERT lamps, the knob, and one column per pump](../../docs/img/nutrient_controller_d_front.png)
+
+**Why it beats the OLED.**
+- **Glanceable.** Three 14 mm red 7-segment readouts behind red filters read
+  across a grow room and in daylight. The 1.3 in OLED needs you at arm's length.
+- **No burn-in.** An OLED showing the same three numbers all day burns in. LED
+  segments don't.
+- **Honest RUN lamps.** Each amber lamp is wired across its pump's terminals,
+  so it lights when the pump has power, whatever the firmware believes.
+- **A hardware override.** Each pump has an AUTO / OFF / PRIME toggle, wired
+  in series with the pump. OFF stops it whatever the firmware does. PRIME runs
+  it only while the lever is held down, which primes the line.
+- **Pumps on the front.** Tubes are changed without opening the box. They hang
+  straight down, so drips fall clear of everything and no liquid is inside.
+- **Gloved or wet hands.** One 40 mm fluted knob and three toggles replace
+  three 12 mm buttons.
+
+**Layout** (204 × 190 panel, case 56 deep, on the A1 bed): readouts top left,
+POWER (green) and ALERT (red) lamps and the knob top right, an engraved rule,
+then three columns of RUN lamp, toggle and pump head. Legends are engraved
+0.6 deep (three layers, bold DIN, at least 4 mm tall, F22) in the panel's bed
+face. A filament change after layer 3 shows them in the second colour. The
+windows are bevelled 45° at the front, because the digits sit 5 mm deep and
+square windows hid them off-axis. The panel locates on a lip and screws to four
+corner insert bosses. Cable entries are in the bottom wall, between and beside
+the motors.
+
+![Concept D, three-quarter view](../../docs/img/nutrient_controller_d_iso.png)
+![Concept D from the side, case see-through: displays and lamps behind the panel, boards on the back wall, motors along the bottom](../../docs/img/nutrient_controller_d_section.png)
+
+**Parts.**
+
+| part | model | source tag |
+|---|---|---|
+| readouts | 3 × Adafruit 878, 0.56 in red 7-segment, HT16K33 I2C 0x70-0x72 | VENDOR (Adafruit STEP) |
+| knob | Adafruit 4991 STEMMA QT rotary encoder (seesaw 0x36) | VENDOR (Adafruit STEP); M7 thread UNVERIFIED |
+| lamps | APEM Q8P1CXX(Y/G/R)12E, 8 mm, chrome, IP67, 12 V | VENDOR (APEM datasheet) |
+| toggles | C&K 7000 SPDT ON-OFF-(ON) + APM Hexseal boot | UNVERIFIED (datasheet refused scripted download) |
+| filters | red cast acrylic, 2 mm, cut 58 × 27 | DESIGN |
+| pumps | 3 × Kamoer NKP-DC-S06 | VENDOR (B2's row); head diameter UNVERIFIED |
+
+**Firmware** (sprout-cut `nutrient-analog-xiao`):
+- U8g2/OLED is replaced by three HT16K33 displays, and the seesaw encoder joins
+  the same I2C bus. No new pins.
+- ALERT moves to D7 through a fourth MOSFET 5648.
+- Pump outputs become active-high for the MOSFET boards.
+- Not yet solved: the firmware can't see a toggle set to OFF or PRIME. A dose
+  it believes it ran may not have happened.
+
+**What the checks caught while drawing it:**
+- An M16 gland nut under a motor.
+- The M12 nut in the case's rounded corner.
+- The encoder bushing standing 2 mm past its nut into the knob.
+- Four frame tabs on the encoder body that bear on the panel.
+- The insert bosses breaking through the case's rounded corners.
+- The panel lip's square corners in the case's rounded ones.
+- Legends at 5.6 standing 3.99 tall, under F22's 4 mm.
+
+**Open:**
+- C&K's toggle drawing (hole, bushing, body).
+- The encoder's thread and nut.
+- The pump head diameter.
+- The display backs (HT16K33 and header tails: 3.0 assumed).
+- A display retainer.
+- Teardrops on the bottom-wall holes for printing.
+- Keyholes on the back to hang it on B2's post plate and rim hook (re-pitched).
+- The 3.3 V budget for three displays.
+
 ## L1: lean, flat-mounted (active, 2026-10-08)
 
 The analog node in two prints, without the display, buttons or pumps on the
