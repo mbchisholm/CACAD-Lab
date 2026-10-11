@@ -18,12 +18,13 @@ Not printed yet.
 STATUS is `concept`.
 - **Passes:**
   - `validate()`.
-  - Five prints with their checks: P1 hub, P2 pivot plate, P3 hanger, P4 tray corner, P5 tower head.
+  - Eight prints with their checks: P1 hub, P2 pivot plate, P3 hanger, P4 tray corner, P5 tower head,
+    P7 light hanger, P8 nacelle, P10 leg shoe.
   - An every-degree sweep, and solid overlap checks at 0/45/90/135° with a negative control.
   - Designed contacts, and the tray's free fit.
 - **Open:**
   - The gearbox drawing (shaft, face holes, pilot), the hub hole pattern and the light bar length are UNVERIFIED.
-  - P7, P8 and P10 are envelopes; P6 and P9 are not drawn. See `SPEC.md`.
+  - P9 (electronics pod) is an envelope; P6 (home sensor) is not drawn. See `SPEC.md`.
 
 ## Sources
 
@@ -38,7 +39,7 @@ STATUS is `concept`.
 
 ```
 .venv/bin/python projects/seedling_wheel/params.py         # the design, validated
-.venv/bin/python projects/seedling_wheel/p1_hub.py         # one part -> out/*.step, *.stl (also p2..p5)
+.venv/bin/python projects/seedling_wheel/p1_hub.py         # one part -> out/*.step, *.stl (also p2..p5, p7, p8, p10)
 .venv/bin/python projects/seedling_wheel/assembly.py [deg] # overlap checks -> out/seedling_wheel_<deg>.step, .3mf
 .venv/bin/python -m pytest projects/seedling_wheel
 ```

@@ -43,10 +43,10 @@ gondolas, 150 mm of plant headroom above the rim, and a light picked by us.
 | P4 | Tray corner guide: the tray drops in with 4 mm all round (2 of each hand) | 8 | built, checked |
 | P5 | Tower head: hub disc joining the three spokes, the gearbox face mount | 2 | built, checked |
 | P6 | Home sensor bracket and arm magnet cup | 2 + 2 | to draw |
-| P7 | Light hangers under the ridge, with height steps | 2 | envelope |
-| P8 | Nacelle: a cone over each gearmotor, landing on the spokes | 2 | envelope |
-| P9 | Electronics bay on the spine, and the feet | 1 + 4 | to draw |
-| P10 | Leg shoe: leg to foot crossbar | 4 | envelope |
+| P7 | Light hanger: a ladder under the ridge; bars rest between ribs, strapped (their clips are unpublished) | 2 | built, checked |
+| P8 | Nacelle: a cone over each gearmotor, three ears onto the spokes, cable notch between the legs | 2 | built, checked |
+| P9 | Electronics pod on the -X foot's outboard face (Feather, 2 StepSticks, relay; sized by board area) | 1 | envelope |
+| P10 | Leg shoe: one plate across leg and foot, two M5 in each; the same part for every foot | 4 | built, checked |
 
 ## Electronics and firmware
 
@@ -74,4 +74,7 @@ gondolas, 150 mm of plant headroom above the rim, and a light picked by us.
 - Pivot friction is UNVERIFIED. The worst stick-slip estimate is 0.37°. Grease the shoulder.
 - Racking along X is resisted only by the brackets at the ridge and spine corners. Add a second spine, or diagonal
   ties, if it sways in use.
-- Draw P6–P10. P8's finish and P7's light hood decide most of what is left of the look.
+- Draw P9 around real board mounts (`boards.FEATHER_ESP32S3`, `RELAY_4409`, a StepStick row) and P6.
+- P10's leg screws sit 6.0 into the slot, the top of the window: check the T-nut seats before tightening.
+- The light has no hood. A thin white reflector between the P7 ladders would raise the light reaching the top tray
+  and hide the bars from the side.

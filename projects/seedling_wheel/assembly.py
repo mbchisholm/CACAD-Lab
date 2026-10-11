@@ -4,7 +4,7 @@
 
 Bought parts are envelopes: 2020 extrusion as a 20 x 20 bar with a 6 x 6 groove in each face (HFS5 slot opening and
 depth), the gearmotor as its 42.3 square, the tray as a straight-walled shell, the plants as the headroom box.
-P7 light hangers, P8 nacelles, P10 leg shoes and the Misumi brackets are envelopes until they are drawn.
+The Misumi brackets and the P9 electronics pod are envelopes.
 `check_assembly(phi)` fails on any overlap between parts that are not designed to touch.
 
 A part file names no filesystem module (F23) and imports params by package path (F24).
@@ -22,6 +22,9 @@ from projects.seedling_wheel.p2_pivot import build_part as build_p2
 from projects.seedling_wheel.p3_hanger import build_part as build_p3
 from projects.seedling_wheel.p4_corner import build_part as build_p4
 from projects.seedling_wheel.p5_head import build_part as build_p5
+from projects.seedling_wheel.p7_hanger import build_part as build_p7
+from projects.seedling_wheel.p8_nacelle import build_part as build_p8
+from projects.seedling_wheel.p10_shoe import build_part as build_p10
 
 
 def _bar(length: float, d: dict) -> Part:
@@ -143,27 +146,29 @@ def frame(d: dict) -> dict:
             far = n + a                                        # past the foot, then cut on the crossbar's top
             leg = bar((xt, u[0] * r0, za + u[1] * r0), (xt, u[0] * far, za + u[1] * far), d)
             p[f"leg {s:+d}{sy:+d}"] = leg & box(xi - 1, xo + 1, -fy - 2 * fo, fy + 2 * fo, a, za)
-            # P10 leg shoe (envelope): a plate on the outboard faces of leg and foot
-            xs0, xs1 = sorted((s * x1, s * (x1 + 6.0)))
-            p[f"P10 {s:+d}{sy:+d}"] = box(xs0, xs1, *sorted((sy * (fy - 45), sy * (fy + fo))), 0, 60)
+            # P10 leg shoe on the outboard faces of leg and foot (the same part, turned over for the other hand)
+            t10 = d["p10"]["t"]
+            ox = s * x1 if sy == s else s * (x1 + t10)
+            p[f"P10 {s:+d}{sy:+d}"] = Plane(origin=(ox, sy * fy, 0), x_dir=(0, sy, 0),
+                                            z_dir=(sy, 0, 0)).location * build_p10(d["size"])
         p[f"P5 {s:+d}"] = Plane(origin=(s * x0, 0, za), x_dir=(0, -s, 0), z_dir=(-s, 0, 0)).location * build_p5(d["size"])
         gx0, gx1 = sorted((s * x0, s * d["motor_end"]))
         g = m["flange"] / 2
         p[f"gearmotor {s:+d}"] = box(gx0, gx1, -g, g, za - g, za + g)
-        # P8 nacelle (envelope): a closed cone shell from the spokes' outboard faces over the gearmotor
-        pr, pe, pw, pg = c["pod"]
-        L = d["pod_x"][1] - d["pod_x"][0]
-        loc = Plane(origin=(s * (d["pod_x"][0] + L / 2), 0, za), x_dir=(0, 1, 0), z_dir=(s, 0, 0)).location
-        inner = Pos(0, 0, -pw / 2) * Cone(pr - pw, pe - pw + pw * (pr - pe) / L, L - pw)
-        p[f"P8 {s:+d}"] = loc * (Cone(pr, pe, L) - inner)
+        # P8 nacelle: end cap outboard, rim on the spokes' outboard faces
+        p[f"P8 {s:+d}"] = Plane(origin=(s * d["pod_x"][1], 0, za), x_dir=(0, -s, 0),
+                                z_dir=(-s, 0, 0)).location * build_p8(d["size"])
         # Misumi HBLFSN5 brackets (envelopes): mast to ridge, foot to spine, on the inboard corners
         xb0, xb1 = sorted((s * x0, s * (x0 - bl)))
         xv0, xv1 = sorted((s * x0, s * (x0 - bt)))
         p[f"bracket ridge {s:+d}"] = box(xb0, xb1, -bw / 2, bw / 2, zr - bt, zr) + box(xv0, xv1, -bw / 2, bw / 2, zr - bl, zr)
         p[f"bracket spine {s:+d}"] = box(xb0, xb1, -bw / 2, bw / 2, a, a + bt)
-        xh = s * c["hanger_x"]
-        p[f"P7 {s:+d}"] = box(xh - a / 2, xh + a / 2, -110, 110, d["z_light"] + d["light"]["section"], zr)
+        p[f"P7 {s:+d}"] = Plane(origin=(s * c["hanger_x"] - d["p7"]["t"] / 2, 0, zr), x_dir=(0, 1, 0),
+                                z_dir=(1, 0, 0)).location * build_p7(d["size"])
     p["ridge"] = bar((-x1, 0, zr + a / 2), (x1, 0, zr + a / 2), d)
+    # P9 electronics pod (envelope) on the -X foot's outboard face, under the cable runs down the legs
+    q = d["p9"]
+    p["P9 pod"] = box(-q["x"][1], -q["x"][0], -q["y"], q["y"], *q["z"])
     p["spine"] = bar((-x0, 0, a / 2), (x0, 0, a / 2), d)
     L, sec = d["light"]["L"], d["light"]["section"]
     n, pitch = d["light"]["count"], d["light"]["pitch"]

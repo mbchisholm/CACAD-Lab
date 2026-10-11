@@ -159,9 +159,16 @@ COMMON = MappingProxyType(dict(
     head_d=(160.0, "DESIGN", "P5 hub disc diameter: reaches the outer M5 with a wall"),
     head_t=(10.0, "DESIGN", "P5 thickness: M5 x 10 into the spokes' slots"),
     hub_gap=(2.0, "DESIGN", "Pololu hub to P5"),
-    pod=((50.0, 36.0, 2.4, 6.0), "DESIGN", "P8 nacelle: rim radius on the spokes, end radius, wall, end gap past the motor"),
+    pod=((62.0, 36.0, 2.4, 6.0), "DESIGN", "P8 nacelle: rim radius on the spokes, end radius, wall, end gap past the motor"),
+    pod_ear=((70.0, 78.0, 16.0, 5.0), "DESIGN", "P8 ears on each spoke: M5 radius, outer radius, width, plate; heads outside"),
+    pod_notch=((12.0, 8.0), "DESIGN", "P8 rim notch between the legs for the motor cable, W x H"),
     hanger_x=(200.0, "DESIGN", "P7 light hangers under the ridge, at +/- this x"),
-    hanger_t=(10.0, "DESIGN", "P7 depth between the ridge and the bars' tops"),
+    hanger_t=(10.0, "DESIGN", "P7 depth between the ridge and the bars' tops: top beam + bar_gap"),
+    p7=((14.0, 2.0, 6.0, (3.0, 8.0), 6.0), "DESIGN", "P7 ladder: thickness along X, gap over the bars, lower beam, "
+                                                   "locating rib W x H, side drop width; bars rest on it, strapped"),
+    p10=((7.0, 70.0, 45.0), "DESIGN", "P10 leg shoe: plate, reach up the leg, reach inboard along the foot"),
+    p9=((120.0, 40.0, 55.0, 3.0), "DESIGN", "P9 electronics pod interior Y x X x Z and wall: Feather + 2 StepSticks + relay "
+                                           "side by side (115.6 of boards, by area only), on the -X foot's outboard face"),
     bracket=((30.0, 20.0, 4.5), "VENDOR", "Misumi HBLFSN5 tabbed bracket legs 30, width 20, base 4.5 (FA 2010 p.2245, "
                                           "nft_table): the mast-ridge and spine-foot joints"),
     # --- motion ---
@@ -185,6 +192,11 @@ PRINT_ORIENTATION = MappingProxyType(dict(
     p4_corner=dict(up=(0, 0, 1), bed_face="pad underside on the crossbar", bed_z="0", known_overhangs=[],
                    overhang_exceptions=None),
     p5_head=dict(up=(0, 0, 1), bed_face="spoke face", bed_z="0", known_overhangs=[], overhang_exceptions=None),
+    p7_hanger=dict(up=(0, 0, 1), bed_face="flat side", bed_z="0", known_overhangs=["M5 bore and seat are teardrops"],
+                   overhang_exceptions=None),
+    p8_nacelle=dict(up=(0, 0, 1), bed_face="end cap", bed_z="0",
+                    known_overhangs=["ear head seats (bridged 9.5 circles)"], overhang_exceptions="p8_seat_ceiling"),
+    p10_shoe=dict(up=(0, 0, 1), bed_face="frame face", bed_z="0", known_overhangs=[], overhang_exceptions=None),
 ))
 
 SIZES = {"T1020": dict()}    # one size: the 1020 flat
@@ -257,7 +269,8 @@ def derive(size: str = "T1020", **overrides) -> dict:
     d["screws5"] = {}
     for part, under in (("P3", d["p3_t"] - d["cb_depth5"]), ("P2", d["p2_t"] - d["cb_depth5"]),
                         ("P1", c["p1_t"] - d["cb_depth5"]), ("P5", c["head_t"] - d["cb_depth5"]),
-                        ("P4", c["p4_pad_t"])):
+                        ("P4", c["p4_pad_t"]), ("P8", c["pod_ear"][3]), ("P10", c["p10"][0]),
+                        ("P7", c["hanger_t"] - c["p7"][1] - d["cb_depth5"])):
         L = min(L for L in f["shcs_lengths"] if L - under >= d["slot_p"][0])
         d["screws5"][part] = dict(L=L, under_head=under, into_slot=L - under)
 
@@ -286,6 +299,36 @@ def derive(size: str = "T1020", **overrides) -> dict:
     pr, pe, pw, pg = c["pod"]
     d["pod_x"] = (d["x_tower"][1], d["motor_end"] + pg + pw)
     d["length_motors"] = 2 * d["pod_x"][1]
+    er, eo, ew, et = c["pod_ear"]
+    d["p8"] = dict(L=d["pod_x"][1] - d["pod_x"][0], r_rim=pr, r_end=pe, wall=pw, ear=c["pod_ear"], notch=c["pod_notch"],
+                   seat_d=None)
+    # P7 ladder (local: x = world Y, y = world Z - z_ridge, z along world X)
+    t7, gap7, low7, rib7, side7 = c["p7"]
+    sec, pitch, n = d["light"]["section"], d["light"]["pitch"], d["light"]["count"]
+    bars = [(i - (n - 1) / 2) * pitch for i in range(n)]
+    v_l = d["z_light"] - d["z_ridge"]
+    inner = max(bars) + sec / 2 + FIT_CLEAR
+    ribs = []
+    for b in bars:
+        for e in (-1, 1):
+            edge = b + e * (sec / 2 + FIT_CLEAR)
+            if abs(edge) < inner - 1e-9:
+                ribs.append((min(edge, edge + e * rib7[0]), max(edge, edge + e * rib7[0])))
+    d["p7"] = dict(t=t7, top=c["hanger_t"] - gap7, gap=gap7, lower=low7, rib=rib7, side=side7, v_l=v_l, inner=inner,
+                   half=inner + side7, ribs=ribs, bars=bars)
+    # P10 leg shoe (local: x = |world Y| - foot_y, y = world Z, z outboard)
+    t10, up10, in10 = c["p10"]
+    th = math.radians(d["leg_angle"])
+    u, nrm = (-math.sin(th), math.cos(th)), (math.cos(th), math.sin(th))
+    cen = lambda s_: (u[0] * s_, a + u[1] * s_)
+    top = cen(up10)
+    d["p10"] = dict(t=t10, poly=[(-in10, 0.0), (c["foot_over"], 0.0), (c["foot_over"], a),
+                                 (top[0] + a / 2 * nrm[0], top[1] + a / 2 * nrm[1]),
+                                 (top[0] - a / 2 * nrm[0], top[1] - a / 2 * nrm[1])],
+                    screws=[(c["foot_over"] - 12.0, a / 2), (-in10 + 15.0, a / 2), cen(25.0), cen(55.0)])
+    # P9 electronics pod on the -X foot's outboard face
+    iy, ix, iz, w9 = c["p9"]
+    d["p9"] = dict(x=(d["x_tower"][1], d["x_tower"][1] + ix + 2 * w9), y=(iy + 2 * w9) / 2, z=(0.0, iz + 2 * w9))
     d["light_to_floor"] = d["z_light"] - (d["z_axis"] + d["R"] + d["z_floor"])
     d["light_to_tops"] = d["light_to_floor"] - d["h_plants"]
 
@@ -321,6 +364,8 @@ def derive(size: str = "T1020", **overrides) -> dict:
                    screws5=[(u * r, v * r) for u, v in spokes.values() for r in c["spoke_screws"]],
                    holes3=[(sx * fh[0] / 2, sy * fh[0] / 2) for sx in (-1, 1) for sy in (-1, 1)],
                    bore3=clearance_bore("M3"), cb_d3=f["M3_head"][0] + c["cb_clear"], cb_depth3=f["M3_head"][1] + 0.4)
+    d["p8"]["seat_d"] = d["cb_d5"]
+    d["p8_seat_ceiling"] = d["p8"]["L"] - c["pod_ear"][3]
     d["p5"]["screw3_L"] = min(L for L in f["shcs_lengths"]
                               if L >= c["head_t"] - d["p5"]["cb_depth3"] + 0.6 * fh[2] and
                               L <= c["head_t"] - d["p5"]["cb_depth3"] + fh[2])
@@ -354,6 +399,10 @@ def derive(size: str = "T1020", **overrides) -> dict:
         "P5 M5 counterbore to disc edge": c["head_d"] / 2 - max(c["spoke_screws"]) - d["cb_d5"] / 2,
         "P5 M3 counterbore to pilot bore": math.hypot(*d["p5"]["holes3"][0]) - d["p5"]["cb_d3"] / 2 - d["p5"]["bore"] / 2,
         "P4 fence": c["fence_t"],
+        "P7 under the M5 head": d["p7"]["top"] - d["cb_depth5"],
+        "P7 M5 seat to the faces": (d["p7"]["t"] - d["cb_d5"]) / 2,
+        "P8 wall": c["pod"][2],
+        "P8 ear around the M5": (c["pod_ear"][2] - d["bore5"]) / 2,
         "P4 M5 bore to pad edge": a / 2 - d["bore5"] / 2,
     }
     d["print_orientation"] = {
@@ -405,6 +454,11 @@ def validate(size: str = "T1020") -> dict:
     pr, pe, pw, pg = c["pod"]
     assert pe - pw >= d["motor_half_diag"] + 1.0, "P8 nacelle end does not clear the gearmotor"
     assert c["spoke_r0"] + 3.0 <= pr, "P8 rim does not land on the spokes"
+    er, eo, ew, et = c["pod_ear"]
+    assert er - 5.0 >= c["spoke_r0"] + 1.0, "P8 ear's T-nut overhangs the spoke end (HNTAJ5 10 long)"
+    assert pr < er - d["cb_d5"] / 2 and er + d["cb_d5"] / 2 < eo, "P8 ear seat off the ear"
+    assert d["z_light"] - d["p7"]["lower"] >= d["sweep_top"] + 25.0, "P7 lower beam near the sweep"
+    assert 2 * d["p7"]["half"] <= 256.0, "P7 exceeds the bed"
     assert c["spoke_r0"] + 5.0 <= min(c["spoke_screws"]), "P5 screw too near the spoke end"
     assert d["sweep_r_arm"] < d["mast"][1] - d["z_axis"], "arm sweep reaches the ridge"
     assert c["hanger_x"] + a / 2 < d["light"]["L"] / 2, "P7 hangers miss the bars"
@@ -417,7 +471,8 @@ def validate(size: str = "T1020") -> dict:
     for name, w in d["walls"].items():
         assert w >= d["min_wall"] and w >= 2 * d["nozzle_d"], f"wall {name} = {w:.2f}"
     for part, dim in (("P1", c["p1_d"]), ("P2", d["p2"]["len"]), ("P3", d["p3"]["top"] - d["p3"]["bot"]),
-                      ("P5", c["head_d"]), ("P4", d["p4"]["side_x"] + a)):
+                      ("P5", c["head_d"]), ("P4", d["p4"]["side_x"] + a), ("P8", 2 * c["pod_ear"][1]),
+                      ("P7", 2 * d["p7"]["half"]), ("P10", c["p10"][2] + c["foot_over"])):
         assert dim <= BED[0], f"{part} {dim} exceeds the bed"
     assert STATUS in ("concept", "passes", "printed", "parked")
     return d

@@ -15,8 +15,12 @@ from projects.seedling_wheel.p2_pivot import check_part as c2
 from projects.seedling_wheel.p3_hanger import check_part as c3
 from projects.seedling_wheel.p4_corner import check_part as c4
 from projects.seedling_wheel.p5_head import check_part as c5
+from projects.seedling_wheel.p7_hanger import check_part as c7
+from projects.seedling_wheel.p8_nacelle import check_part as c8
+from projects.seedling_wheel.p10_shoe import check_part as c10
 
-CHECKS = {"p1_hub": c1, "p2_pivot": c2, "p3_hanger": c3, "p4_corner": c4, "p5_head": c5}
+CHECKS = {"p1_hub": c1, "p2_pivot": c2, "p3_hanger": c3, "p4_corner": c4, "p5_head": c5, "p7_hanger": c7,
+          "p8_nacelle": c8, "p10_shoe": c10}
 
 
 def test_every_size_validates():
@@ -97,7 +101,9 @@ def test_designed_contacts_touch():
              ("A tray", "A rail +1"), ("gearmotor +1", "P5 +1"), ("T5 bar 0", "P7 +1"),
              ("A P4 +1+1", "A crossbar +1"), ("A P4 -1-1", "A crossbar -1"), ("P5 +1", "mast +1"),
              ("P5 +1", "leg +1+1"), ("P5 -1", "leg -1-1"), ("leg +1+1", "foot +1"), ("mast +1", "ridge"),
-             ("P8 +1", "mast +1"), ("P8 +1", "leg +1-1"), ("spine", "foot -1"), ("P7 -1", "ridge")]
+             ("P8 +1", "mast +1"), ("P8 +1", "leg +1-1"), ("P8 -1", "leg -1+1"), ("spine", "foot -1"),
+             ("P7 -1", "ridge"), ("P7 +1", "ridge"), ("T5 bar 2", "P7 -1"), ("P10 +1+1", "leg +1+1"),
+             ("P10 +1-1", "foot +1"), ("P10 -1+1", "leg -1+1"), ("P10 -1-1", "foot -1"), ("P9 pod", "foot -1")]
     for a, b in touch:
         assert parts[a][1].distance_to(parts[b][1]) < 1e-3, f"{a} does not touch {b}"
     gap = parts["washer A+1.1"][1].distance_to(parts["P2 A+1"][1])
