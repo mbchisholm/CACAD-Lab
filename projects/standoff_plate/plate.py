@@ -1,5 +1,6 @@
-"""Standoff plate: plate + bosses + through bores + hex nut pockets from the
-bed face; with `tray` in params, walls to a derived rim and a U-opening per
+"""Standoff plate: plate + bosses (each flared into the plate at its root) +
+through bores + hex nut pockets from the bed face, bridged in steps so no bore
+perimeter prints in air; with `tray` in params, walls to a derived rim and a U-opening per
 connector. `build_hardware` makes the boards, screws, nuts and the plug and
 reach envelopes the part must mate with, for the function-layer checks.
 Every number is from params.derive.
@@ -10,8 +11,8 @@ from __future__ import annotations
 
 import math
 
-from build123d import (Axis, Box, BuildPart, BuildSketch, Compound, Cylinder, Hole, Location, Locations, Mode, Part,
-                       Plane, RegularPolygon, extrude, fillet)
+from build123d import (Axis, Box, BuildPart, BuildSketch, Compound, Cone, Cylinder, Hole, Location, Locations, Mode,
+                       Part, Plane, Rectangle, RegularPolygon, extrude, fillet)
 
 from cacad import (ALIGN_MIN_Z, assert_bbox, assert_material, circular_edges, interference_volume, is_inside,
                    single_solid, try_chamfer)
@@ -46,6 +47,7 @@ def build_plate(plate: str) -> Part:
                         Box(o["width"], d["wall"] + 0.2, h, align=ALIGN_MIN_Z, mode=Mode.SUBTRACT)
         with Locations(*[(x, y, d["plate_t"]) for x, y in d["holes"]]):
             Cylinder(d["boss_r"], d["standoff_h"], align=ALIGN_MIN_Z)
+            Cone(d["flare_r"], d["boss_r"], d["boss_root_flare"], align=ALIGN_MIN_Z)   # root flare, 45 deg
         if d["rests"]:   # solid pads under the hole-less end of a board held at one end
             with Locations(*[(*r["xy"], d["plate_t"]) for r in d["rests"]]):
                 Cylinder(d["rest_r"], d["standoff_h"], align=ALIGN_MIN_Z)
@@ -54,6 +56,15 @@ def build_plate(plate: str) -> Part:
             with Locations(*d["holes"]):
                 RegularPolygon(d["pocket_r"], 6, rotation=30)
         extrude(sk.sketch, amount=d["pocket_depth"], mode=Mode.SUBTRACT)
+        for x, y in d["holes"]:   # stepped bridge: a slot across the pocket (flat to flat), then a square, then the bore
+            z1, z2, _ = d["bridge_z"]
+            with BuildSketch(Plane.XY.offset(z1)) as slot:
+                with Locations((x, y)):
+                    RegularPolygon(d["pocket_r"], 6, rotation=30)
+                    Rectangle(d["pocket_s"] + 1.0, d["bridge_w"], mode=Mode.INTERSECT)
+            extrude(slot.sketch, amount=d["layer"], mode=Mode.SUBTRACT)
+            with Locations((x, y, z2)):
+                Box(d["bridge_w"], d["bridge_w"], d["layer"], align=ALIGN_MIN_Z, mode=Mode.SUBTRACT)
         with Locations(*[(x, y, d["z_board_bottom"]) for x, y in d["holes"]]):
             Hole(d["bore_d"] / 2)
         if d["mount_holes"]:   # plain through bores for the screws that hold the plate down
@@ -110,6 +121,14 @@ def build_hardware(plate: str) -> dict[str, Compound]:
                 mount_screws=Compound(children=mount_screws), mount_access=Compound(children=mount_access))
 
 
+def _slot_area(d: dict) -> float:
+    """Area of the stepped bridge's first-layer slot: a strip bridge_w wide, flat to flat, inside the hex. The hex
+    with flats at x = +-s/2 is |y| <= r - |x| / sqrt(3); integrate the strip half-width min(w/2, that) over x."""
+    s2, r, h = d["pocket_s"] / 2, d["pocket_r"], d["bridge_w"] / 2
+    xk = min(max((r - h) * math.sqrt(3), 0.0), s2)   # where the hex edge comes inside the strip
+    return 4 * (h * xk + (r * (s2 - xk) - (s2 ** 2 - xk ** 2) / (2 * math.sqrt(3))))
+
+
 def expected_volume(d: dict) -> float:
     """Plate box minus corner fillets, plus bosses (and tray walls minus
     openings), minus pockets and bores."""
@@ -123,8 +142,12 @@ def expected_volume(d: dict) -> float:
         plate -= sum(o["width"] * d["wall"] * (d["wall_top_z"] - o["z0"]) for o in d["openings"])
     n = len(d["holes"])
     bosses = n * math.pi * d["boss_r"] ** 2 * d["standoff_h"]
+    f, R = d["boss_root_flare"], d["boss_r"]
+    bosses += n * (math.pi * f * (d["flare_r"] ** 2 + d["flare_r"] * R + R ** 2) / 3 - math.pi * R ** 2 * f)   # frustum - cylinder
     pockets = n * (3 * math.sqrt(3) / 2) * d["pocket_r"] ** 2 * d["pocket_depth"]
-    bores = n * math.pi * (d["bore_d"] / 2) ** 2 * (d["plate_t"] + d["standoff_h"] - d["pocket_depth"])
+    bore_a = math.pi * (d["bore_d"] / 2) ** 2
+    pockets += n * d["layer"] * (_slot_area(d) - bore_a + d["bridge_w"] ** 2 - bore_a)   # stepped bridge, beyond the bore
+    bores = n * bore_a * (d["plate_t"] + d["standoff_h"] - d["pocket_depth"])
     mount = len(d["mount_holes"]) * math.pi * (d.get("mount_bore_d", 0.0) / 2) ** 2 * d["plate_t"]
     rests = len(d["rests"]) * math.pi * d["rest_r"] ** 2 * d["standoff_h"]
     return plate + bosses + rests - pockets - bores - mount
@@ -147,6 +170,7 @@ def check_plate(plate: str, part: Part) -> dict:
     s2 = d["pocket_s"] / 2
     for i, (x, y) in enumerate(d["holes"]):
         z_b = d["plate_t"] + d["standoff_h"] / 2
+        fx = -1.0 if x > d["plate_centre"][0] else 1.0
         probes.update({
             f"boss{i} wall": ((x + (d["bore_d"] / 2 + d["boss_r"]) / 2, y, z_b), True),
             f"boss{i} bore": ((x, y, z_b), False),
@@ -156,6 +180,15 @@ def check_plate(plate: str, part: Part) -> dict:
             f"pocket{i} air at corner": ((x, y + d["pocket_r"] - 0.1, d["pocket_depth"] / 2), False),
             f"web{i} solid": ((x + d["bore_d"] / 2 + 0.3, y, d["pocket_depth"] + d["pocket_web"] / 2), True),
             f"web{i} bore": ((x, y, d["pocket_depth"] + d["pocket_web"] / 2), False),
+            # stepped bridge: layer 1 open along the slot to the flats, closed beside it; layer 2 open in the square only
+            f"bridge{i} slot at flat": ((x + s2 - 0.1, y, d["bridge_z"][0] + d["layer"] / 2), False),
+            f"bridge{i} beside slot": ((x, y + d["bridge_w"] / 2 + 0.15, d["bridge_z"][0] + d["layer"] / 2), True),
+            f"bridge{i} square": ((x + d["bridge_w"] / 2 - 0.05, y + d["bridge_w"] / 2 - 0.05, d["bridge_z"][1] + d["layer"] / 2), False),
+            f"bridge{i} past square": ((x + d["bridge_w"] / 2 + 0.15, y, d["bridge_z"][1] + d["layer"] / 2), True),
+            f"bridge{i} bore only": ((x + d["bore_d"] / 2 + 0.05, y + d["bore_d"] / 2 - 0.05, d["bridge_z"][2] + d["layer"] / 2), True),
+            # flare foot, probed towards the plate centre (away from any wall)
+            f"flare{i} foot": ((x + fx * (d["flare_r"] - 0.1), y, d["plate_t"] + 0.05), True),
+            f"flare{i} past foot": ((x + fx * (d["flare_r"] + 0.1), y, d["plate_t"] + 0.05), False),
         })
     for i, (x, y) in enumerate(d["mount_holes"]):   # through bore, material past it on the plate-edge side
         sx = 1.0 if x > d["plate_centre"][0] else -1.0

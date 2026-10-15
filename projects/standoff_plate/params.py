@@ -24,7 +24,7 @@ from types import MappingProxyType
 
 from cacad.registries.boards import BOARDS
 from cacad.registries.connectors import MATINGS
-from cacad.registries.materials import CLEAR_LOOSE, LAYER, NOZZLE, WALL, clearance_bore
+from cacad.registries.materials import LAYER, NOZZLE, WALL, clearance_bore
 
 STATUS = "passes"   # concept | passes | printed | parked
 
@@ -45,7 +45,8 @@ SCREWS = MappingProxyType(dict(
 
 COMMON = MappingProxyType(dict(
     # --- named clearances (mm): which two surfaces each one separates ---
-    screw_clearance=CLEAR_LOOSE,      # diametral: plate/boss bore - screw nominal (ISO 273 medium M3)
+    # Boss bores and mount bores are ISO 273 medium + the DESIGN FDM allowance (materials.clearance_bore). Until the
+    # first print (2026-10-15, docs/PRINT_LOG.md) the boss bore was screw + 0.40 with no allowance, and M2 screws bound.
     nut_pocket_clearance=0.30,        # across flats: pocket - nut s. UNVERIFIED: hex-pocket coupon
     nut_pocket_extra_depth=0.80,      # pocket depth - nut m: room for the screw tip window (>= screw_tip_min + a layer step)
     board_air_gap=1.0,                # lowest underside feature (pin tail) to plate top
@@ -54,17 +55,22 @@ COMMON = MappingProxyType(dict(
     finger_room=10.0,                 # clear space beyond an unplugged plug, to grab it. Design choice, UNVERIFIED
     opening_clearance=1.0,            # each side of the plug width, wall opening
     opening_below=0.5,                # wall opening floor below the board top, so the plug slides in level
-    board_wall_gap=1.0,               # board edge to inner wall face (tray)
+    board_wall_gap=1.0,               # board edge to inner wall face (tray), or past the boss root flares (derive)
     lid_clearance=3.0,                # rim above the tallest top-side thing (tray). Design choice, UNVERIFIED
     hole_line_centre_tol=1.0,         # two-hole boards: the hole line passes within this of the outline centre
-    mount_screw_clearance=CLEAR_LOOSE,  # diametral: plate mount bore - mount screw nominal (ISO 273 medium M3)
     mount_access_clearance=0.5,       # plan: mount screw head edge to the nearest board outline, so a driver goes straight down. DESIGN
     mount_head_seat=0.5,              # plan: mount screw head edge to the plate edge, the head bears fully on the plate. DESIGN
     rest_pad_d=4.0,                   # solid pad under the hole-less end of a board whose holes are all on one end. DESIGN
                                       # (as nutrient_controller's rest_pad_d)
     # --- geometry rules ---
-    boss_wall=WALL,                   # 1.6 = 4 perimeters around the bore
-    pocket_web_min=1.2,               # plate material above the nut pocket (bridged ceiling) = min_wall, 6 layers
+    boss_wall=WALL,                   # 1.6 = 4 perimeters around the bore, or less where a board's nearest pin leaves less
+                                      # (derive: Adafruit M2 boards, 3.81 to the pin, leave 1.51); never under min_wall
+    pocket_web_min=1.6,               # plate material above the nut pocket: the two stepped-bridge layers + 6 full layers
+                                      # (min_wall). 1.2 until the first print, where a boss snapped off at its root
+    bridge_relief=0.2,                # stepped bridge: slot width and square side - bore, so the square never meets the
+                                      # bore tangent. DESIGN
+    boss_root_flare=1.0,              # 45 deg cone where each boss meets the plate, radial = height. DESIGN, after a boss
+                                      # snapped off at its root on the first print. <= board_air_gap: under every pin tail
     plate_min_t=2.0,                  # stiffness floor for the plate itself
     plate_margin=3.0,                 # flat plate: edge beyond every board outline
     wall=WALL,                        # tray wall, 4 perimeters
@@ -81,8 +87,11 @@ COMMON = MappingProxyType(dict(
 
 PRINT_ORIENTATION = MappingProxyType(dict(
     plate=dict(up=(0, 0, 1), bed_face="plate bottom", bed_z="0",
-               known_overhangs=["nut_pocket_ceiling"],       # annulus bore..hex over each pocket, bridged
-               overhang_exceptions=[("nut_pocket_ceiling", "pocket_depth")]),
+               # the stepped bridge over each pocket: hex less the slot (two faces), slot less the square (two faces),
+               # square less the bore (one face). Each bridges between supports; no bore perimeter is printed in air
+               known_overhangs=["nut_pocket_ceiling", "bridge_slot_ceiling", "bridge_square_ceiling"],
+               overhang_exceptions=[("nut_pocket_ceiling", "pocket_depth"), ("bridge_slot_ceiling", "bridge_z1"),
+                                    ("bridge_square_ceiling", "bridge_z2")]),
     # a tray's openings are U-slots from the rim: no ceilings beyond the pockets
 ))
 
@@ -155,7 +164,8 @@ PLATES = {
                           # rest pad centre to the nearest through-hole pin (JP1, 2.54 pitch on the -X end): Eagle file
                           rest_nearest_pin={"MOSFET_5648": 3.81},
                           screw_pa=True,     # head r 1.9 over top copper at 1.27: PA 6.6 ISO 4762, as nutrient_controller
-                          tray=False, mount=dict(screw="M3", sides="Y")),
+                          tray=False, mount=dict(screw="M3", sides="Y"),
+                          mount_access_clearance=1.0),   # the +X-end boss root flares sit 0.42 into a 0.5 strip
     # Perma-Proto quarter carrying the XIAO ESP32-C3 and the Pololu D24V10F5. Its nearest breadboard via is 3.81 from a
     # mount hole: only an M2 boss stays the pin margin clear of it (M2.5 and M3 bosses would sit under a soldered lead).
     "PERMAPROTO": dict(screw="M2",
@@ -177,9 +187,8 @@ PLATES = {
                         placements=(("SEN0244", (-30.89, 0.0), 90), ("ADS1115", (0.0, 0.0), 90),
                                     ("SURVEYOR_PH", (30.89, 0.0), 90)),   # 6 mm between boards: DESIGN, jumper room
                         tray=False,
-                        # every connector faces +-Y, so the mount strips go on +-X. M4 / #8 wood screw, ISO 273
-                        # medium + FDM allowance (materials.clearance_bore), not CLEAR_LOOSE: a #8 (4.17) binds in 4.4
-                        mount=dict(screw="M4", sides="X", bore=clearance_bore("M4"))),
+                        # every connector faces +-Y, so the mount strips go on +-X. M4 / #8 wood screw (4.17), bore 4.7
+                        mount=dict(screw="M4", sides="X")),
 }
 
 # sprout-cut env `nutrient-analog-xiao` (platformio.ini, read 2026-10-07): the boards of the analog nutrient node,
@@ -253,7 +262,7 @@ def _connector(d: dict, pb: dict, x: float, y: float, facing, cn) -> dict:
         if along > 0 and across - half_b < half_w:
             blockers.append((along, ob["name"]))
     to_wall = ((d["plate_x1"] if fx > 0 else d["plate_x0"]) - mouth[0]) * fx if fx else ((d["plate_y1"] if fy > 0 else d["plate_y0"]) - mouth[1]) * fy
-    to_wall -= d["margin"] - d["board_wall_gap"] if d["tray"] else 0.0   # inner wall face, if there is a wall
+    to_wall -= d["margin"] - d["board_wall_gap"] if d["tray"] else 0.0   # inner wall face (board_wall_gap as derived), if any
     faces, dist = (_SIDES[(fx, fy)], to_wall)
     if blockers and min(blockers)[0] < to_wall:
         dist, faces = min(blockers)
@@ -272,6 +281,7 @@ def derive(plate: str, **overrides) -> dict:
     """Every dimension plate.py and the tests need. Overrides are for what-if tables only."""
     s = dict(PLATES[plate])
     c = dict(COMMON)
+    c.update({k: s.pop(k) for k in list(s) if k in COMMON})   # a plate row may override a COMMON rule, and says why
     for k, v in overrides.items():
         (s if k in s else c)[k] = v
     d = dict(plate=plate, **s, **c)
@@ -280,14 +290,24 @@ def derive(plate: str, **overrides) -> dict:
     d["boards"] = [_placed(BOARDS[pl[0]], pl[1], pl[2] if len(pl) > 2 else 0) for pl in s["placements"]]
 
     # bore, boss, pocket
-    d["bore_d"] = sc["d"] + c["screw_clearance"]
-    d["boss_r"] = d["bore_d"] / 2 + c["boss_wall"]
+    d["bore_d"] = clearance_bore(s["screw"].replace("_", "."))
+    pins = [pb["board"].nearest_pin for pb in d["boards"] if pb["board"].nearest_pin is not None]
+    room = min(pins) - c["boss_pin_margin"] - d["bore_d"] / 2 if pins else c["boss_wall"]   # no pin known: validate() refuses
+    d["boss_wall"] = min(c["boss_wall"], math.floor(room * 100 + 1e-6) / 100)   # validate() holds it to min_wall
+    d["boss_r"] = d["bore_d"] / 2 + d["boss_wall"]
     d["boss_d"] = 2 * d["boss_r"]
     d["pocket_s"] = sc["nut_s"] + c["nut_pocket_clearance"]          # across flats
     d["pocket_r"] = d["pocket_s"] / (2 * math.cos(math.radians(30)))  # circumscribed radius
     d["pocket_depth"] = sc["nut_m"] + c["nut_pocket_extra_depth"]
     d["plate_t"] = _round_up(max(c["plate_min_t"], d["pocket_depth"] + c["pocket_web_min"]), c["layer"])
     d["pocket_web"] = round(d["plate_t"] - d["pocket_depth"], 6)
+    # stepped bridge over each pocket, so no perimeter of the bore is printed in air: the first layer above the pocket
+    # bridges along X and leaves a slot across the pocket (flat to flat), the second bridges the slot along Y and
+    # leaves a square, the third bridges the square around the round bore
+    d["bridge_w"] = round(d["bore_d"] + c["bridge_relief"], 6)
+    d["bridge_z"] = (d["pocket_depth"], round(d["pocket_depth"] + c["layer"], 6), round(d["pocket_depth"] + 2 * c["layer"], 6))
+    d["bridge_z1"], d["bridge_z2"] = d["bridge_z"][1:]
+    d["flare_r"] = d["boss_r"] + c["boss_root_flare"]   # boss footprint on the plate top
 
     # standoff height: max() of the competing needs, winner recorded
     needs = {"underside clearance": s["underside_protrusion"] + c["board_air_gap"]}
@@ -320,7 +340,13 @@ def derive(plate: str, **overrides) -> dict:
     d["z_head_top"] = d["z_board_top"] + sc["head_k"]
 
     # plate outline from the boards, holes in plate coordinates
-    d["margin"] = c["wall"] + c["board_wall_gap"] if s["tray"] else c["plate_margin"]
+    # how far a boss reaches past its board's edge (ADS1115: holes 2.54 from the edge, boss r 2.81 -> 0.27)
+    d["boss_beyond_board"] = max(max(abs(hx - pb["xy"][0]) + d["boss_r"] - pb["size"][0] / 2,
+                                     abs(hy - pb["xy"][1]) + d["boss_r"] - pb["size"][1] / 2, 0.0)
+                                 for pb in d["boards"] for hx, hy in pb["holes"])
+    # tray: board edge to inner wall is board_wall_gap, or enough that every boss root flare stops a nozzle width short
+    d["board_wall_gap"] = max(c["board_wall_gap"], round(d["boss_beyond_board"] + c["boss_root_flare"] + c["nozzle_d"], 6))
+    d["margin"] = c["wall"] + d["board_wall_gap"] if s["tray"] else c["plate_margin"]
     xs = [pb["xy"][0] + sx * pb["size"][0] / 2 for pb in d["boards"] for sx in (-1, 1)]
     ys = [pb["xy"][1] + sy * pb["size"][1] / 2 for pb in d["boards"] for sy in (-1, 1)]
     # mount holes: a strip on two opposite sides (the ones no connector faces), wide enough that the
@@ -329,7 +355,7 @@ def derive(plate: str, **overrides) -> dict:
     d["mount"] = mount = s.get("mount")
     if mount:
         ms = d["mount_spec"] = dict(SCREWS[mount["screw"]])
-        d["mount_bore_d"] = mount.get("bore", ms["d"] + c["mount_screw_clearance"])   # a plate may name its own bore
+        d["mount_bore_d"] = mount.get("bore", clearance_bore(mount["screw"]))   # a plate may name its own bore
         d["mount_head_r"] = ms["head_dk"] / 2
         d["mount_inset"] = d["mount_head_r"] + c["mount_head_seat"]                    # hole centre to plate edge
         d["mount_strip"] = d["mount_head_r"] + c["mount_access_clearance"] + d["mount_inset"]   # board outline to plate edge
@@ -359,10 +385,6 @@ def derive(plate: str, **overrides) -> dict:
                     m = (-h[0], h[1]) if ax == 0 else (h[0], -h[1])
                     rx, ry = _rot(m, pb["rot"])
                     d["rests"].append(dict(board=pb["name"], local=m, xy=(pb["xy"][0] + rx, pb["xy"][1] + ry)))
-    # how far a boss reaches past its board's edge (ADS1115: holes 2.54 from the edge, boss r 2.8 -> 0.26)
-    d["boss_beyond_board"] = max(max(abs(hx - pb["xy"][0]) + d["boss_r"] - pb["size"][0] / 2,
-                                     abs(hy - pb["xy"][1]) + d["boss_r"] - pb["size"][1] / 2, 0.0)
-                                 for pb in d["boards"] for hx, hy in pb["holes"])
 
     # connectors: world position, mouth, plug and reach envelopes, and what each one faces
     d["connectors"] = [_connector(d, pb, x, y, facing, cn) for pb in d["boards"] for x, y, facing, cn in pb["connectors"]]
@@ -381,7 +403,7 @@ def derive(plate: str, **overrides) -> dict:
 
     # walls the printability check reads (analytic; tests also measure the geometry)
     d["walls"] = {
-        "boss wall (bore to boss OD)": c["boss_wall"],
+        "boss wall (bore to boss OD)": d["boss_wall"],
         "pocket web (pocket ceiling to plate top)": d["pocket_web"],
         "plate edge (pocket corner to plate edge)": min(
             min(d["plate_x1"] - x, x - d["plate_x0"], d["plate_y1"] - y, y - d["plate_y0"]) for x, y in d["holes"]) - d["pocket_r"],
@@ -459,8 +481,8 @@ def validate(plate: str) -> dict:
         assert not d["tray"], f"{plate}: mount holes in a tray floor: not designed"
         assert d["mount"]["sides"] in ("X", "Y"), f"{plate}: mount sides {d['mount']['sides']!r} is not 'X' or 'Y'"
         # the mount head sits on the plate top beside the bosses: it may not overlap one
-        gap = min(math.dist(m, h) for m in d["mount_holes"] for h in d["holes"]) - d["mount_head_r"] - d["boss_r"]
-        assert gap >= 0, f"{plate}: mount screw head overlaps a boss by {-gap:.2f}"
+        gap = min(math.dist(m, h) for m in d["mount_holes"] for h in d["holes"]) - d["mount_head_r"] - d["flare_r"]
+        assert gap >= 0, f"{plate}: mount screw head overlaps a boss root flare by {-gap:.2f}"
         # a connector facing a mount side would put its plug and cable over the mount heads
         for cn in d["connectors"]:
             faces_mount_side = (cn["facing"][0] != 0) == (d["mount"]["sides"] == "X")
@@ -481,8 +503,16 @@ def validate(plate: str) -> dict:
     # a commercial 4.5 OD standoff overhangs that edge by 0.41 and is what those boards ship on.
     assert d["boss_beyond_board"] <= d["boss_wall"] - d["nozzle_d"], (
         f"{plate}: boss reaches {d['boss_beyond_board']:.2f} past the board edge; less than a nozzle width of seat on that side")
+    # boss root: the flare stays under every pin tail, and the stepped bridge fits in the pocket and under the web
+    assert d["boss_root_flare"] <= d["board_air_gap"], f"{plate}: boss root flare {d['boss_root_flare']} reaches the pin tails"
+    assert d["bridge_w"] < d["pocket_s"], f"{plate}: stepped-bridge square {d['bridge_w']:.2f} wider than the pocket flats"
+    assert d["pocket_web"] >= 2 * d["layer"] + d["min_wall"], f"{plate}: web {d['pocket_web']:.2f} leaves under min_wall above the stepped bridge"
+    if d["tray"]:   # a flare stops short of the inner wall face
+        inner = (d["plate_x0"] + d["wall"], d["plate_x1"] - d["wall"], d["plate_y0"] + d["wall"], d["plate_y1"] - d["wall"])
+        room = min(min(x - inner[0], inner[1] - x, y - inner[2], inner[3] - y) for x, y in d["holes"]) - d["flare_r"]
+        assert room >= 0, f"{plate}: a boss root flare runs {-room:.2f} into the tray wall"
     # bosses and rest pads of different boards may not merge
-    hs = [(h, d["boss_r"]) for h in d["holes"]] + [(r["xy"], d["rest_r"]) for r in d["rests"]]
+    hs = [(h, d["flare_r"]) for h in d["holes"]] + [(r["xy"], d["rest_r"]) for r in d["rests"]]
     for i in range(len(hs)):
         for j in range(i + 1, len(hs)):
             gap = math.dist(hs[i][0], hs[j][0]) - hs[i][1] - hs[j][1]
@@ -493,7 +523,8 @@ def validate(plate: str) -> dict:
 def report(plate: str) -> str:
     d = derive(plate)
     lines = [f"{plate}: {d['screw']} x {d['screw_len']}{' PA (nylon)' if d.get('screw_pa') else ''}, {len(d['holes'])} bosses",
-             f"  plate {d['plate_size'][0]:.2f} x {d['plate_size'][1]:.2f} x {d['plate_t']:.2f}, bore {d['bore_d']:.2f}, boss OD {d['boss_d']:.2f}",
+             f"  plate {d['plate_size'][0]:.2f} x {d['plate_size'][1]:.2f} x {d['plate_t']:.2f}, bore {d['bore_d']:.2f}, boss OD {d['boss_d']:.2f} "
+             f"(wall {d['boss_wall']:.2f}), root flare to {2 * d['flare_r']:.2f}",
              f"  standoff {d['standoff_h']:.2f} governed by '{d['standoff_governed_by']}' "
              + ", ".join(f"{k} {v:.2f}" for k, v in d["standoff_needs"].items()),
              f"  boss reaches {d['boss_beyond_board']:.2f} past the board edge",

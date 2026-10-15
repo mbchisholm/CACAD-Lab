@@ -55,7 +55,10 @@ def test_overhang_only_at_declared_nut_pocket_ceilings(d, plate):
     o = d["print_orientation"]["plate"]
     rep = check_overhang(plate, dict(up=o["up"], bed_z=o["bed_z"], max_deg=d["max_overhang_deg"],
                                      nozzle_d=d["nozzle_d"], exceptions=o["overhang_exceptions"]))
-    assert len(rep["exceptions_found"]) == len(d["holes"]), rep   # one ceiling per pocket, no more
+    # per pocket, the stepped bridge: two faces beside the slot, two beside the square, one around the bore; no more
+    by_z = {z: sum(1 for *_, fz in rep["exceptions_found"] if abs(fz - z) < 0.01) for z in d["bridge_z"]}
+    n = len(d["holes"])
+    assert by_z == {d["bridge_z"][0]: 2 * n, d["bridge_z"][1]: 2 * n, d["bridge_z"][2]: n}, (by_z, rep)
     # every declared ceiling is a bridge no wider than the pocket across corners
     assert all(area < 3.2 * d["pocket_r"] ** 2 for _, _, area, _ in rep["exceptions_found"]), rep
 
