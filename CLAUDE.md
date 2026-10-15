@@ -21,6 +21,8 @@ projects/<name>/      one part or family: params.py, one file per part, tests/, 
                       leaf_imager/ is a leaf NDVI imager: SPEC.md, sourced LEDs, five printed parts.
                       camera_reader/ is a bought Pi stand (meshes in ref/) with printed optics.
                       birdhouse/ is a solar ESP32-CAM nest box: pin map and energy budget in params.
+                      module_grid/ is the 20 mm tile grid: an M3 heat-set base, board tiles
+                      (standoff_plate rows with grid=True), an edge clamp for boards with no holes.
 coupons/              calibration coupon: optional, for tuning a fit.
 docs/FINDINGS.md      kernel/library/tooling facts with reproductions (F-numbers). Read before fighting the kernel.
 docs/PRINT_LOG.md     manufacturing assumptions and print results (nothing printed yet).

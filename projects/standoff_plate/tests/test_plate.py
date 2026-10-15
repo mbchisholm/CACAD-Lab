@@ -41,10 +41,13 @@ def test_walls_measured_on_sections(d, plate):
     assert abs(got["boss level"] - d["boss_wall"]) < 0.02, got
     # at pocket level the thinnest wall is a pocket or a mount bore to the plate edge, whichever is less;
     # mount bore to pocket is tabulated against the pocket's corner circle, so it may only measure thicker
+    # (a grid tile's corner-cell holes sit nearer a pocket than the edge: then it measures between the two)
     edge = min(d["walls"]["plate edge (pocket corner to plate edge)"], d["walls"].get("mount hole to plate edge", math.inf))
-    assert abs(got["pocket level"] - edge) < 0.02, got
-    if d["mount_holes"]:
-        assert d["walls"]["mount hole to nut pocket (pocket corner)"] >= edge - 0.02, d["walls"]
+    m2p = d["walls"].get("mount hole to nut pocket (pocket corner)", math.inf)
+    if m2p >= edge - 0.02:
+        assert abs(got["pocket level"] - edge) < 0.02, got
+    else:
+        assert m2p - 0.02 <= got["pocket level"] <= edge + 0.02, (got, d["walls"])
 
 
 def test_declared_orientation(d, plate):

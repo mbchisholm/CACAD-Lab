@@ -32,6 +32,8 @@ Active and passing (sizes after the 2026-10-15 change):
   Adafruit's STEP), `MOSFET_5648x3` (three pump drivers, M2 PA, 31.4 × 75.3 × 9.0,
   two bosses and two rest pads each), `PERMAPROTO` (XIAO ESP32-C3 + Pololu, M2).
 - `ANALOG_NODE`: SEN0244, ADS1115 and pH on one plate, 111.8 × 48 × 8.8, M2 × 10.
+- `SURVEYOR_PH_tile`: the Surveyor as a `module_grid` tile (`mount=dict(..., grid=True)`:
+  outline n × 20 - 0.4, M3 holes on the corner cell centres), 59.6 × 59.6 × 9.0.
 
 Failing by rule, on purpose:
 - `ADS1115x2`: inner connectors face each other 6.5 mm apart, the plug needs 15.

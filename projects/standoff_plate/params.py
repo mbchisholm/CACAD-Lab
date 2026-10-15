@@ -25,6 +25,7 @@ from types import MappingProxyType
 from cacad.registries.boards import BOARDS
 from cacad.registries.connectors import MATINGS
 from cacad.registries.materials import LAYER, NOZZLE, WALL, clearance_bore
+from projects.module_grid.params import GRID, corner_inset, grid_size, insert_screw
 
 STATUS = "passes"   # concept | passes | printed | parked
 
@@ -153,6 +154,11 @@ PLATES = {
                         top_protrusion=4.5,         # Atlas STEP: the SMA. Tray only
                         placements=(("SURVEYOR_PH", (0.0, 0.0)),), tray=False,
                         mount=dict(screw="M3", sides="Y")),   # SMA and header face ±X: mount strips on ±Y
+    # the same board as a module_grid tile: M3 holes at the corner cell centres, into the base's heat-set inserts.
+    # The SMA reaches 9.3 past the board's -X edge, 0.5 past the tile: leave the cell beside that end open.
+    "SURVEYOR_PH_tile": dict(screw="M2_5", board_t=BOARDS["SURVEYOR_PH"].thickness, underside_protrusion=3.5,
+                             top_protrusion=4.5, placements=(("SURVEYOR_PH", (0.0, 0.0)),), tray=False,
+                             mount=dict(screw="M3", sides="Y", grid=True)),
     # three pump drivers (acid, nutrient A, nutrient B), 4 mm apart (DESIGN), JST PH inputs to -X, WAGO pump terminals
     # to +X. Both holes are on the +X end: a rest pad carries the -X end.
     "MOSFET_5648x3": dict(screw="M2",
@@ -212,7 +218,7 @@ VENDOR_STEPS = MappingProxyType({
 })
 
 ACTIVE_PLATES = ("ADS1115", "ADS1115x2_tray", "INA219", "TCA9548A", "FEATHER", "SENSOR_HUB_tray", "SEN0244", "EZO_ISO_x2",
-                 "SURVEYOR_PH", "MOSFET_5648x3", "PERMAPROTO", "ANALOG_NODE")
+                 "SURVEYOR_PH", "MOSFET_5648x3", "PERMAPROTO", "ANALOG_NODE", "SURVEYOR_PH_tile")
 
 
 def _round_up(x: float, step: float) -> float:
@@ -357,7 +363,8 @@ def derive(plate: str, **overrides) -> dict:
         ms = d["mount_spec"] = dict(SCREWS[mount["screw"]])
         d["mount_bore_d"] = mount.get("bore", clearance_bore(mount["screw"]))   # a plate may name its own bore
         d["mount_head_r"] = ms["head_dk"] / 2
-        d["mount_inset"] = d["mount_head_r"] + c["mount_head_seat"]                    # hole centre to plate edge
+        # hole centre to plate edge: beside the head, or (grid tile) the centre of the corner cell
+        d["mount_inset"] = corner_inset() if mount.get("grid") else d["mount_head_r"] + c["mount_head_seat"]
         d["mount_strip"] = d["mount_head_r"] + c["mount_access_clearance"] + d["mount_inset"]   # board outline to plate edge
         if mount["sides"] == "X":
             mx = max(mx, d["mount_strip"])
@@ -366,6 +373,14 @@ def derive(plate: str, **overrides) -> dict:
     d["margin_x"], d["margin_y"] = mx, my
     d["plate_x0"], d["plate_x1"] = min(xs) - mx, max(xs) + mx
     d["plate_y0"], d["plate_y1"] = min(ys) - my, max(ys) + my
+    # grid tile (module_grid): the outline grows, evenly, to n x pitch - tile_gap, so the corner holes land on base cells
+    if mount and mount.get("grid"):
+        assert mount["screw"] == GRID["screw"], f"{plate}: a grid tile mounts on {GRID['screw']}"
+        (nx, wx), (ny, wy) = (grid_size(d["plate_x1"] - d["plate_x0"]), grid_size(d["plate_y1"] - d["plate_y0"]))
+        gx, gy = (wx - (d["plate_x1"] - d["plate_x0"])) / 2, (wy - (d["plate_y1"] - d["plate_y0"])) / 2
+        d["plate_x0"], d["plate_x1"], d["plate_y0"], d["plate_y1"] = d["plate_x0"] - gx, d["plate_x1"] + gx, d["plate_y0"] - gy, d["plate_y1"] + gy
+        d["grid_cells"] = (nx, ny)
+        d["mount_screw_len"] = insert_screw(d["plate_t"])   # into the base's heat-set insert
     # one hole in each plate corner, inset from both edges; the strip puts it beyond the boards on the mount sides
     e = d.get("mount_inset", 0.0)
     d["mount_holes"] = [(x, y) for x in (d["plate_x0"] + e, d["plate_x1"] - e)
@@ -532,6 +547,9 @@ def report(plate: str) -> str:
              f"screw tip {d['screw_tip_z']:.2f} above bed, {d['screw_beyond_nut']:.2f} past the nut",
              "  walls " + ", ".join(f"{k} {v:.2f}" for k, v in d["walls"].items())]
     if d["mount"]:
+        if d.get("grid_cells"):
+            lines.append(f"  grid tile {d['grid_cells'][0]} x {d['grid_cells'][1]} cells: {d['mount']['screw']} x {d['mount_screw_len']} "
+                         f"into the base's heat-set inserts")
         lines.append(f"  mount: {len(d['mount_holes'])} x {d['mount']['screw']} on the {d['mount']['sides']} sides, bore {d['mount_bore_d']:.2f}, "
                      f"{d['mount_inset']:.2f} from the plate edges, strip {d['mount_strip']:.2f} beyond the boards, clamp {d['plate_t']:.2f}")
     if d["rests"]:
