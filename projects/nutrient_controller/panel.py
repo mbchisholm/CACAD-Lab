@@ -200,7 +200,7 @@ def build_bought(d: dict) -> dict:
         out["encoder"] = enc.rotate(Axis.X, 90).moved(Location((kx, d["encoder_pcb_y"], kz)))
     else:
         out["encoder"] = _box(kx - 12.7, kx + 12.7, d["encoder_pcb_y"] - E["pcb"][2], d["encoder_pcb_y"], kz - 12.7, kz + 12.7) + \
-            _cyl_y(E["shaft_d"], kx, kz, d["shaft_tip_y"], t)
+            _cyl_y(E["shaft_d"], kx, kz, d["shaft_tip_y"], t) + _cyl_y(E["bushing_d"], kx, kz, d["bushing_tip_y"], t)
     out["encoder nut"] = _cyl_y(10.0, kx, kz, -E["nut_t"], 0) - _cyl_y(E["bushing_d"] + 0.05, kx, kz, -E["nut_t"] - 1, 1)
     L = P["lamp"]
     for name, (x, z) in d["lamps"]:
