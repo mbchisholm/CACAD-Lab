@@ -195,6 +195,20 @@ PLATES = {
                         tray=False,
                         # every connector faces +-Y, so the mount strips go on +-X. M4 / #8 wood screw (4.17), bore 4.7
                         mount=dict(screw="M4", sides="X")),
+    # 2026-10-23, projects/sen66_bench: an open bench plate for a Sensirion SEN66 on the Adafruit SEN6x breakout and a
+    # Metro ESP32-S3. `keep_in` is ground the plate covers for a bought part that is not a board (name, centre, size):
+    # here the SEN66 at its datasheet maximum, 55.4 x 25.7 (projects/sen6x_enclosure SPEC), which sen66_bench rings
+    # with a low lip and grooves for its cable. Placements are DESIGN: the breakout's STEMMA QT level with the Metro's
+    # (y 25.78), the breakout's GH mouth (turned to -Y) over the sensor's socket (x 62.4 + 4.455), the sensor 8.0 off the
+    # Metro's +X edge (lip and header jumpers), its +Y side 16.9 below the breakout (GH plug 5.7 + finger room 10).
+    # sen66_bench.validate() holds every one of those relations; this row is built only there.
+    "SEN66_BENCH": dict(screw="M2",                 # the Metro's 3.56 pin room takes only an M2 boss
+                        board_t=1.6,                # UNVERIFIED: Adafruit standard FR-4, not in the Eagle files
+                        underside_protrusion=3.5,   # DESIGN allowance: Metro female-header tails
+                        top_protrusion=8.5,         # UNVERIFIED: Metro female headers. Tray only
+                        placements=(("METRO_ESP32S3", (0.0, 0.0)), ("SEN6X_BREAKOUT", (66.8, 25.78), 180)),
+                        keep_in=(("SEN66", (62.4, -12.85), (55.4, 25.7)),),
+                        tray=False),
 }
 
 # sprout-cut env `nutrient-analog-xiao` (platformio.ini, read 2026-10-07): the boards of the analog nutrient node,
@@ -258,7 +272,7 @@ def _connector(d: dict, pb: dict, x: float, y: float, facing, cn) -> dict:
     half_w = (m.plug_w if m.plug_known else m.header_len) / 2
     # distance along the facing from the mouth to the nearest other board whose outline overlaps the plug width
     blockers = []
-    for ob in d["boards"]:
+    for ob in d["boards"] + d["keep_in"]:   # a keep-in (a bought part beside the boards) blocks a plug like a board
         if ob is pb:
             continue
         (bx, by), bsize = ob["xy"], ob["size"]
@@ -294,6 +308,7 @@ def derive(plate: str, **overrides) -> dict:
     sc = dict(SCREWS[s["screw"]])
     d["screw_spec"] = sc
     d["boards"] = [_placed(BOARDS[pl[0]], pl[1], pl[2] if len(pl) > 2 else 0) for pl in s["placements"]]
+    d["keep_in"] = [dict(name=n, xy=tuple(xy), size=tuple(sz)) for n, xy, sz in s.get("keep_in", ())]
 
     # bore, boss, pocket
     d["bore_d"] = clearance_bore(s["screw"].replace("_", "."))
@@ -353,8 +368,8 @@ def derive(plate: str, **overrides) -> dict:
     # tray: board edge to inner wall is board_wall_gap, or enough that every boss root flare stops a nozzle width short
     d["board_wall_gap"] = max(c["board_wall_gap"], round(d["boss_beyond_board"] + c["boss_root_flare"] + c["nozzle_d"], 6))
     d["margin"] = c["wall"] + d["board_wall_gap"] if s["tray"] else c["plate_margin"]
-    xs = [pb["xy"][0] + sx * pb["size"][0] / 2 for pb in d["boards"] for sx in (-1, 1)]
-    ys = [pb["xy"][1] + sy * pb["size"][1] / 2 for pb in d["boards"] for sy in (-1, 1)]
+    xs = [pb["xy"][0] + sx * pb["size"][0] / 2 for pb in d["boards"] + d["keep_in"] for sx in (-1, 1)]
+    ys = [pb["xy"][1] + sy * pb["size"][1] / 2 for pb in d["boards"] + d["keep_in"] for sy in (-1, 1)]
     # mount holes: a strip on two opposite sides (the ones no connector faces), wide enough that the
     # mount screw head sits wholly outside every board outline (driver access) and wholly on the plate
     mx = my = d["margin"]

@@ -313,5 +313,45 @@ SURVEYOR_PH = Board(
     nearest_top_copper=6.40,
 )
 
+# --- boards added 2026-10-23 for projects/sen66_bench, from Adafruit's published Eagle files parsed with
+# tools/board_from_eagle.py. Connector facing is the tool's inference (pad geometry or nearest edge).
+#
+# SEN6X_BREAKOUT (PID 6331): the ADS1115's outline and hole pattern. Besides the two STEMMA QT it carries a JST GH
+# 6-pin (X1, SM06B-GHS-TB) for the SEN6x cable at (0.00, 5.71), 3.18 from the +Y edge, mouth to +Y (nearest edge,
+# and Adafruit's product photo). The connector registry has no GH row; projects/sen66_bench checks that plug.
+SEN6X_BREAKOUT = Board(
+    name="SEN6X_BREAKOUT",
+    size=(25.400, 17.780),
+    holes=((-10.160, -6.350), (10.160, -6.350), (-10.160, 6.350), (10.160, 6.350)),
+    hole_dia=2.50,   # Eagle drill, plated: M2, as the ADS1115
+    source="Adafruit SEN6x Breakout.brd, github.com/adafruit/Adafruit-SEN6x-Breakout-PCB (HEAD); Adafruit SEN6x Breakout.brd parsed by tools/board_from_eagle.py, 2026-10-23",
+    thickness=None,   # not in an Eagle file
+    nearest_pin=5.08,
+    nearest_top_copper=2.11,
+    connectors=(
+        Connector(9.53, 0.00, (1, 0), "JST_SH4"),   # CONN1:JST_SH4, facing by pad geometry
+        Connector(-9.52, 0.00, (-1, 0), "JST_SH4"),   # CONN2:JST_SH4, facing by pad geometry
+    ),
+)
+
+# METRO_ESP32S3 (PID 5500, rev B): Arduino Uno outline and holes, drawn portrait (USB-C at +Y). Four plain 3.2
+# drills; the (24.13, 19.05) hole is 3.56 from the nearest pin of the IOH header, so only an M2 boss fits under it.
+METRO_ESP32S3 = Board(
+    name="METRO_ESP32S3",
+    size=(53.340, 68.580),
+    holes=((-19.050, -31.750), (8.890, -31.750), (24.130, 19.050), (-24.130, 20.320)),
+    hole_dia=3.20,   # Eagle drill, not plated
+    source="Adafruit Metro ESP32-S3 Rev B.brd, github.com/adafruit/Adafruit-Metro-ESP32-S3-PCB (HEAD); Adafruit Metro ESP32-S3 Rev B.brd parsed by tools/board_from_eagle.py, 2026-10-23",
+    thickness=None,   # not in an Eagle file
+    nearest_pin=3.56,
+    nearest_top_copper=2.46,
+    connectors=(
+        Connector(16.38, -26.86, (0, -1), "JST_PH2"),   # X1:JSTPH2_BATT, facing by nearest edge
+        Connector(11.43, 29.21, (0, 1), "USB_C"),   # X4:USB_C_CUSB31-CFM2AX-01-X, facing by nearest edge
+        Connector(23.62, 25.78, (1, 0), "JST_SH4"),   # CONN1:JST_SH4, facing by pad geometry
+    ),
+)
+
 BOARDS = {b.name: b for b in (ADS1115, ADS1115_V1, UNO_R3, TENTACLE_T2, INA219, TCA9548A, BME280, FEATHER_ESP32S3, OLED_938,
-                                     MOSFET_5648, RELAY_4409, SEN0244, PERMAPROTO_QUARTER, EZO_CARRIER_ISO, SURVEYOR_PH)}
+                                     MOSFET_5648, RELAY_4409, SEN0244, PERMAPROTO_QUARTER, EZO_CARRIER_ISO, SURVEYOR_PH,
+                                     SEN6X_BREAKOUT, METRO_ESP32S3)}

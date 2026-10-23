@@ -35,6 +35,9 @@ Active and passing (sizes after the 2026-10-15 change):
 - `SURVEYOR_PH_tile`: the Surveyor as a `module_grid` tile (`mount=dict(..., grid=True)`:
   outline n × 20 - 0.4, M3 holes on the corner cell centres), 59.6 × 59.6 × 9.0.
 
+Built in `projects/sen66_bench`: `SEN66_BENCH` (Metro ESP32-S3 + SEN6x breakout,
+M2 × 10). Its `keep_in` covers the SEN66, which blocks plugs like a board.
+
 Failing by rule, on purpose:
 - `ADS1115x2`: inner connectors face each other 6.5 mm apart, the plug needs 15.
 - `ADS1115_V1`, `BME280`: holes on one edge; the rest pad for the free edge
