@@ -336,6 +336,9 @@ SEN6X_BREAKOUT = Board(
 
 # METRO_ESP32S3 (PID 5500, rev B): Arduino Uno outline and holes, drawn portrait (USB-C at +Y). Four plain 3.2
 # drills; the (24.13, 19.05) hole is 3.56 from the nearest pin of the IOH header, so only an M2 boss fits under it.
+# Two more plug-in parts the tool does not list (no Mating row): a DC jack X5 (DCJACK_2MM_PTH) at (-21.08, 27.24),
+# beside the USB-C on the +Y end, and a microSD socket X6 (Molex 104031-0811) at (-10.16, -24.89) on the -Y end,
+# beside the battery JST. Both ends need open room; projects/sen66_bench checks it.
 METRO_ESP32S3 = Board(
     name="METRO_ESP32S3",
     size=(53.340, 68.580),

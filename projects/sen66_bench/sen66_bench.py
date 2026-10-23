@@ -30,9 +30,10 @@ def build_part(size: str) -> Part:
             RectangleRounded(*d["lip_outer"], d["lip_outer_r"])
             RectangleRounded(*d["pocket"], d["pocket_r"], mode=Mode.SUBTRACT)
         extrude(lip.sketch, amount=d["lip_h"])
-        # groove: floor at z_groove, open to the top, through the lip on the socket side
-        with Locations(((g[0] + g[2]) / 2, (g[1] + g[3]) / 2, d["z_groove"])):
-            Box(g[2] - g[0], g[3] - g[1], d["groove_depth"] + d["lip_h"] + 1.0, align=ALIGN_MIN_Z, mode=Mode.SUBTRACT)
+        # groove: floor at z_groove, open to the top, through the lip and out through the plate edge (1.0 past it)
+        out = -1.0 if d["groove_side"] == "-Y" else 1.0
+        with Locations(((g[0] + g[2]) / 2, (g[1] + g[3]) / 2 + out * 0.5, d["z_groove"])):
+            Box(g[2] - g[0], g[3] - g[1] + 1.0, d["groove_depth"] + d["lip_h"] + 1.0, align=ALIGN_MIN_Z, mode=Mode.SUBTRACT)
     return bp.part
 
 
@@ -55,7 +56,7 @@ def build_envelopes(size: str) -> dict[str, Compound]:
 
 def expected_volume(size: str, plate: Part) -> float:
     """The standoff plate (checked against its own hand volume in check_plate) + the lip ring - the groove, which
-    cuts the plate over its whole plan and the lip wall once."""
+    cuts the plate from its inboard end to the plate edge, and the lip wall once."""
     d = derive(size)
 
     def rr(w, h, r):
@@ -84,9 +85,10 @@ def check_part(size: str, part: Part) -> dict:
     gx = (g[0] + g[2]) / 2
     z_lip = d["z_floor"] + d["lip_h"] / 2
     in_x, in_y = d["pocket"][0] / 2 + d["lip_wall"] / 2, d["pocket"][1] / 2 + d["lip_wall"] / 2
-    out = 1.0 if d["groove_lip_side"] == "+Y" else -1.0      # towards the lip side the groove leaves by
+    out = 1.0 if d["groove_side"] == "+Y" else -1.0          # towards the plate edge the groove leaves by
     lip_out_y, far_y = sy + out * in_y, sy - out * in_y
     inboard_y = (g[1] if out > 0 else g[3]) - out * 0.2       # just past the groove's inboard end
+    edge_y = (p["plate_y1"] if out > 0 else p["plate_y0"]) - out * 0.2   # just inside the plate edge
     assert_material(part, {
         "lip +X": ((sx + in_x, sy, z_lip), True),
         "lip -X": ((sx - in_x, sy, z_lip), True),
@@ -99,6 +101,9 @@ def check_part(size: str, part: Part) -> dict:
         "groove under plug": ((gx, d["socket_xy"][1], d["z_groove"] + 0.1), False),
         "groove floor": ((gx, d["socket_xy"][1], d["z_groove"] - 0.1), True),
         "past the groove's inboard end": ((gx, inboard_y, d["z_groove"] + 0.1), True),
+        "groove open at the plate edge": ((gx, edge_y, d["z_groove"] + 0.1), False),
+        "floor under the groove at the edge": ((gx, edge_y, d["z_groove"] - 0.1), True),
+        "plate edge beside the groove": ((g[0] - 1.0, edge_y, d["z_groove"] + 0.1), True),
     })
 
     # function: the sensor at its maximum and its plug + wire bend clear the part; the boards, screws and plugs of

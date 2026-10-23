@@ -49,7 +49,8 @@ def test_lip_clears_the_outlet_and_groove_takes_the_bend(d):
     (dict(finger_room=20.0), "plug needs"),                  # the sensor crowds the breakout's GH plug
     (dict(floor_web=2.0), "groove leaves"),                 # no floor left under the groove
     (dict(arch_margin=-0.5), "outlet arch"),                # a lip tall enough to shade the exhaust
-    (dict(metro_side_room=12.0), "from the Metro"),         # no finger room at the Metro's headers
+    (dict(end_room=20.0), "battery/microSD end"),           # no room to pull the Metro's microSD card
+    (dict(cable_edge="+Y"), "cable edge"),                   # the cables no longer leave by one edge
 ])
 def test_validate_refuses_planted_defects(override, message):
     with pytest.raises(AssertionError, match=message):
