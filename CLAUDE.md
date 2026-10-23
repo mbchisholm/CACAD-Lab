@@ -23,7 +23,7 @@ projects/<name>/      one part or family: params.py, one file per part, tests/, 
                       birdhouse/ is a solar ESP32-CAM nest box: pin map and energy budget in params.
                       module_grid/ is the 20 mm tile grid: an M3 heat-set base, board tiles
                       (standoff_plate rows with grid=True), an edge clamp for boards with no holes.
-                      sen66_bench/ is an open test plate: Metro ESP32-S3 + SEN6x breakout + SEN66 in a lip.
+                      sen66_bench/ is an open test plate: Metro ESP32-S3 + SEN6x breakout + SEN66 in a lip; screws or pegs.
 coupons/              calibration coupon: optional, for tuning a fit.
 docs/FINDINGS.md      kernel/library/tooling facts with reproductions (F-numbers). Read before fighting the kernel.
 docs/PRINT_LOG.md     manufacturing assumptions and print results (nothing printed yet).

@@ -1,6 +1,9 @@
-"""sen66_bench: the SEN66_BENCH standoff plate (Metro ESP32-S3 + SEN6x breakout on M2 bosses, nuts captured from the
-bed face) plus a lip the SEN66 drops into and a groove under its socket for the cable. Every number is from
-params.derive; the plate and its own checks are projects/standoff_plate's.
+"""sen66_bench: one bench plate, two ways to hold the boards (params.SIZES):
+
+  SEN66_BENCH      the SEN66_BENCH standoff plate (projects/standoff_plate: M2 bosses, nuts captured from the bed face)
+  SEN66_BENCH_PEG  no screws: a plain plate whose bosses carry locating pegs through the boards' holes
+
+Both add a lip the SEN66 drops into and a groove under its socket for the cable. Every number is from params.derive.
 
     .venv/bin/python projects/sen66_bench/sen66_bench.py [--show]     # ACTIVE_SIZES -> out/
 
@@ -11,30 +14,70 @@ from __future__ import annotations
 
 import math
 
-from build123d import (Box, BuildPart, BuildSketch, Compound, Location, Locations, Mode, Part, RectangleRounded, add,
-                       extrude)
+from build123d import (Axis, Box, BuildPart, BuildSketch, Compound, Cone, Cylinder, Location, Locations, Mode, Part,
+                       RectangleRounded, add, extrude, fillet)
 
-from cacad import ALIGN_MIN_Z, assert_bbox, assert_material, interference_volume, single_solid
+from cacad import ALIGN_MIN_Z, assert_bbox, assert_material, interference_volume, is_inside, single_solid
 from projects.sen66_bench.params import ACTIVE_SIZES, derive
 from projects.standoff_plate.plate import build_hardware, build_plate, check_plate
+
+
+def _peg_plate(d: dict) -> Part:
+    """Plate, flared bosses, and a peg with a 45 deg lead-in tip on each: no bores, no pockets."""
+    p = d["p"]
+    with BuildPart() as bp:
+        with Locations((*p["plate_centre"], d["plate_t"] / 2)):
+            Box(*p["plate_size"], d["plate_t"])
+        fillet(bp.edges().filter_by(Axis.Z), radius=p["corner_r"])
+        with Locations(*[(x, y, d["plate_t"]) for x, y in p["holes"]]):
+            Cylinder(d["boss_r"], d["standoff_h"], align=ALIGN_MIN_Z)
+            Cone(d["flare_r"], d["boss_r"], d["boss_root_flare"], align=ALIGN_MIN_Z)   # root flare, 45 deg
+        for pg in d["pegs"]:
+            r, h = pg["d"] / 2, d["z_top"] - d["peg_tip"] - d["z_board_bottom"]
+            with Locations((*pg["xy"], d["z_board_bottom"])):
+                Cylinder(r, h, align=ALIGN_MIN_Z)
+            with Locations((*pg["xy"], d["z_top"] - d["peg_tip"])):
+                Cone(r, r - d["peg_tip"], d["peg_tip"], align=ALIGN_MIN_Z)
+    return bp.part
+
+
+def build_base(size: str) -> Part:
+    """The plate under the lip and groove: standoff_plate's for screws, _peg_plate otherwise."""
+    d = derive(size)
+    return build_plate(d["plate"]) if d["fixing"] == "screw" else _peg_plate(d)
 
 
 def build_part(size: str) -> Part:
     d = derive(size)
     sx, sy = d["sensor_xy"]
     g = d["groove_rect"]
-    plate = build_plate(d["plate"])   # outside the builder: its lead-in chamfer() would act on an open BuildPart
+    base = build_base(size)   # outside the builder: standoff_plate's lead-in chamfer() would act on an open BuildPart
     with BuildPart() as bp:
-        add(plate)
+        add(base)
         with BuildSketch(Location((sx, sy, d["z_floor"]))) as lip:
             RectangleRounded(*d["lip_outer"], d["lip_outer_r"])
             RectangleRounded(*d["pocket"], d["pocket_r"], mode=Mode.SUBTRACT)
         extrude(lip.sketch, amount=d["lip_h"])
-        # groove: floor at z_groove, open to the top, through the lip and out through the plate edge (1.0 past it)
-        out = -1.0 if d["groove_side"] == "-Y" else 1.0
-        with Locations(((g[0] + g[2]) / 2, (g[1] + g[3]) / 2 + out * 0.5, d["z_groove"])):
-            Box(g[2] - g[0], g[3] - g[1] + 1.0, d["groove_depth"] + d["lip_h"] + 1.0, align=ALIGN_MIN_Z, mode=Mode.SUBTRACT)
+        # groove: floor at z_groove, open to the top, from inboard of the plug out through the lip
+        with Locations(((g[0] + g[2]) / 2, (g[1] + g[3]) / 2, d["z_groove"])):
+            Box(g[2] - g[0], g[3] - g[1], d["groove_depth"] + d["lip_h"] + 1.0, align=ALIGN_MIN_Z, mode=Mode.SUBTRACT)
     return bp.part
+
+
+def build_hardware_for(size: str) -> dict[str, Compound]:
+    """Bought parts as placed: standoff_plate's boards, screws, nuts and plugs for the screw plate; for the peg plate
+    the boards (with their drilled holes) at the peg plate's height."""
+    d = derive(size)
+    if d["fixing"] == "screw":
+        return build_hardware(d["plate"])
+    p = d["p"]
+    boards = []
+    for pb in p["boards"]:
+        slab = Box(*pb["size"], p["board_t"], align=ALIGN_MIN_Z).moved(Location((*pb["xy"], d["z_board_bottom"])))
+        for hx, hy in pb["holes"]:
+            slab -= Cylinder(pb["board"].hole_dia / 2, p["board_t"], align=ALIGN_MIN_Z).moved(Location((hx, hy, d["z_board_bottom"])))
+        boards.append(slab)
+    return dict(boards=Compound(children=boards))
 
 
 def build_envelopes(size: str) -> dict[str, Compound]:
@@ -54,17 +97,31 @@ def build_envelopes(size: str) -> dict[str, Compound]:
     return dict(sensor=Compound(children=[sensor.part]), plug=Compound(children=[plug]))
 
 
-def expected_volume(size: str, plate: Part) -> float:
-    """The standoff plate (checked against its own hand volume in check_plate) + the lip ring - the groove, which
-    cuts the plate from its inboard end to the plate edge, and the lip wall once."""
+def _frustum(r0: float, r1: float, h: float) -> float:
+    return math.pi * h * (r0 * r0 + r0 * r1 + r1 * r1) / 3
+
+
+def expected_volume(size: str, base: Part) -> float:
+    """The base (the screw plate is checked against its own hand volume in check_plate; the peg plate is computed
+    here) + the lip ring - the groove, which cuts the plate over its plan and the lip wall once."""
     d = derive(size)
+    p = d["p"]
 
     def rr(w, h, r):
         return w * h - (4 - math.pi) * r * r
+    if d["fixing"] == "screw":
+        vol = base.volume
+    else:
+        n, R, f = len(p["holes"]), d["boss_r"], d["boss_root_flare"]
+        vol = rr(*p["plate_size"], p["corner_r"]) * d["plate_t"]
+        vol += n * (math.pi * R * R * d["standoff_h"] + _frustum(d["flare_r"], R, f) - math.pi * R * R * f)
+        for pg in d["pegs"]:
+            r = pg["d"] / 2
+            vol += math.pi * r * r * (d["z_top"] - d["peg_tip"] - d["z_board_bottom"]) + _frustum(r, r - d["peg_tip"], d["peg_tip"])
     ring = rr(*d["lip_outer"], d["lip_outer_r"]) - rr(*d["pocket"], d["pocket_r"])
     lip_cut = d["groove_w"] * d["lip_wall"] * d["lip_h"]
     groove = d["groove_w"] * d["groove_len"] * d["groove_depth"]
-    return plate.volume + ring * d["lip_h"] - lip_cut - groove
+    return vol + ring * d["lip_h"] - lip_cut - groove
 
 
 def check_part(size: str, part: Part) -> dict:
@@ -72,12 +129,13 @@ def check_part(size: str, part: Part) -> dict:
     d = derive(size)
     p = d["p"]
     label = f"sen66_bench {size}"
-    plate = build_plate(d["plate"])
-    check_plate(d["plate"], plate)     # bosses, pockets, bores, boards seated, screws and plugs clear
+    base = build_base(size)
+    if d["fixing"] == "screw":
+        check_plate(d["plate"], base)   # bosses, pockets, bores, boards seated, screws and plugs clear
     assert part.is_valid, f"{label}: invalid"
     single_solid(part)
-    assert_bbox(part, (*p["plate_size"], p["plate_t"] + p["standoff_h"]), 0.0, d["bbox_tol"], label)
-    vol = expected_volume(size, plate)
+    assert_bbox(part, (*p["plate_size"], d["z_top"]), 0.0, d["bbox_tol"], label)
+    vol = expected_volume(size, base)
     assert abs(part.volume - vol) < 1e-3, f"{label}: volume {part.volume:.3f} vs hand {vol:.3f}"
 
     sx, sy = d["sensor_xy"]
@@ -85,11 +143,11 @@ def check_part(size: str, part: Part) -> dict:
     gx = (g[0] + g[2]) / 2
     z_lip = d["z_floor"] + d["lip_h"] / 2
     in_x, in_y = d["pocket"][0] / 2 + d["lip_wall"] / 2, d["pocket"][1] / 2 + d["lip_wall"] / 2
-    out = 1.0 if d["groove_side"] == "+Y" else -1.0          # towards the plate edge the groove leaves by
+    out = 1.0 if d["groove_side"] == "+Y" else -1.0          # the side the groove leaves by
     lip_out_y, far_y = sy + out * in_y, sy - out * in_y
     inboard_y = (g[1] if out > 0 else g[3]) - out * 0.2       # just past the groove's inboard end
-    edge_y = (p["plate_y1"] if out > 0 else p["plate_y0"]) - out * 0.2   # just inside the plate edge
-    assert_material(part, {
+    outer_y = (g[3] if out > 0 else g[1]) + out * 0.2         # just past its outer end
+    probes = {
         "lip +X": ((sx + in_x, sy, z_lip), True),
         "lip -X": ((sx - in_x, sy, z_lip), True),
         "lip far side": ((gx, far_y, z_lip), True),
@@ -101,22 +159,54 @@ def check_part(size: str, part: Part) -> dict:
         "groove under plug": ((gx, d["socket_xy"][1], d["z_groove"] + 0.1), False),
         "groove floor": ((gx, d["socket_xy"][1], d["z_groove"] - 0.1), True),
         "past the groove's inboard end": ((gx, inboard_y, d["z_groove"] + 0.1), True),
-        "groove open at the plate edge": ((gx, edge_y, d["z_groove"] + 0.1), False),
-        "floor under the groove at the edge": ((gx, edge_y, d["z_groove"] - 0.1), True),
-        "plate edge beside the groove": ((g[0] - 1.0, edge_y, d["z_groove"] + 0.1), True),
-    })
+        "past the groove's outer end": ((gx, outer_y, d["z_groove"] + 0.1), True),
+    }
+    if d["fixing"] == "peg":
+        zb = d["z_board_bottom"]
+        for i, pg in enumerate(d["pegs"]):
+            (x, y), r = pg["xy"], pg["d"] / 2
+            probes.update({
+                f"peg{i} in the board": ((x, y, zb + p["board_t"] / 2), True),
+                f"peg{i} clear of the hole wall": ((x + (r + pg["hole"] / 2) / 2, y, zb + p["board_t"] / 2), False),
+                f"peg{i} tip": ((x, y, d["z_top"] - 0.05), True),
+                f"above peg{i}": ((x, y, d["z_top"] + 0.1), False),
+                f"boss{i}": ((x + (r + d["boss_r"]) / 2, y, d["plate_t"] + d["standoff_h"] / 2), True),
+                f"outside boss{i}": ((x + d["boss_r"] + 0.1, y, d["plate_t"] + d["standoff_h"] / 2), False),
+                f"plate under boss{i}": ((x, y, d["plate_t"] / 2), True),
+            })
+    assert_material(part, probes)
 
     # function: the sensor at its maximum and its plug + wire bend clear the part; the boards, screws and plugs of
-    # the plate clear the sensor
+    # the plate clear the part and the sensor
     env = build_envelopes(size)
     for name, other in env.items():
         v = interference_volume(part, other)
         assert v < 1e-6, f"{label}: {name} envelope hits the part by {v:.4f} mm^3"
-    hw = build_hardware(d["plate"])
-    for name in ("boards", "screws", "plugs", "reach"):
-        if hw[name].solids():
-            v = interference_volume(hw[name], env["sensor"])
-            assert v < 1e-6, f"{label}: {name} hit the sensor by {v:.4f} mm^3"
+    hw = build_hardware_for(size)
+    for name, other in hw.items():
+        if not other.solids():
+            continue
+        v = interference_volume(other, env["sensor"])
+        assert v < 1e-6, f"{label}: {name} hit the sensor by {v:.4f} mm^3"
+    if d["fixing"] == "peg":
+        v = interference_volume(part, hw["boards"])
+        assert v < 1e-6, f"{label}: a peg or boss hits a board by {v:.4f} mm^3"
+        for pb in p["boards"]:   # each board sits on every boss, and nothing of the part is inside its pin ring
+            b, (bx, by) = pb["board"], pb["xy"]
+            for hx, hy in pb["holes"]:
+                r_seat = d["boss_r"] - 0.1
+                dx = -r_seat if hx > bx else (r_seat if hx < bx else 0.0)
+                dy = 0.0 if dx else (-r_seat if hy > by else r_seat)
+                assert is_inside(part, (hx + dx, hy + dy, d["z_board_bottom"] - 0.05)) and \
+                    is_inside(hw["boards"], (hx + dx, hy + dy, d["z_board_bottom"] + 0.05)), f"{label}: {b.name} not seated at ({hx:.2f}, {hy:.2f})"
+                r_ring = b.nearest_pin - p["boss_pin_margin"] + 0.05
+                for k in range(8):
+                    a = 2 * math.pi * k / 8
+                    px, py = hx + r_ring * math.cos(a), hy + r_ring * math.sin(a)
+                    if abs(px - bx) > pb["size"][0] / 2 or abs(py - by) > pb["size"][1] / 2:
+                        continue
+                    assert not is_inside(part, (px, py, d["z_board_bottom"] - 0.5)), \
+                        f"{label}: material at {r_ring:.2f} from hole ({hx:.2f}, {hy:.2f}) where {b.name}'s pins are"
     return dict(volume=part.volume, expected_volume=vol, bbox=part.bounding_box().size, hardware=hw, envelopes=env)
 
 
@@ -131,5 +221,5 @@ if __name__ == "__main__":
               f"solids {len(part.solids())}, valid {part.is_valid}")
         export(part, f"sen66_bench_{size}", OUT)
         export_3mf({f"sen66_bench_{size}": part}, OUT + f"/sen66_bench_{size}.3mf")
-        hw, env = rep["hardware"], rep["envelopes"]
-        maybe_show(part, hw["boards"], hw["screws"], env["sensor"], env["plug"], names=["plate", "boards", "screws", "sensor", "plug"])
+    hw, env = rep["hardware"], rep["envelopes"]
+    maybe_show(part, hw["boards"], env["sensor"], env["plug"], names=["plate", "boards", "sensor", "plug"])

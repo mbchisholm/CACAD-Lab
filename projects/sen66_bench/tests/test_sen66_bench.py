@@ -1,6 +1,6 @@
-"""Three layers: geometry + function (check_part, which runs standoff_plate's check_plate on the plate under it),
-manufacturability (walls, declared orientation, overhang only at the nut pockets' stepped bridges), and the
-arithmetic of every size."""
+"""Three layers per size: geometry + function (check_part; the screw plate also runs standoff_plate's check_plate),
+manufacturability (walls, declared orientation, overhang: the screw plate only at its nut pockets' stepped bridges,
+the peg plate nowhere), and the arithmetic of every size, with planted defects."""
 import pytest
 
 from cacad.checks.orientation import check_declared_orientation
@@ -27,12 +27,15 @@ def test_declared_orientation(d, part):
     check_declared_orientation(part, d["print_orientation"]["plate"])
 
 
-def test_overhang_only_at_the_nut_pocket_bridges(d, part):
-    """The lip and the groove add no overhang: the declared ceilings are the plate's, as many as standoff_plate
-    counts for its bosses."""
+def test_overhang_only_where_declared(d, part):
+    """The lip, the groove and the pegs add no overhang. The screw plate's declared ceilings are standoff_plate's
+    stepped bridges, as many as it counts for its bosses; the peg plate has none."""
     o = d["print_orientation"]["plate"]
     rep = check_overhang(part, dict(up=o["up"], bed_z=o["bed_z"], max_deg=d["max_overhang_deg"],
                                     nozzle_d=d["nozzle_d"], exceptions=o["overhang_exceptions"]))
+    if d["fixing"] == "peg":
+        assert not rep["exceptions_found"], rep
+        return
     p = d["p"]
     by_z = {z: sum(1 for *_, fz in rep["exceptions_found"] if abs(fz - z) < 0.01) for z in p["bridge_z"]}
     n = len(p["holes"])
@@ -45,13 +48,20 @@ def test_lip_clears_the_outlet_and_groove_takes_the_bend(d):
     assert d["plug_bottom_z"] - d["z_groove"] >= e["bend_room"] - 1e-9
 
 
-@pytest.mark.parametrize("override, message", [
-    (dict(finger_room=20.0), "plug needs"),                  # the sensor crowds the breakout's GH plug
-    (dict(floor_web=2.0), "groove leaves"),                 # no floor left under the groove
-    (dict(arch_margin=-0.5), "outlet arch"),                # a lip tall enough to shade the exhaust
-    (dict(end_room=20.0), "battery/microSD end"),           # no room to pull the Metro's microSD card
-    (dict(cable_edge="+Y"), "cable edge"),                   # the cables no longer leave by one edge
+@pytest.mark.parametrize("variant, override, message", [
+    ("SEN66_BENCH", dict(floor_web=2.0), "groove leaves"),               # no floor left under the groove
+    ("SEN66_BENCH", dict(arch_margin=-0.5), "outlet arch"),              # a lip tall enough to shade the exhaust
+    ("SEN66_BENCH", dict(end_room=20.0), "battery/microSD end"),         # no room to pull the Metro's microSD card
+    ("SEN66_BENCH", dict(header_room=10.0), "POWER/AD header side"),     # the sensor crowds the Metro's rear headers
+    ("SEN66_BENCH", dict(cable_edge="+Y"), "cable edge"),                # the STEMMA QT pair no longer faces the edge
+    ("SEN66_BENCH_PEG", dict(peg_clear=1.0), "peg"),                     # a breakout peg too thin to print
 ])
-def test_validate_refuses_planted_defects(override, message):
+def test_validate_refuses_planted_defects(variant, override, message):
     with pytest.raises(AssertionError, match=message):
-        params.validate("SEN66_BENCH", **override)
+        params.validate(variant, **override)
+
+
+def test_both_versions_share_the_layout():
+    a, b = params.derive("SEN66_BENCH"), params.derive("SEN66_BENCH_PEG")
+    assert a["p"]["plate_size"] == b["p"]["plate_size"] and a["sensor_xy"] == b["sensor_xy"]
+    assert [pg["xy"] for pg in b["pegs"]] == list(a["p"]["holes"])

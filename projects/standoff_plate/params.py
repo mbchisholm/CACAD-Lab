@@ -196,20 +196,21 @@ PLATES = {
                         # every connector faces +-Y, so the mount strips go on +-X. M4 / #8 wood screw (4.17), bore 4.7
                         mount=dict(screw="M4", sides="X")),
     # 2026-10-23, projects/sen66_bench: an open bench plate for a Sensirion SEN66 on the Adafruit SEN6x breakout and a
-    # Metro ESP32-S3, laid out as the owner's working bench (photo, 2026-10-23): every cable leaves by the front (-Y)
-    # edge, so a STEMMA QT or GH cable of any length hangs off it in a U instead of bunching between two plugs. In a row
-    # along the front: SEN66 | breakout | Metro. The Metro is turned 270 (STEMMA QT to the front, USB-C and DC jack to
-    # the +X edge, battery JST and microSD to -X); the breakout 90 (one STEMMA QT to the front, GH to -X, towards the
-    # sensor's end). `keep_in` is ground the plate covers for a bought part that is not a board (name, centre, size):
-    # the SEN66 at its datasheet maximum, 55.4 x 25.7 (projects/sen6x_enclosure SPEC). Gaps are DESIGN: Metro to
-    # breakout 15.0 (a microSD card's length; the battery plug + finger room from its mouth needs less), breakout to
-    # sensor 15.7 past the GH mouth (GH plug 5.7 + finger room 10). sen66_bench.validate() holds every one of those relations; this row is built only there.
+    # Metro ESP32-S3. The STEMMA QT cable leaves by the front (-Y) edge, as on the owner's working bench (photo,
+    # 2026-10-23): a cable of any length from sen66_bench's qt_cable_min hangs off it in a U instead of bunching
+    # between two plugs. Front row: breakout | Metro; the SEN66 behind the Metro. The Metro is turned 270 (STEMMA QT to
+    # the front, USB-C and DC jack to the +X edge, battery JST and microSD to -X, towards the breakout); the breakout 90
+    # (one STEMMA QT to the front, GH to the -X edge). `keep_in` is ground the plate covers for a bought part that is not
+    # a board (name, centre, size): the SEN66 at its datasheet maximum, 55.4 x 25.7 (projects/sen6x_enclosure SPEC),
+    # left-aligned with the breakout. Gaps are DESIGN: Metro to breakout 15.0 (a microSD card's length; the battery
+    # plug + finger room from its mouth needs less), Metro to sensor 8.0 (fingers on jumpers in the Metro's rear
+    # headers). sen66_bench.validate() holds every one of those relations; this row is built only there.
     "SEN66_BENCH": dict(screw="M2",                 # the Metro's 3.56 pin room takes only an M2 boss
                         board_t=1.6,                # UNVERIFIED: Adafruit standard FR-4, not in the Eagle files
                         underside_protrusion=3.5,   # DESIGN allowance: Metro female-header tails
                         top_protrusion=8.5,         # UNVERIFIED: Metro female headers. Tray only
                         placements=(("METRO_ESP32S3", (0.0, 0.0), 270), ("SEN6X_BREAKOUT", (-58.2, -13.97), 90)),
-                        keep_in=(("SEN66", (-111.5, -13.82), (55.4, 25.7)),),
+                        keep_in=(("SEN66", (-39.4, 47.52), (55.4, 25.7)),),
                         tray=False),
 }
 
