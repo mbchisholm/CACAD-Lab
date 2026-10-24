@@ -15,7 +15,7 @@ from __future__ import annotations
 import math
 
 from build123d import (Axis, Box, BuildPart, BuildSketch, Compound, Cone, Cylinder, Location, Locations, Mode, Part,
-                       RectangleRounded, add, extrude, fillet)
+                       Rectangle, RectangleRounded, add, extrude, fillet)
 
 from cacad import ALIGN_MIN_Z, assert_bbox, assert_material, interference_volume, is_inside, single_solid
 from projects.sen66_bench.params import ACTIVE_SIZES, derive
@@ -58,6 +58,17 @@ def build_part(size: str) -> Part:
             RectangleRounded(*d["lip_outer"], d["lip_outer_r"])
             RectangleRounded(*d["pocket"], d["pocket_r"], mode=Mode.SUBTRACT)
         extrude(lip.sketch, amount=d["lip_h"])
+        # tall end lip: the same ring, beyond the outlet arches, up to z_end_top
+        with BuildSketch(Location((0, 0, d["z_lip_top"]))) as ends:
+            with Locations((sx, sy)):
+                RectangleRounded(*d["lip_outer"], d["lip_outer_r"])
+                RectangleRounded(*d["pocket"], d["pocket_r"], mode=Mode.SUBTRACT)
+            with BuildSketch(mode=Mode.PRIVATE) as slabs:
+                for x0, x1 in d["end_slabs"]:
+                    with Locations(((x0 + x1) / 2, sy)):
+                        Rectangle(x1 - x0, d["lip_outer"][1] + 2.0)
+            add(slabs.sketch, mode=Mode.INTERSECT)
+        extrude(ends.sketch, amount=d["z_end_top"] - d["z_lip_top"])
         # groove: floor at z_groove, open to the top, from inboard of the plug out through the lip
         with Locations(((g[0] + g[2]) / 2, (g[1] + g[3]) / 2, d["z_groove"])):
             Box(g[2] - g[0], g[3] - g[1], d["groove_depth"] + d["lip_h"] + 1.0, align=ALIGN_MIN_Z, mode=Mode.SUBTRACT)
@@ -119,6 +130,12 @@ def expected_volume(size: str, base: Part) -> float:
             r = pg["d"] / 2
             vol += math.pi * r * r * (d["z_top"] - d["peg_tip"] - d["z_board_bottom"]) + _frustum(r, r - d["peg_tip"], d["peg_tip"])
     ring = rr(*d["lip_outer"], d["lip_outer_r"]) - rr(*d["pocket"], d["pocket_r"])
+
+    def beyond(w, h, r, a):   # area of a rounded rectangle (w along the sensor) beyond a line a from its centre
+        assert a <= w / 2 - r, "the cut line runs through a corner arc"
+        return (w / 2 - a) * h - 2 * (1 - math.pi / 4) * r * r
+    ends = sum(beyond(*d["lip_outer"], d["lip_outer_r"], a) - beyond(*d["pocket"], d["pocket_r"], a) for a in d["end_a"])
+    vol += ends * (d["z_end_top"] - d["z_lip_top"])
     lip_cut = d["groove_w"] * d["lip_wall"] * d["lip_h"]
     groove = d["groove_w"] * d["groove_len"] * d["groove_depth"]
     return vol + ring * d["lip_h"] - lip_cut - groove
@@ -155,11 +172,15 @@ def check_part(size: str, part: Part) -> dict:
         "groove through lip": ((gx, lip_out_y, z_lip), False),
         "pocket air": ((sx, sy, z_lip), False),
         "pocket floor": ((sx, sy, d["z_floor"] - 0.1), True),
-        "lip top": ((sx + in_x, sy, d["z_lip_top"] + 0.1), False),
         "groove under plug": ((gx, d["socket_xy"][1], d["z_groove"] + 0.1), False),
         "groove floor": ((gx, d["socket_xy"][1], d["z_groove"] - 0.1), True),
         "past the groove's inboard end": ((gx, inboard_y, d["z_groove"] + 0.1), True),
         "past the groove's outer end": ((gx, outer_y, d["z_groove"] + 0.1), True),
+        "tall end lip, both ends": ((sx + in_x, sy, d["z_end_top"] - 0.2), True),
+        "tall end lip, -X end": ((sx - in_x, sy, d["z_end_top"] - 0.2), True),
+        "above the tall end lip": ((sx + in_x, sy, d["z_end_top"] + 0.1), False),
+        "side lip stays low at mid length": ((sx, far_y, d["z_lip_top"] + 0.1), False),
+        "tall lip wraps the corner": ((sx + d["pocket"][0] / 2 - d["pocket_r"] - 0.5, far_y, d["z_end_top"] - 0.2), True),
     }
     if d["fixing"] == "peg":
         zb = d["z_board_bottom"]

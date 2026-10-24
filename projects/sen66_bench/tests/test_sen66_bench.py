@@ -55,6 +55,11 @@ def test_lip_clears_the_outlet_and_groove_takes_the_bend(d):
     ("SEN66_BENCH", dict(header_room=10.0), "POWER/AD header side"),     # the sensor crowds the Metro's rear headers
     ("SEN66_BENCH", dict(cable_edge="+Y"), "cable edge"),                # the STEMMA QT pair no longer faces the edge
     ("SEN66_BENCH_PEG", dict(peg_clear=1.0), "peg"),                     # a breakout peg too thin to print
+    ("SEN66_PI", dict(header_room=10.0), "PI4B GPIO side"),              # the sensor crowds the Pi's GPIO header
+    ("SEN66_PI", dict(end_room=20.0), "PI4B microSD end"),               # no room to pull the Pi's microSD card
+    ("SEN66_PERF", dict(perf_room=20.0), "PROTO_2X8 rear edge"),         # no GH plug room behind the proto-board
+    ("SEN66_PERF", dict(arch_end_margin=-20.0), "tall end lip"),         # a tall end lip over the outlet arch / groove
+    ("SEN66_PERF", dict(end_lip_h=30.0), "above the sensor"),            # an end lip taller than the sensor
 ])
 def test_validate_refuses_planted_defects(variant, override, message):
     with pytest.raises(AssertionError, match=message):

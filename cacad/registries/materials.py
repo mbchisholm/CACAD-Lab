@@ -20,6 +20,7 @@ FLOOR = 1.2           # DESIGN: 6 layers
 
 # ISO 273 clearance holes, mm (fine H12 / medium H13 / coarse H14).
 ISO_273 = MappingProxyType({
+    "M1.6": (1.7, 1.8, 2.0),
     "M2": (2.2, 2.4, 2.6),
     "M2.5": (2.7, 2.9, 3.1),
     "M3": (3.2, 3.4, 3.6),

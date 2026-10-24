@@ -355,6 +355,41 @@ METRO_ESP32S3 = Board(
     ),
 )
 
+# PI4B: Raspberry Pi 4 Model B. Outline, holes and hole size from Raspberry Pi's mechanical drawing
+# (RP-008343-DS-1 raspberry-pi-4-mechanical-drawing.pdf, as projects/camera_reader and pi_cam_stand), re-based to
+# the outline centre; the drawing's origin is the corner by the (3.5, 3.5) hole, USB-C / micro-HDMI / audio on the
+# y = 0 long edge, USB-A and Ethernet on the x = 85 end, microSD under the x = 0 end, GPIO along y = 56. The pins
+# nearest a hole are the 40-pin GPIO header and the 4-pin PoE header, both placed by the HAT spec
+# (github.com/raspberrypi/hats, hat-board-mechanical.pdf): GPIO centre 29 from the left holes on the top hole row, PoE
+# centre 58 from the left holes and 42.86 above the bottom row; 2.54 pitch, so the nearest pin is
+# hypot(4.87, 1.27) = 5.03 from the (3.5, 52.5) and (61.5, 52.5) holes. The spec's hole land is 6.2 across.
+# None of its plugs has a Mating row yet: projects/sen66_bench keeps each Pi edge open instead.
+PI4B = Board(
+    name="PI4B",
+    size=(85.0, 56.0),
+    holes=((-39.0, -24.5), (19.0, -24.5), (-39.0, 24.5), (19.0, 24.5)),
+    hole_dia=2.7,
+    source="RP-008343-DS-1 raspberry-pi-4-mechanical-drawing.pdf; github.com/raspberrypi/hats hat-board-mechanical.pdf, 2026-10-24",
+    thickness=1.4,                 # UNVERIFIED: not on the drawing; the commonly quoted Pi PCB thickness (camera_reader)
+    nearest_pin=5.03,              # INFERRED: HAT spec header positions, 2.54 pitch
+    nearest_top_copper=3.1,        # HAT spec: 6.2 hole land; nothing else is nearer a hole
+)
+
+# PROTO_2X8: Adafruit Universal Proto-board 2cm x 8cm (PID 4783). Adafruit's technical details: 80 x 20, four 2 mm
+# mounting holes 76 apart along the length and 16 across, 6 x 28 holes at 2.54 (adafruit.com/product/4783 via search,
+# 2026-10-24; the page itself is not reachable from the build machine). Thickness and plating are not published. The
+# hole grid is taken as centred on the outline (Adafruit's photo shows it so): its corner holes at (+-34.29, +-6.35).
+PROTO_2X8 = Board(
+    name="PROTO_2X8",
+    size=(80.0, 20.0),
+    holes=((-38.0, -8.0), (38.0, -8.0), (-38.0, 8.0), (38.0, 8.0)),
+    hole_dia=2.0,                  # VENDOR; if the holes are plated they finish smaller: M1.6, never M2
+    source="Adafruit 4783 technical details (adafruit.com/product/4783), read through a search summary 2026-10-24",
+    thickness=None,                # not published
+    nearest_pin=4.06,              # UNVERIFIED: hypot(38 - 34.29, 8 - 6.35), grid taken as centred
+    nearest_top_copper=3.16,       # UNVERIFIED: that grid hole less a 0.9 pad radius (pad size not published)
+)
+
 BOARDS = {b.name: b for b in (ADS1115, ADS1115_V1, UNO_R3, TENTACLE_T2, INA219, TCA9548A, BME280, FEATHER_ESP32S3, OLED_938,
                                      MOSFET_5648, RELAY_4409, SEN0244, PERMAPROTO_QUARTER, EZO_CARRIER_ISO, SURVEYOR_PH,
-                                     SEN6X_BREAKOUT, METRO_ESP32S3)}
+                                     SEN6X_BREAKOUT, METRO_ESP32S3, PI4B, PROTO_2X8)}

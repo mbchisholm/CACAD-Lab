@@ -36,6 +36,7 @@ STATUS = "passes"   # concept | passes | printed | parked
 # what is on hand, change the row, not the derive().
 # ---------------------------------------------------------------------------
 SCREWS = MappingProxyType(dict(
+    M1_6=dict(d=1.6, pitch=0.35, nut_s=3.2, nut_m=1.3, head_dk=3.0, head_k=1.6, lengths=(3, 4, 5, 6, 8, 10, 12, 16)),
     M2=dict(d=2.0, pitch=0.40, nut_s=4.0, nut_m=1.6, head_dk=3.8, head_k=2.0, lengths=(4, 5, 6, 8, 10, 12, 16, 20)),
     M2_5=dict(d=2.5, pitch=0.45, nut_s=5.0, nut_m=2.0, head_dk=4.5, head_k=2.5, lengths=(4, 5, 6, 8, 10, 12, 16, 20)),
     M3=dict(d=3.0, pitch=0.50, nut_s=5.5, nut_m=2.4, head_dk=5.5, head_k=3.0, lengths=(5, 6, 8, 10, 12, 16, 20, 25)),
@@ -212,6 +213,30 @@ PLATES = {
                         placements=(("METRO_ESP32S3", (0.0, 0.0), 270), ("SEN6X_BREAKOUT", (-58.2, -13.97), 90)),
                         keep_in=(("SEN66", (-39.4, 47.52), (55.4, 25.7)),),
                         tray=False),
+    # 2026-10-24, projects/sen66_bench, the same idea for the owner's Pi 4B: front row breakout | Pi, the SEN66 behind
+    # the Pi. The Pi's USB-C / micro-HDMI / audio edge is the front edge, its USB-A / Ethernet end the +X edge; its
+    # microSD end has 15.0 to the breakout (a card's length), its GPIO side 8.0 to the sensor (jumper fingers). The
+    # breakout (turned 90) has one STEMMA QT to the front edge and one to the rear, towards the GPIO header: a STEMMA QT
+    # to female-socket cable reaches pins 1/3/5/6 (3V3, SDA, SCL, GND); its GH faces the -X edge. M2 for both boards: the breakout's
+    # plated 2.5 holes refuse M2.5, and an M2 head (3.8) seats on the Pi's 6.2 hole land around its 2.7 hole.
+    "SEN66_PI": dict(screw="M2",
+                     board_t=BOARDS["PI4B"].thickness,   # 1.4: the thinner board sets the tip above the bed; the
+                                                         # breakout (1.6) still reaches through its nut (sen66_bench)
+                     underside_protrusion=3.5,   # DESIGN allowance: GPIO header tails, microSD socket
+                     top_protrusion=16.0,        # Pi drawing: USB-A. Tray only
+                     placements=(("PI4B", (0.0, 0.0)), ("SEN6X_BREAKOUT", (-66.4, -15.3), 90)),
+                     keep_in=(("SEN66", (-47.58, 48.85), (55.4, 25.7)),),
+                     tray=False),
+    # 2026-10-24, projects/sen66_bench: the SEN66 behind an Adafruit 2 x 8 cm proto-board (PID 4783) that carries the
+    # SEN6x breakout on its 5-pin header and whatever else the owner solders to it. The board's 2.0 holes take M1.6
+    # (ISO 273: M2 needs 2.2). Board to sensor 17.0: a GH plug + finger room from the board's rear edge (DESIGN).
+    "SEN66_PERF": dict(screw="M1_6",
+                       board_t=1.6,                # UNVERIFIED: not published; the usual FR-4
+                       underside_protrusion=3.5,   # DESIGN allowance: soldered header tails
+                       top_protrusion=10.0,        # PLACEHOLDER: the breakout on its header. Tray only
+                       placements=(("PROTO_2X8", (0.0, 0.0)),),
+                       keep_in=(("SEN66", (0.0, 39.85), (55.4, 25.7)),),
+                       tray=False),
 }
 
 # sprout-cut env `nutrient-analog-xiao` (platformio.ini, read 2026-10-07): the boards of the analog nutrient node,
