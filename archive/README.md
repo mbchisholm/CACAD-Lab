@@ -16,9 +16,6 @@ radius, hex across corners, clamp force), `cantilever.py` and
 `materials_strain.py` (finger root strain against a bulk/across-layer
 allowable), `probes_thread.py` (`assert_thread_present`).
 
-`README_draft_notes.md`: the README rewrite notes that the current README
-was built from.
-
 To run the gland again: `uv pip install -e ".[archive]"`, copy the
 `cacad_threads/` modules back into `cacad/` (restore the `__init__` exports
 and `cacad.registries.materials` strain table), and run it from
@@ -31,3 +28,11 @@ parts (AAPW400 body, Growrilla drain cap, PP collector margin) and caliper
 gates on the tote. Superseded by `projects/nft_table/`; its leg formulas
 moved to `cacad/plumbing.py`. Its imports of `projects.nft_rack.*` no
 longer resolve: read it, do not run it.
+
+`mount_plate/` (parked 2026-10-07): the first board-registry plate and tray.
+Valid solids that would not hold the board; `REVIEW.md` lists why.
+Replaced by `projects/standoff_plate/`.
+
+`enclosure_atlas/` (parked 2026-10-07): a spec-only enclosure for Atlas EZO
+circuits, gated on caliper measurements. No geometry. Superseded by
+`projects/nutrient_controller/`.

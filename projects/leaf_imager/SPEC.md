@@ -29,7 +29,7 @@ Not in scope: canopy imaging from above under grow lights (ambient light, unknow
 geometry), and absolute chlorophyll in µg/cm² (needs a SPAD meter or extraction to
 calibrate against).
 
-Tags as in `docs/PARAMS_CONVENTION.md`: VENDOR, VAULT (camera-reader v0 spec),
+Tags as in `docs/PARAMS_CONVENTION.md`: VENDOR, NOTES (camera-reader v0 spec),
 STANDARD, INFERRED, DESIGN, UNVERIFIED.
 
 ## Acceptance

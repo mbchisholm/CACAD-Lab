@@ -1,6 +1,6 @@
 """Run a part file in build123d-mcp and print the checks an agent would run.
 
-    uv run --python 3.12 --with mcp tools/verify_mcp.py projects/mount_plate/enclosure.py projects/mount_plate/out/tray
+    uv run --python 3.12 --with mcp tools/verify_mcp.py archive/mount_plate/enclosure.py archive/mount_plate/out/tray
 
 Only needed outside a Claude Code session (inside one, call the MCP tools
 directly). The part file must assign a Shape to `result`.

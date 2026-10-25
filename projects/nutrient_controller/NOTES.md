@@ -7,7 +7,7 @@ Active revision **B2** clamps over the rim of any tote or bucket, no drilling;
 **B1** bolts through the HDX wall and stays in params as the alternative
 (validated, not built). Neither has been printed.
 
-Supersedes the `enclosure_atlas` spec (Atlas EZO, caliper-gated) for the
+Supersedes the `archive/enclosure_atlas` spec (Atlas EZO, caliper-gated) for the
 analog build.
 
     .venv/bin/python projects/nutrient_controller/params.py      # the design, printed
@@ -127,3 +127,16 @@ draft) with keyholes on a plate that follows the wall.
 - 2026-10-04: B2, the rim clamp: no hole in the container, any wall or lip 2-35 mm. Assembly checks pass at
   2, 18.5 and 35 mm (46 envelopes, 6 printed parts). The overhang check caught a horizontal hex nut pocket
   (60 deg roof); it now has a 45 deg roof.
+- 2026-10-07: the Perma-Proto's breadboard vias are now in the board registry (nearest 3.81 from a mount hole).
+  B2's M3 insert bosses under the carrier (OD 8.0) reached 1.19 into the pin margin, a check that had been
+  skipped while `nearest_pin` was unknown. DESIGN: the four vias nearest each carrier hole (8 in all) stay
+  unsoldered. The nearest usable via is 6.35 away, so the boss clears the margin by 1.35.
+- 2026-10-08: concept D, the instrument panel (DESIGN.md). Three red 7-segment readouts, APEM pilot lamps,
+  AUTO / OFF / PRIME toggles and the pump heads on the front, one encoder knob. Layout and fit checks pass:
+  56 solids, no overlap. Vendor: Adafruit 878 and 4991 STEPs, APEM Q datasheet (ref/). UNVERIFIED: the C&K
+  7000 toggle and Hexseal boot sizes, the encoder thread, the NKP head diameter, the display back parts.
+- 2026-10-08: L1, the lean rework (concept D and the OLED dropped). Analog plate ANALOG_NODE in standoff_plate,
+  logic box + lid in lean_box.py, flat mount with keyhole ears, pumps a later print. The checks caught: the M2 boss
+  with the FDM allowance (5.8) reaching the Perma-Proto's via margin (bore back to 2.4, as standoff_plate); a cable
+  notch 1.19 from a lid column; the cavity height following the driver stack instead of the carrier under the lid
+  column (now a max()); the flipped lid landing on the body in the print set (now placed by bounding box, checked).

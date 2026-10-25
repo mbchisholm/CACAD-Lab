@@ -46,6 +46,9 @@ def build_plate(plate: str) -> Part:
                         Box(o["width"], d["wall"] + 0.2, h, align=ALIGN_MIN_Z, mode=Mode.SUBTRACT)
         with Locations(*[(x, y, d["plate_t"]) for x, y in d["holes"]]):
             Cylinder(d["boss_r"], d["standoff_h"], align=ALIGN_MIN_Z)
+        if d["rests"]:   # solid pads under the hole-less end of a board held at one end
+            with Locations(*[(*r["xy"], d["plate_t"]) for r in d["rests"]]):
+                Cylinder(d["rest_r"], d["standoff_h"], align=ALIGN_MIN_Z)
         # nut pockets, open to the bed face; flats perpendicular to X
         with BuildSketch(Plane.XY) as sk:
             with Locations(*d["holes"]):
@@ -123,7 +126,8 @@ def expected_volume(d: dict) -> float:
     pockets = n * (3 * math.sqrt(3) / 2) * d["pocket_r"] ** 2 * d["pocket_depth"]
     bores = n * math.pi * (d["bore_d"] / 2) ** 2 * (d["plate_t"] + d["standoff_h"] - d["pocket_depth"])
     mount = len(d["mount_holes"]) * math.pi * (d.get("mount_bore_d", 0.0) / 2) ** 2 * d["plate_t"]
-    return plate + bosses - pockets - bores - mount
+    rests = len(d["rests"]) * math.pi * d["rest_r"] ** 2 * d["standoff_h"]
+    return plate + bosses + rests - pockets - bores - mount
 
 
 def check_plate(plate: str, part: Part) -> dict:
@@ -158,6 +162,10 @@ def check_plate(plate: str, part: Part) -> dict:
         for z in (0.2, d["plate_t"] / 2, d["plate_t"] - 0.2):
             probes[f"mount{i} bore z{z:.1f}"] = ((x, y, z), False)
         probes[f"mount{i} wall to edge"] = ((x + sx * (d["mount_bore_d"] / 2 + 0.3), y, d["plate_t"] / 2), True)
+    for i, r in enumerate(d["rests"]):   # solid through its height, air just past it
+        x, y = r["xy"]
+        probes[f"rest{i} solid"] = ((x, y, d["plate_t"] + d["standoff_h"] / 2), True)
+        probes[f"rest{i} outside"] = ((x + d["rest_r"] + 0.1, y, d["plate_t"] + d["standoff_h"] / 2), False)
     assert_material(part, probes)
 
     # function: the purchased parts and the boards, placed, intersect nothing they should not
@@ -204,6 +212,10 @@ def check_plate(plate: str, part: Part) -> dict:
                     continue
                 assert not is_inside(part, (px, py, d["z_board_bottom"] - 0.5)), \
                     f"{label}: material at {r_ring:.2f} from hole ({hx:.2f}, {hy:.2f}) where {b.name}'s pins are"
+    for r in d["rests"]:   # the free end of a one-end board rests on its pad
+        x, y = r["xy"]
+        assert is_inside(part, (x, y, d["z_board_bottom"] - 0.05)) and is_inside(hw["boards"], (x, y, d["z_board_bottom"] + 0.05)), \
+            f"{label}: {r['board']} not seated on its rest pad at ({x:.2f}, {y:.2f})"
     assert hw["screws"].bounding_box().min.Z >= d["screw_tip_min"] - 1e-6, f"{label}: screw tip below its floor"
     return dict(volume=part.volume, expected_volume=vol, bbox=part.bounding_box().size, hardware=hw)
 

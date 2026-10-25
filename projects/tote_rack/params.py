@@ -29,6 +29,8 @@ from types import MappingProxyType
 
 from cacad.lumber import cut_plan, seg_dist
 
+STATUS = "passes"   # concept | passes | printed | parked
+
 IN = 25.4
 
 # ---------------------------------------------------------------------------

@@ -24,6 +24,8 @@ from __future__ import annotations
 import math
 from types import MappingProxyType
 
+STATUS = "passes"   # concept | passes | printed | parked
+
 IN = 25.4
 
 # ---------------------------------------------------------------------------

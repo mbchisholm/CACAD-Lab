@@ -54,7 +54,7 @@ ADS1115 = Board(
     holes=_rect_pattern(0.80 * IN, 0.50 * IN),   # ±10.16, ±6.35
     hole_dia=2.5,                                # Eagle drill, plated
     source="Adafruit ADS1115 ADC STEMMA QT.brd, github.com/adafruit/ADS1X15-Breakout-Board-PCBs, 2026-09-20",
-    thickness=None,                              # not in the Eagle file: caliper
+    thickness=1.57,                              # Adafruit_CAD_Parts "1085 ADS1115 ADC.step" PCB solid, 2026-10-07
     nearest_pin=3.81,                            # header row at ±2.54 vs holes at ±6.35
     nearest_top_copper=2.11,                     # hole (-10.16, +6.35)
     # JST_SH4 packages CONN3 (rot R90) and CONN4 (rot R270) at x = ±10.03 on the short ends, mouths outward
@@ -187,7 +187,7 @@ OLED_938 = Board(
     holes=((-15.240, -13.970), (15.240, -13.970), (-15.240, 13.970), (15.240, 13.970)),
     hole_dia=2.50,   # Eagle drill; a plated hole finishes smaller than the drill
     source="Adafruit 1.3in 128x64 OLED STEMMA QT.brd, github.com/adafruit/Adafruit-1.3inch-128x64-Mono-OLED-PCB (HEAD), 2026-10-04; Adafruit 1.3in 128x64 OLED STEMMA QT.brd parsed by tools/board_from_eagle.py, 2026-10-04",
-    thickness=None,   # not in an Eagle file: caliper
+    thickness=1.57,   # Adafruit_CAD_Parts "938 Mono 128x64 OLED Stemma.step" PCB solid, 2026-10-07
     nearest_pin=6.35,
     nearest_top_copper=3.79,
     connectors=(
@@ -202,7 +202,7 @@ MOSFET_5648 = Board(
     holes=((10.160, -6.350), (10.160, 6.350)),
     hole_dia=2.50,   # Eagle drill; a plated hole finishes smaller than the drill
     source="Adafruit MOSFET Driver STEMMA Breakout.brd, github.com/adafruit/Adafruit-MOSFET-Driver-STEMMA-PCB (HEAD), 2026-10-04; Adafruit MOSFET Driver STEMMA Breakout.brd parsed by tools/board_from_eagle.py, 2026-10-04",
-    thickness=None,   # not in an Eagle file: caliper
+    thickness=1.57,   # Adafruit_CAD_Parts "5648 MOSFET Driver.step" PCB solid, 2026-10-07
     nearest_pin=6.38,
     nearest_top_copper=1.27,
     connectors=(
@@ -251,15 +251,20 @@ SEN0244 = Board(
 # `adafruit permaproto quarterbreadboard.brd`, github.com/adafruit/
 # Adafruit-Perma-Proto-PCB (HEAD), parsed with tools/board_from_eagle.py on
 # 2026-10-04: 1.70 x 2.00 in, two unplated 3.2 holes on the long centreline.
+# The breadboard holes are vias (drill 1.2, pad 1.93): the nearest is 3.81
+# from each mount hole (Eagle, 2026-10-07), and any of them may carry a
+# soldered lead, so it bounds a boss like a pin. Adafruit's STEP
+# (Adafruit_CAD_Parts "1608 perma-proto quarter.step") draws the board 1.60
+# thick and the holes 3.0; the Eagle drill (3.2) is kept.
 PERMAPROTO_QUARTER = Board(
     name="PERMAPROTO_QUARTER",
     size=(43.180, 50.800),
     holes=((-17.780, 0.000), (17.780, 0.000)),
     hole_dia=3.20,
     source="adafruit permaproto quarterbreadboard.brd, github.com/adafruit/Adafruit-Perma-Proto-PCB (HEAD), 2026-10-04",
-    thickness=None,
-    nearest_pin=None,                            # breadboard pattern: whatever the builder solders
-    nearest_top_copper=None,
+    thickness=1.60,                              # Adafruit STEP
+    nearest_pin=3.81,                            # nearest breadboard via centre, Eagle
+    nearest_top_copper=2.85,                     # same via: 3.81 - pad 1.93 / 2
 )
 
 # Atlas Scientific Electrically Isolated EZO Carrier Board Gen 2 (one EZO
@@ -286,5 +291,27 @@ EZO_CARRIER_ISO = Board(
     nearest_top_copper=4.90,                     # 4-pin part body to hole (-12, -17); nearest SMD pad is 5.76
 )
 
+# Atlas Scientific Surveyor analog pH meter, V3.0 ("Gravity analog pH" in
+# older Atlas pages). Outline 42 x 32 and hole pitch 34 x 24 from the Atlas
+# datasheet Surveyor-pH-datasheet.pdf p.2 (files.atlas-scientific.com, read
+# 2026-10-07; Atlas ships 11 mm standoffs). Atlas's STEP (pH-Gravity.zip, same
+# site) gives what the drawing does not: holes dia 3.0 (so M2.5; M3 does not
+# pass), the hole pattern 0.05 to +X of the outline centre, PCB 1.59. Board
+# frame: -X = female SMA (probe), reaching 9.3 past the edge and 1.91 below
+# the underside; +X = 3-pin 2.54 right-angle header (-, +, A). Nearest part to
+# a hole in plan, by bounding box: 6.40 (top side), so the boss bound uses it
+# for both pin and copper. No plug envelope for the SMA or the 2.54 header in
+# connectors.py yet: a flat plate puts nothing in front of either short end.
+SURVEYOR_PH = Board(
+    name="SURVEYOR_PH",
+    size=(42.0, 32.0),
+    holes=((-16.95, -12.0), (-16.95, 12.0), (17.05, -12.0), (17.05, 12.0)),
+    hole_dia=3.0,                                # Atlas STEP
+    source="Atlas Surveyor-pH-datasheet.pdf p.2 + Atlas STEP pH-Gravity.zip, files.atlas-scientific.com, 2026-10-07",
+    thickness=1.59,                              # Atlas STEP
+    nearest_pin=6.40,                            # nearest part bbox to a hole, Atlas STEP (no through-hole pin is closer)
+    nearest_top_copper=6.40,
+)
+
 BOARDS = {b.name: b for b in (ADS1115, ADS1115_V1, UNO_R3, TENTACLE_T2, INA219, TCA9548A, BME280, FEATHER_ESP32S3, OLED_938,
-                                     MOSFET_5648, RELAY_4409, SEN0244, PERMAPROTO_QUARTER, EZO_CARRIER_ISO)}
+                                     MOSFET_5648, RELAY_4409, SEN0244, PERMAPROTO_QUARTER, EZO_CARRIER_ISO, SURVEYOR_PH)}

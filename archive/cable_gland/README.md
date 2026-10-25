@@ -92,9 +92,9 @@ M16 built, checked, tested. **M12/M20 are blocked** by the F5 gate: the
 fused-thread behaviour is size-dependent, and the unfused route must be shown
 clean at those sizes (FreeCAD BOP + pairwise checks) before they are
 activated. Next physical step: print `out/coupon_plate_M16.3mf` and fill in
-the TODO tables at the end of `docs/FINDINGS.md`.
+the TODO tables in `docs/PRINT_LOG.md`.
 
 First print (observed, not measured): the brim made the threaded parts hard
 to fit together, and the covers tested had stringy overlap. Both point at
 slicer settings rather than geometry; see the slicer-settings item in the
-TODO list at the end of `docs/FINDINGS.md`.
+TODO list in `docs/PRINT_LOG.md`.

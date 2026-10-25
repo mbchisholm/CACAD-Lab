@@ -1,0 +1,19 @@
+import pytest
+
+from projects.$name import params
+from projects.$name.$name import build_part
+
+
+def pytest_generate_tests(metafunc):
+    if "size" in metafunc.fixturenames:
+        metafunc.parametrize("size", list(params.ACTIVE_SIZES), scope="session")
+
+
+@pytest.fixture(scope="session")
+def d(size):
+    return params.derive(size)
+
+
+@pytest.fixture(scope="session")
+def part(size):
+    return build_part(size)

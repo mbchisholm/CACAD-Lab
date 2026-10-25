@@ -8,7 +8,7 @@ load-bearing PLACEHOLDER (cad-design-review rule 2: unbuyable or unsourced = fai
 
     STANDARD     a published standard (named)
     VENDOR       published by the vendor of the part used (sheet and page named)
-    VAULT        from the T1TRTA grow-system notes (file named)
+    NOTES        the author's own design notes; not independently sourced (swap for STANDARD/VENDOR when found)
     INFERRED     follows from a published number or drawing, not stated (says from what)
     DESIGN       this model's choice; the part that meets it is designed to tolerate it
     CONVENIENCE  set to draw the model, awaits derivation (design review rule 1)
@@ -39,9 +39,11 @@ from cacad.registries import materials as MAT
 from cacad.registries.reservoirs import RESERVOIRS
 from projects.nft_table import shapes as S
 
+STATUS = "passes"   # concept | passes | printed | parked
+
 IN = 25.4
 G = 9.80665
-TAGS = ("STANDARD", "VENDOR", "VAULT", "INFERRED", "DESIGN", "CONVENIENCE", "PLACEHOLDER")
+TAGS = ("STANDARD", "VENDOR", "NOTES", "INFERRED", "DESIGN", "CONVENIENCE", "PLACEHOLDER")
 
 
 def _i(x):
@@ -53,7 +55,7 @@ SPEARS_VALVE = "Spears Valves Technical 'Compact Ball Valves' Dec 2024 p.5 (VALT
 MISUMI = "Misumi FA catalogue 2010 (us.misumi-ec.com/pdf/fa/2010), ref/vendor_sheets/frame"
 MISUMI19 = "Misumi US catalogue 2019 p.2686 'Aluminum Extrusions (HFS5 Series)', ref/vendor_sheets/frame"
 LG = "Little Giant spec sheet 995110 'PE-2.5F Series' (fele.widen.net), ref/vendor_sheets/pump"
-GROWRILLA = "Growrilla 'Hydroponics NFT channel 100x50mm length 2 meters' (vault clipping 2025-05-04 and live EN page)"
+GROWRILLA = "Growrilla 'Hydroponics NFT channel 100x50mm length 2 meters' (vendor product page captured 2025-05-04, and the live EN page)"
 HARVEL = "GF Harvel 'Engineering & Design Data' (c)2012, 'Average Friction Loss for PVC and CPVC Fittings in Equivalent Feet'"
 PARKER = "Parker O-Ring Handbook ORD 5700A/US (2001), Design Chart 4-2 'Face Type Seals' p.4-14 and Table 4-1"
 ETB = "Engineering ToolBox"
@@ -76,12 +78,12 @@ SPEC = MappingProxyType({
                     "40mm'. 48 kept as instructed"),
     "site_pitch": (250.0, "VENDOR", f"{GROWRILLA}: holes at 250 mm (8 per 2 m)"),
     "n_sites": (8, "VENDOR", f"{GROWRILLA}: 8 holes per 2 m at 250 mm"),
-    # vault rules
-    "slope_min": (1 / 40, "VAULT", "NFT/vinylDOwn.md 'Slope': 1:30 to 1:40"),
-    "slope_max": (1 / 30, "VAULT", "NFT/vinylDOwn.md 'Slope': 1:30 to 1:40"),
-    "flow_min_lpm": (1.0, "VAULT", "NFT/vinylDOwn.md 'Optimal Flow Rates': 1 to 2 L/min per channel"),
-    "flow_max_lpm": (2.0, "VAULT", "NFT/vinylDOwn.md 'Optimal Flow Rates': 1 to 2 L/min per channel"),
-    "film_depth": (_i(0.25), "VAULT", "multiLVLRack.md: film depth 1/8-1/4 in; the deeper end is the operating load"),
+    # rules from the notes
+    "slope_min": (1 / 40, "NOTES", "author's NFT notes, 'Slope': 1:30 to 1:40"),
+    "slope_max": (1 / 30, "NOTES", "author's NFT notes, 'Slope': 1:30 to 1:40"),
+    "flow_min_lpm": (1.0, "NOTES", "author's NFT notes, 'Optimal Flow Rates': 1 to 2 L/min per channel"),
+    "flow_max_lpm": (2.0, "NOTES", "author's NFT notes, 'Optimal Flow Rates': 1 to 2 L/min per channel"),
+    "film_depth": (_i(0.25), "NOTES", "author's multi-level rack notes: film depth 1/8-1/4 in; the deeper end is the operating load"),
     # frame: Misumi HFS5
     "a2020": (20.0, "VENDOR", f"HFS5-2020 section 20 x 20 ({MISUMI} p.2239)"),
     "I2020": (0.742e4, "VENDOR", f"HFS5-2020 Ix = Iy = 0.742e4 mm^4 ({MISUMI} p.2239; {MISUMI19})"),
@@ -278,10 +280,10 @@ def hv(key: str):
 # ---------------------------------------------------------------------------
 # Layout and printed-part inputs: key -> (value, tag, source). derive(**overrides) replaces values by key.
 # ---------------------------------------------------------------------------
-_SPEC_PROMPT = "owner's v2 spec (2026-10-01)"
+_SPEC_PROMPT = "author's v2 spec (2026-10-01)"
 LAYOUT = MappingProxyType({
     # ---- channels and frame
-    "slope": (1 / 40, "DESIGN", f"{_SPEC_PROMPT}: 1:40, inside the vault's 1:30-1:40"),
+    "slope": (1 / 40, "DESIGN", f"{_SPEC_PROMPT}: 1:40, inside the notes' 1:30-1:40"),
     "z_hi": (_i(36.0), "DESIGN", f"{_SPEC_PROMPT}: channel floor 36 in at the high end (underside at the high tip)"),
     "n_ch": (6, "DESIGN", f"{_SPEC_PROMPT}: 6 channels"),
     "pitch_x": (250.0, "DESIGN", f"{_SPEC_PROMPT}: 250 mm apart across"),
@@ -295,7 +297,7 @@ LAYOUT = MappingProxyType({
              "brackets (30 mm down the leg); P5 ears clear the rail"),
     # ---- structure
     "defl_op": (360.0, "DESIGN", "operating load: rail deflection limit L/360"),
-    "defl_flood": (200.0, "DESIGN", "flooded (drain blocked) load: rail deflection limit L/200 (owner's decision 2026-10-01: "
+    "defl_flood": (200.0, "DESIGN", "flooded (drain blocked) load: rail deflection limit L/200 (author's decision 2026-10-01: "
                    "six legs, the flooded load gated)"),
     "fall_margin": (1.0, "DESIGN", "under the flooded load the channel floor still falls at least this much between rails"),
     "leg_K": (2.0, "DESIGN", "leg effective length factor: fixed base, free top (no credit for the frame)"),
@@ -316,7 +318,7 @@ LAYOUT = MappingProxyType({
     "feed_top_clear": (5.0, "DESIGN", "feed line's top run above the bend it needs over the P2 barb"),
     "pipe_end_trim": (25.0, "DESIGN", "trim off each 10 ft stick before cutting"),
     "pipe_kerf": (3.0, "DESIGN", "saw kerf, PVC"),
-    "feed_flow_check": (2.0, "DESIGN", "per-channel flow the feed is checked at (the vault's maximum), L/min, bypass closed"),
+    "feed_flow_check": (2.0, "DESIGN", "per-channel flow the feed is checked at (the notes' maximum), L/min, bypass closed"),
     "spout_capacity_x": (2.0, "DESIGN", f"{_SPEC_PROMPT}: P3 spout carries 2 x the maximum channel flow"),
     # ---- printed: shared
     "fit": (MAT.FIT_CLEAR, "DESIGN", "printed-to-bought radial clearance (cacad.registries.materials.FIT_CLEAR)"),
@@ -1827,7 +1829,7 @@ def report(d=None) -> str:
     w(f"  total {h['H_req']:.3f} m = {h['H_req'] / FT:.2f} ft; PE-2.5F there: {h['Q_at'] / GPH_TO_M3S:.0f} GPH "
       f"({h['Q_at'] / LPM_TO_M3S:.1f} L/min) vs {h['Q_req'] / GPH_TO_M3S:.0f} GPH needed")
     w(f"  bypass closed: {h['q_closed'] / LPM_TO_M3S:.2f} L/min per channel; bypass open: {h['q_open'] / LPM_TO_M3S:.2f}: "
-      f"the valve sets anything between, including the vault's 1-2")
+      f"the valve sets anything between, including the notes' 1-2")
     w("return")
     w(f"  P3 spout bore {d['spout_bore']:.1f} (OD {d['spout_od']:.1f}): orifice Cd {hv('Cd_orifice')} at {h['h_s'] * 1000:.1f} mm head "
       f"carries {h['Q_spout'] / LPM_TO_M3S:.2f} L/min (needs max({L['spout_capacity_x']:.0f} x {spec('flow_max_lpm'):.0f}, "

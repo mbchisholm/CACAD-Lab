@@ -40,6 +40,8 @@ from types import MappingProxyType
 
 from cacad.registries import materials as MAT
 
+STATUS = "passes"   # concept | passes | printed | parked
+
 TAGS = ("STANDARD", "VENDOR", "INFERRED", "DESIGN")
 
 DS = "Sensirion SEN6x datasheet v1.0 Oct 2026 (PS_DS_SEN6x.pdf)"

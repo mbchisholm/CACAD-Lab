@@ -1,12 +1,13 @@
 # PARAMS_CONVENTION — one file owns every number
 
 What worked on the cable gland (now `archive/cable_gland/`), written as the
-rule, with the reason each rule exists. `params_template.py` is the skeleton;
+rule, with the reason each rule exists. `docs/templates/printed/params.py.tmpl` is the skeleton (`python -m cacad.new <name>` copies it);
 `projects/standoff_plate/params.py` is the live example.
 
 ## Shape of the file
 
 ```
+STATUS          concept | passes | printed | parked (cacad/tests/test_project_contract.py checks it)
 COMMON          family-wide rules and clearances (MappingProxyType: read-only)
 SIZES           the family axis: one dict per size, inputs only
 ACTIVE_SIZES    the sizes build/test actually run
@@ -57,7 +58,7 @@ the script.
    ```
    STANDARD     a published standard, named (ASTM D1785, ISO 273)
    VENDOR       published by the vendor of the part used (sheet and page named)
-   VAULT        from the T1TRTA notes (file named)
+   NOTES        the author's own design notes; not independently sourced
    INFERRED     follows from a published number, not stated (say from what)
    DESIGN       a designer's choice; the part is designed to tolerate it
    CONVENIENCE  set to draw the model; awaits derivation (design review rule 1)
@@ -71,7 +72,7 @@ the script.
 
 6. **ACTIVE_SIZES gates work.** Inactive sizes still pass `validate()` (their
    arithmetic is cheap and catches rule drift), but nothing builds or tests
-   them until the owner adds them. Promotion is a one-line diff.
+   them until you add them. Promotion is a one-line diff.
 
 7. **Competing requirements meet in `max()`.** A height, travel or length that
    several requirements need is `max()` of the individually derived needs,

@@ -43,6 +43,8 @@ from types import MappingProxyType
 from cacad.registries.materials import (BED, FDM_HOLE_ALLOWANCE, FIT_CLEAR, FLOOR, INSERT_BORE_M3, INSERT_DEPTH_M3,
                                         INSERT_LEN_M3, INSERT_WALL_M3, LAYER, NOZZLE, WALL)
 
+STATUS = "passes"   # concept | passes | printed | parked
+
 TAGS = ("STANDARD", "VENDOR", "INFERRED", "DESIGN", "CONVENIENCE", "PLACEHOLDER")
 
 _RPI_DOCS = "raspberrypi.com/documentation/accessories/camera.html, hardware_specification.adoc (spec table)"

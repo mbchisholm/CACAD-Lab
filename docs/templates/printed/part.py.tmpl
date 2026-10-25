@@ -1,0 +1,47 @@
+"""$name: builds the part from params.derive and checks it.
+
+    .venv/bin/python projects/$name/$name.py [--show]     # ACTIVE_SIZES -> out/
+
+A part file names no filesystem module (os, pathlib, sys): the build123d-mcp
+sandbox refuses the file (FINDINGS F23). It imports params by package path (F24).
+"""
+from __future__ import annotations
+
+from build123d import Box, BuildPart, Hole, Locations, Part
+
+from cacad import ALIGN_MIN_Z, assert_bbox, assert_material, single_solid
+from projects.$name.params import ACTIVE_SIZES, derive
+
+
+def build_part(size: str) -> Part:
+    d = derive(size)
+    with BuildPart() as bp:
+        Box(d["plate_w"], d["plate_w"], d["plate_t"], align=ALIGN_MIN_Z)
+        with Locations((0, 0, d["plate_t"])):
+            Hole(d["bore_d"] / 2)
+    # finish features (chamfers, fillets) go last; use cacad.try_chamfer
+    return bp.part
+
+
+def check_part(size: str, part: Part) -> None:
+    """Geometry and function layers. Raises. Printability is in tests/."""
+    d = derive(size)
+    assert part.is_valid, f"{size}: invalid"
+    single_solid(part)
+    assert_bbox(part, (d["plate_w"], d["plate_w"], d["plate_t"]), 0.0, d["bbox_tol"], size)
+    mid = d["plate_t"] / 2
+    assert_material(part, {
+        "bore is air": ((0, 0, mid), False),
+        "wall beside bore": ((d["bore_d"] / 2 + d["margin"] / 2, 0, mid), True),
+    })
+
+
+if __name__ == "__main__":
+    from cacad import export, maybe_show
+    OUT = __file__.rsplit("/", 1)[0] + "/out"   # a string: the MCP sandbox rejects pathlib/os anywhere in this file
+    for size in ACTIVE_SIZES:
+        p = build_part(size)
+        check_part(size, p)
+        export(p, f"${name}_{size}", OUT)
+        print(f"{size}: ok, volume {p.volume:.1f} mm^3")
+    maybe_show(p)
