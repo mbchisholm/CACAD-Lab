@@ -1,14 +1,12 @@
 # CACAD: Computer-Aided Computer-Aided Design
 
-My experiments using AI agents for 3D design, a genre I'm calling
-Computer-Aided Computer-Aided Design. Parts are Python in
+My experiments using build123d & the FreeCAD RPC server for 3D design & rendering. Parts are Python in
 [build123d](https://build123d.readthedocs.io/), checked by tests and exported
-for the slicer. FreeCAD is the viewer for assemblies and renders, and the
-bridge that lets an enclosure follow a KiCad board when the board changes.
+for the slicer. FreeCAD is the viewer for assemblies and renders & serves the smoke tests. 
 
 ## Repo Structure
 
-`cacad/` is the shared set of reusable widgets & methods, `projects/` contains individual examples
+`cacad/` is the shared set of reusable methods, `projects/` contains all the random individual examples. Some projects are simple and parametric others are attempts at more complex mechanical designs. The most useful thing so far has been parametric standoff generation for different circuit boards and other components
 
 | path | role |
 |---|---|
@@ -26,7 +24,7 @@ bridge that lets an enclosure follow a KiCad board when the board changes.
 | `archive/` | Parked work, kept for its findings. Not installed, not tested. |
 |`.mcp.json` | Build123d-mcp and freecad-mcp servers |
 
-## How a part gets made
+## Part Design
 
 A project starts with its `params.py`. It holds the inputs a designer would
 choose, the family-wide rules and clearances, a `derive()` that computes every
@@ -52,7 +50,7 @@ renders two angles and a section, and runs an independent printability pass.
 
 ## Projects
 
-Simplest first.
+Oldest to Newest
 
 ### Standoffs
 
@@ -64,7 +62,6 @@ its own. Small, but it's the part every board project needs, and it reads
 the same clearance constant as everything else, so when the coupon changes
 that constant the spacers change with it.
 
-### Standoff plate
 
 ![Standoff plate for an ADS1115](docs/img/standoff_plate.png)
 
@@ -105,21 +102,6 @@ with corner holes to screw the plate down.
 
 ![FreeCAD: EZO_ISO_x2 and SEN0244 plates with boards, screws and mount screws](docs/img/freecad_standoff_plates.png)
 
-### Nutrient controller
-
-`projects/nutrient_controller/` is a reservoir controller box: XIAO ESP32-C3,
-analog TDS through an ADS1115, a DS18B20, one peristaltic pump, an OLED with
-three buttons. It hangs beside any tote or bucket on a printed clamp over the
-rim, so the container is never drilled; a bolted-through-the-wall revision
-stays in params as the alternative. Every bought part is sourced from a vendor
-sheet or board file, and the assembly checks run the clamp across a 2 to 35 mm
-container wall. `MODELLING.md` there walks through the modelling approach and the
-build123d methods. It supersedes the `archive/enclosure_atlas` spec, which was waiting
-on caliper measurements.
-
-![Nutrient controller on a container rim](docs/img/nutrient_controller_b2_front.png)
-
-![FreeCAD: B2 clamped on a tote wall](docs/img/freecad_nutrient_controller.png)
 
 ### SEN6x enclosure
 
@@ -151,6 +133,22 @@ budget.
 
 ![FreeCAD: nest box V0, cap translucent](docs/img/freecad_birdhouse.png)
 
+### Nutrient controller
+
+`projects/nutrient_controller/` is a reservoir controller box: XIAO ESP32-C3,
+analog TDS through an ADS1115, a DS18B20, one peristaltic pump, an OLED with
+three buttons. It hangs beside any tote or bucket on a printed clamp over the
+rim, so the container is never drilled; a bolted-through-the-wall revision
+stays in params as the alternative. Every bought part is sourced from a vendor
+sheet or board file, and the assembly checks run the clamp across a 2 to 35 mm
+container wall. `MODELLING.md` there walks through the modelling approach and the
+build123d methods. It supersedes the `archive/enclosure_atlas` spec, which was waiting
+on caliper measurements.
+
+![Nutrient controller on a container rim](docs/img/nutrient_controller_b2_front.png)
+
+![FreeCAD: B2 clamped on a tote wall](docs/img/freecad_nutrient_controller.png)
+
 ### Larger assemblies, not printed
 
 The same conventions (one `params.py`, analytic checks, FreeCAD as the viewer)
@@ -170,7 +168,7 @@ layer is cut plans, screw lengths and where each number came from.
 ![FreeCAD: raised bed, 4 × 2 ft](docs/img/freecad_raised_bed.png)
 ![FreeCAD: NFT table, one level](docs/img/freecad_nft_table.png)
 
-## build123d
+## About build123d
 
 build123d is a Python interface to the OpenCascade BREP kernel, for 2D and
 3D. A part is code: a box, a fillet, a hole pattern at the coordinates a
@@ -206,7 +204,7 @@ source; if a part is wrong, the fix is in its `.py`. Setup is manual: open
 FreeCAD, pick the MCP Addon workbench, press **Start RPC Server**, every
 launch. Each call gets about 90 seconds of GUI time.
 
-## Choices worth knowing
+## A few design choices
 
 **Code-first over FreeCAD composition.** The first plan had FreeCAD doing
 assembly. That path needed a button press per launch, a GUI-thread timeout,
@@ -230,42 +228,12 @@ and estimates printability, and it's useful for a look. A check in a test
 file is versioned, deterministic and runs without a session, so the tests are
 the source of truth and the MCP tools are the second opinion.
 
-**Findings as reproductions.** Each `docs/FINDINGS.md` entry is pinned to the
-library versions it was seen on and carries a snippet that prints `PASS`
-while the behaviour holds. A gotcha list rots; a snippet says when the
-workaround can go.
 
-**Archive over delete.** The cable gland (below) is out of the way but its
-findings and numbers are intact under `archive/`.
 
-## Archived: parametric cable gland
 
-The repo's first project was an M16 panel-mount cable gland with printed
-threads, a slotted collet and TPU seal inserts. It produced most of the rules
-in `CLAUDE.md` and the thread findings, and its first print didn't fit, as
-the unmeasured coupon said it might. Printed threads and
-seals are a different problem from mounting boards, so the project, the
-`bd_warehouse` thread helpers and the thread findings are parked in
-`archive/cable_gland/` and `archive/cacad_threads/`. They aren't tested and
-aren't on the install path.
 
-## Where it stands
+## Known issues:
 
-2026-10-07: 199 tests pass. Nothing since the gland has been printed.
-Caliper gates are gone: where a bought part's geometry is unpublished, a
-printed interface is designed around it.
-
-| project | state |
-|---|---|
-| standoff_plate | 8 plates and trays pass; 5 refused by rule |
-| nutrient_controller | B2 rim clamp passes |
-| sen6x_enclosure | passes, checked against the vendor STEP |
-| camera_reader | V0 passes; LEDs not yet picked |
-| leaf_imager | V0 passes, five printed parts |
-| birdhouse | V0 passes, five printed parts; power budget closes on estimates |
-| nft_table, tote_rack, raised_bed | pass; FreeCAD positions agree with params |
-
-Known issues:
 `cacad.export_3mf` reaches into two private `Mesher` methods, fine on
 build123d 0.11.1 and maybe not after; FreeCAD's TechDraw section view has
 taken FreeCAD down three times on multi-solid parts (F9), so sections come
