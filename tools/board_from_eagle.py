@@ -42,8 +42,8 @@ class Hole:
 
 def _rot(el):
     """Eagle rot attribute -> (mirror, angle_deg)."""
-    r = el.get("rot", "R0")
-    return r.startswith("M"), float(r.lstrip("MR") or 0)
+    r = el.get("rot", "R0")   # [S][M]R<deg>: S (spin, text only) does not move geometry
+    return "M" in r, float(r.lstrip("SMR") or 0)
 
 
 def _place(ex, ey, mirror, ang, x, y):

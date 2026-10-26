@@ -25,9 +25,23 @@ Pick the sides no connector faces; `validate()` refuses a connector that
 faces one. The clamp is `plate_t`; the screw length is set by what the
 plate mounts to.
 
-Declared ceiling: the annulus above each nut pocket (4.3 mm hex, bridged).
-The nut bears on it. If bridging sags in practice, the alternative is a
-sacrificial layer across the pocket, drilled out after printing.
+Bores and bosses (changed after the first print, 2026-10-15, docs/PRINT_LOG.md):
+the boss bore is ISO 273 medium plus the DESIGN FDM allowance
+(`materials.clearance_bore`: M2 2.6, M2.5 3.1, M3 3.6), and so is a mount bore
+unless the plate names its own. The boss wall is 1.6, or what the board's
+nearest pin leaves after `boss_pin_margin` (Adafruit M2 boards: 1.51), never
+under `min_wall`. Each boss has a 45° flare at its root, `boss_root_flare`
+(1.0) out and up. That is no more than `board_air_gap`, so it stays under every
+pin tail. In a tray the inner wall moves out until every flare stops a nozzle
+width short of it.
+
+Declared ceilings: a stepped bridge over each nut pocket, so no perimeter of
+the bore is printed in air. The first layer above the pocket leaves a slot
+`bore + bridge_relief` wide, running flat to flat; the slicer bridges along it.
+The second layer bridges across the slot and leaves a square. From the third
+layer up the bore is round. The web is 1.6: the two stepped layers plus six full
+ones. The nut bears on the first layer. These are the only overhangs, five faces
+per pocket.
 
 Placements are `(board, (x, y), rot)` with `rot` a multiple of 90; the
 registry board is rotated once in `derive()` and nothing downstream rotates

@@ -313,5 +313,83 @@ SURVEYOR_PH = Board(
     nearest_top_copper=6.40,
 )
 
+# --- boards added 2026-10-23 for projects/sen66_bench, from Adafruit's published Eagle files parsed with
+# tools/board_from_eagle.py. Connector facing is the tool's inference (pad geometry or nearest edge).
+#
+# SEN6X_BREAKOUT (PID 6331): the ADS1115's outline and hole pattern. Besides the two STEMMA QT it carries a JST GH
+# 6-pin (X1, SM06B-GHS-TB) for the SEN6x cable at (0.00, 5.71), 3.18 from the +Y edge, mouth to +Y (nearest edge,
+# and Adafruit's product photo). The connector registry has no GH row; projects/sen66_bench checks that plug.
+SEN6X_BREAKOUT = Board(
+    name="SEN6X_BREAKOUT",
+    size=(25.400, 17.780),
+    holes=((-10.160, -6.350), (10.160, -6.350), (-10.160, 6.350), (10.160, 6.350)),
+    hole_dia=2.50,   # Eagle drill, plated: M2, as the ADS1115
+    source="Adafruit SEN6x Breakout.brd, github.com/adafruit/Adafruit-SEN6x-Breakout-PCB (HEAD); Adafruit SEN6x Breakout.brd parsed by tools/board_from_eagle.py, 2026-10-23",
+    thickness=None,   # not in an Eagle file
+    nearest_pin=5.08,
+    nearest_top_copper=2.11,
+    connectors=(
+        Connector(9.53, 0.00, (1, 0), "JST_SH4"),   # CONN1:JST_SH4, facing by pad geometry
+        Connector(-9.52, 0.00, (-1, 0), "JST_SH4"),   # CONN2:JST_SH4, facing by pad geometry
+    ),
+)
+
+# METRO_ESP32S3 (PID 5500, rev B): Arduino Uno outline and holes, drawn portrait (USB-C at +Y). Four plain 3.2
+# drills; the (24.13, 19.05) hole is 3.56 from the nearest pin of the IOH header, so only an M2 boss fits under it.
+# Two more plug-in parts the tool does not list (no Mating row): a DC jack X5 (DCJACK_2MM_PTH) at (-21.08, 27.24),
+# beside the USB-C on the +Y end, and a microSD socket X6 (Molex 104031-0811) at (-10.16, -24.89) on the -Y end,
+# beside the battery JST. Both ends need open room; projects/sen66_bench checks it.
+METRO_ESP32S3 = Board(
+    name="METRO_ESP32S3",
+    size=(53.340, 68.580),
+    holes=((-19.050, -31.750), (8.890, -31.750), (24.130, 19.050), (-24.130, 20.320)),
+    hole_dia=3.20,   # Eagle drill, not plated
+    source="Adafruit Metro ESP32-S3 Rev B.brd, github.com/adafruit/Adafruit-Metro-ESP32-S3-PCB (HEAD); Adafruit Metro ESP32-S3 Rev B.brd parsed by tools/board_from_eagle.py, 2026-10-23",
+    thickness=None,   # not in an Eagle file
+    nearest_pin=3.56,
+    nearest_top_copper=2.46,
+    connectors=(
+        Connector(16.38, -26.86, (0, -1), "JST_PH2"),   # X1:JSTPH2_BATT, facing by nearest edge
+        Connector(11.43, 29.21, (0, 1), "USB_C"),   # X4:USB_C_CUSB31-CFM2AX-01-X, facing by nearest edge
+        Connector(23.62, 25.78, (1, 0), "JST_SH4"),   # CONN1:JST_SH4, facing by pad geometry
+    ),
+)
+
+# PI4B: Raspberry Pi 4 Model B. Outline, holes and hole size from Raspberry Pi's mechanical drawing
+# (RP-008343-DS-1 raspberry-pi-4-mechanical-drawing.pdf, as projects/camera_reader and pi_cam_stand), re-based to
+# the outline centre; the drawing's origin is the corner by the (3.5, 3.5) hole, USB-C / micro-HDMI / audio on the
+# y = 0 long edge, USB-A and Ethernet on the x = 85 end, microSD under the x = 0 end, GPIO along y = 56. The pins
+# nearest a hole are the 40-pin GPIO header and the 4-pin PoE header, both placed by the HAT spec
+# (github.com/raspberrypi/hats, hat-board-mechanical.pdf): GPIO centre 29 from the left holes on the top hole row, PoE
+# centre 58 from the left holes and 42.86 above the bottom row; 2.54 pitch, so the nearest pin is
+# hypot(4.87, 1.27) = 5.03 from the (3.5, 52.5) and (61.5, 52.5) holes. The spec's hole land is 6.2 across.
+# None of its plugs has a Mating row yet: projects/sen66_bench keeps each Pi edge open instead.
+PI4B = Board(
+    name="PI4B",
+    size=(85.0, 56.0),
+    holes=((-39.0, -24.5), (19.0, -24.5), (-39.0, 24.5), (19.0, 24.5)),
+    hole_dia=2.7,
+    source="RP-008343-DS-1 raspberry-pi-4-mechanical-drawing.pdf; github.com/raspberrypi/hats hat-board-mechanical.pdf, 2026-10-24",
+    thickness=1.4,                 # UNVERIFIED: not on the drawing; the commonly quoted Pi PCB thickness (camera_reader)
+    nearest_pin=5.03,              # INFERRED: HAT spec header positions, 2.54 pitch
+    nearest_top_copper=3.1,        # HAT spec: 6.2 hole land; nothing else is nearer a hole
+)
+
+# PROTO_2X8: Adafruit Universal Proto-board 2cm x 8cm (PID 4783). Adafruit's technical details: 80 x 20, four 2 mm
+# mounting holes 76 apart along the length and 16 across, 6 x 28 holes at 2.54 (adafruit.com/product/4783 via search,
+# 2026-10-24; the page itself is not reachable from the build machine). Thickness and plating are not published. The
+# hole grid is taken as centred on the outline (Adafruit's photo shows it so): its corner holes at (+-34.29, +-6.35).
+PROTO_2X8 = Board(
+    name="PROTO_2X8",
+    size=(80.0, 20.0),
+    holes=((-38.0, -8.0), (38.0, -8.0), (-38.0, 8.0), (38.0, 8.0)),
+    hole_dia=2.0,                  # VENDOR; if the holes are plated they finish smaller: M1.6, never M2
+    source="Adafruit 4783 technical details (adafruit.com/product/4783), read through a search summary 2026-10-24",
+    thickness=None,                # not published
+    nearest_pin=4.06,              # UNVERIFIED: hypot(38 - 34.29, 8 - 6.35), grid taken as centred
+    nearest_top_copper=3.16,       # UNVERIFIED: that grid hole less a 0.9 pad radius (pad size not published)
+)
+
 BOARDS = {b.name: b for b in (ADS1115, ADS1115_V1, UNO_R3, TENTACLE_T2, INA219, TCA9548A, BME280, FEATHER_ESP32S3, OLED_938,
-                                     MOSFET_5648, RELAY_4409, SEN0244, PERMAPROTO_QUARTER, EZO_CARRIER_ISO, SURVEYOR_PH)}
+                                     MOSFET_5648, RELAY_4409, SEN0244, PERMAPROTO_QUARTER, EZO_CARRIER_ISO, SURVEYOR_PH,
+                                     SEN6X_BREAKOUT, METRO_ESP32S3, PI4B, PROTO_2X8)}

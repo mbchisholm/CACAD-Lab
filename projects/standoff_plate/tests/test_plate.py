@@ -41,10 +41,13 @@ def test_walls_measured_on_sections(d, plate):
     assert abs(got["boss level"] - d["boss_wall"]) < 0.02, got
     # at pocket level the thinnest wall is a pocket or a mount bore to the plate edge, whichever is less;
     # mount bore to pocket is tabulated against the pocket's corner circle, so it may only measure thicker
+    # (a grid tile's corner-cell holes sit nearer a pocket than the edge: then it measures between the two)
     edge = min(d["walls"]["plate edge (pocket corner to plate edge)"], d["walls"].get("mount hole to plate edge", math.inf))
-    assert abs(got["pocket level"] - edge) < 0.02, got
-    if d["mount_holes"]:
-        assert d["walls"]["mount hole to nut pocket (pocket corner)"] >= edge - 0.02, d["walls"]
+    m2p = d["walls"].get("mount hole to nut pocket (pocket corner)", math.inf)
+    if m2p >= edge - 0.02:
+        assert abs(got["pocket level"] - edge) < 0.02, got
+    else:
+        assert m2p - 0.02 <= got["pocket level"] <= edge + 0.02, (got, d["walls"])
 
 
 def test_declared_orientation(d, plate):
@@ -55,7 +58,10 @@ def test_overhang_only_at_declared_nut_pocket_ceilings(d, plate):
     o = d["print_orientation"]["plate"]
     rep = check_overhang(plate, dict(up=o["up"], bed_z=o["bed_z"], max_deg=d["max_overhang_deg"],
                                      nozzle_d=d["nozzle_d"], exceptions=o["overhang_exceptions"]))
-    assert len(rep["exceptions_found"]) == len(d["holes"]), rep   # one ceiling per pocket, no more
+    # per pocket, the stepped bridge: two faces beside the slot, two beside the square, one around the bore; no more
+    by_z = {z: sum(1 for *_, fz in rep["exceptions_found"] if abs(fz - z) < 0.01) for z in d["bridge_z"]}
+    n = len(d["holes"])
+    assert by_z == {d["bridge_z"][0]: 2 * n, d["bridge_z"][1]: 2 * n, d["bridge_z"][2]: n}, (by_z, rep)
     # every declared ceiling is a bridge no wider than the pocket across corners
     assert all(area < 3.2 * d["pocket_r"] ** 2 for _, _, area, _ in rep["exceptions_found"]), rep
 

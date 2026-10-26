@@ -20,6 +20,9 @@ FLOOR = 1.2           # DESIGN: 6 layers
 
 # ISO 273 clearance holes, mm (fine H12 / medium H13 / coarse H14).
 ISO_273 = MappingProxyType({
+    "M1.6": (1.7, 1.8, 2.0),
+    "M2": (2.2, 2.4, 2.6),
+    "M2.5": (2.7, 2.9, 3.1),
     "M3": (3.2, 3.4, 3.6),
     "M4": (4.3, 4.5, 4.8),
     "M5": (5.3, 5.5, 5.8),
@@ -29,7 +32,8 @@ CLEAR_SLIP = 0.20     # diametral, M3: ISO 273 fine 3.2 - 3.0
 CLEAR_LOOSE = 0.40    # diametral, M3: ISO 273 medium 3.4 - 3.0
 # DESIGN: diametral allowance added to a printed clearance hole, because FDM holes print undersize.
 # Prusa's guidance gives printer accuracy as about 0.2 mm (help.prusa3d.com, "Modeling with 3D printing in mind").
-# Older projects (standoff_plate, mount_plate, standoffs) use CLEAR_LOOSE without it.
+# Older projects (mount_plate, standoffs) use CLEAR_LOOSE without it. standoff_plate did until its first print
+# (2026-10-15, docs/PRINT_LOG.md): M2 screws bound in its 2.4 bores.
 FDM_HOLE_ALLOWANCE = 0.20
 
 

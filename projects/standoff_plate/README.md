@@ -13,38 +13,37 @@ declared ceiling and placements.
 
 ## Status
 
-STATUS is `passes`. Active and passing (2026-09-21): `ADS1115`, `INA219`,
-`TCA9548A`, `FEATHER` (flat plates), `ADS1115x2_tray`, and `SENSOR_HUB_tray`
-(INA219 + 2 × ADS1115 + TCA9548A in one column, 35.7 × 90.9 × 16.4, 14 bosses,
-six openings). Added 2026-10-07:
-- `SEN0244`: DFRobot Gravity analog TDS, M3 × 10 + ISO 4032 nuts, 48 × 45 × 9.0
-  with M3 mount holes. Holes 35 × 25 from DFRobot's layout PDF; the hole
-  diameter is scaled from that drawing, not dimensioned.
-- `EZO_ISO_x2`: two Atlas isolated EZO carriers (pH + EC), M2 × 10,
-  81 × 48 × 8.8 with M3 mount holes. The carrier hole is 3.0, so M3 is refused;
-  Atlas's STEP placed on it intersects nothing.
+STATUS is `passes`. First print 2026-10-15 (`ANALOG_NODE`, docs/PRINT_LOG.md):
+the hole patterns fit, but the M2 bores were tight and one boss broke off. Since
+then every plate has ISO 273 medium + FDM allowance bores, a 1 mm root flare
+on each boss, a 1.6 web over each nut pocket, and a stepped bridge into the bore
+(DESIGN.md). It has not been reprinted. `nut_pocket_clearance` 0.30 is UNVERIFIED.
 
-The analog nutrient node (`NUTRIENT_ANALOG`, sprout-cut's `nutrient-analog-xiao`
-env), added 2026-10-07, one plate per board:
-- `SEN0244`: the TDS plate above. No vendor STEP.
-- `SURVEYOR_PH`: Atlas Surveyor analog pH, M2.5 (its hole is 3.0), 48 × 45 × 9.0.
-- `ADS1115`: reads both probes. Its `board_t` is now Adafruit's STEP 1.57.
-- `MOSFET_5648x3`: the three pump drivers, M2 PA (nylon), 31.4 × 74.3 × 9.0.
-  Two bosses and two rest pads per board.
-- `PERMAPROTO`: the XIAO ESP32-C3 + Pololu carrier, M2, 49.2 × 63.8 × 8.8.
+Active and passing (sizes after the 2026-10-15 change):
+- `ADS1115`, `INA219`, `TCA9548A`, `FEATHER`: flat plates, M2 × 10.
+- `ADS1115x2_tray`; `SENSOR_HUB_tray`: INA219 + 2 × ADS1115 + TCA9548A in one
+  column, 37.0 × 92.2 × 16.4, 14 bosses, six openings.
+- `SEN0244`: DFRobot Gravity analog TDS, M3 × 12, 48 × 45 × 10.8, M3 mount
+  holes. Holes 35 × 25 from DFRobot's layout PDF, diameter scaled from it.
+- `EZO_ISO_x2`: two Atlas isolated EZO carriers, M2 × 10, 81 × 48 × 8.8. The
+  carrier hole is 3.0, so M3 is refused; Atlas's STEP on it intersects nothing.
+- `NUTRIENT_ANALOG` (sprout-cut `nutrient-analog-xiao`), one plate per board:
+  `SEN0244`, `SURVEYOR_PH` (M2.5, its hole is 3.0), `ADS1115` (`board_t` from
+  Adafruit's STEP), `MOSFET_5648x3` (three pump drivers, M2 PA, 31.4 × 75.3 × 9.0,
+  two bosses and two rest pads each), `PERMAPROTO` (XIAO ESP32-C3 + Pololu, M2).
+- `ANALOG_NODE`: SEN0244, ADS1115 and pH on one plate, 111.8 × 48 × 8.8, M2 × 10.
+- `SURVEYOR_PH_tile`: the Surveyor as a `module_grid` tile (`mount=dict(..., grid=True)`:
+  outline n × 20 - 0.4, M3 holes on the corner cell centres), 59.6 × 59.6 × 9.0.
 
-`ANALOG_NODE` (2026-10-08) puts SEN0244, ADS1115 and pH on one plate (DESIGN.md).
+Built in `projects/sen66_bench`: `SEN66_BENCH` (Metro), `SEN66_PI` (Pi 4B), `SEN66_PERF`
+(proto-board, M1.6). Each `keep_in` covers the SEN66 like a board.
 
 Failing by rule, on purpose:
 - `ADS1115x2`: inner connectors face each other 6.5 mm apart, the plug needs 15.
-- `ADS1115_V1`, `BME280`: holes on one edge; the rest pad that carries the free
-  edge needs the nearest pin to it, and the registry does not have it yet.
+- `ADS1115_V1`, `BME280`: holes on one edge; the rest pad for the free edge
+  needs the nearest pin to it, and the registry does not have it yet.
 - `UNO_R3`: the registry has no `nearest_pin` yet.
-- `FEATHER_tray`: the USB-C plug envelope is not in the connector registry; the
-  Feather joins the hub tray when it is.
-
-Nothing prints for fit until the coupons are measured: `screw_clearance` is
-`CLEAR_LOOSE` (a guess) and `nut_pocket_clearance` 0.30 has no coupon at all.
+- `FEATHER_tray`: the USB-C plug envelope is not in the connector registry.
 
 ## Sources
 
