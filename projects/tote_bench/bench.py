@@ -1,6 +1,6 @@
-"""Tote rack workbench: one solid per board, brace, diagonal and the plywood
-top, placed from params.derive; the totes as check envelopes and the screws
-as shank envelopes for the function checks. Every number is from params.derive.
+"""Tote workbench: one solid per board, brace and the notched plywood top,
+placed from params.derive; the totes as check envelopes and the screws as
+shank envelopes for the function checks. Every number is from params.derive.
 
     .venv/bin/python projects/tote_bench/bench.py [--show]
 """
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from build123d import Align, Box, Compound, Cylinder, Location, Part, Plane, Polyline, extrude, make_face
 
-from cacad import assert_bbox, assert_material, expect_solids, interference_volume
+from cacad import assert_material, expect_solids, interference_volume
 from projects.tote_bench.params import SCREW, derive
 
 ALIGN_MIN = (Align.MIN, Align.MIN, Align.MIN)
@@ -22,20 +22,14 @@ def _box(size, lo, label: str) -> Part:
 
 def _prism(axis: str, lo: float, th: float, poly, label: str) -> Part:
     """Extrude a polygon given in the plane normal to `axis` ((y, z) for "x", (x, z) for "y") over [lo, lo + th]."""
-    if axis == "x":
-        pts = [(lo, u, z) for u, z in poly]
-        dirn = (1, 0, 0)
-    else:
-        pts = [(u, lo, z) for u, z in poly]
-        dirn = (0, 1, 0)
-    face = make_face(Polyline(*pts, close=True))
-    p = extrude(face, amount=th, dir=dirn)
+    pts = [(lo, u, z) for u, z in poly] if axis == "x" else [(u, lo, z) for u, z in poly]
+    p = extrude(make_face(Polyline(*pts, close=True)), amount=th, dir=(1, 0, 0) if axis == "x" else (0, 1, 0))
     p.label = label
     return p
 
 
 def build_bench() -> dict[str, Part]:
-    """name -> solid, each in its assembled position: boards, prisms, then the top."""
+    """name -> solid, each in its assembled position: boards, braces, then the top."""
     d = derive()
     parts = {nm: _box(size, lo, nm) for nm, (_, size, lo) in d["boards"].items()}
     for nm, (_, axis, lo, th, poly) in d["prisms"].items():
@@ -58,10 +52,8 @@ def build_screws() -> Compound:
     """Shank envelopes, head point to tip, in params' order. Heads sit flush; not modelled."""
     d = derive()
     r = SCREW["d"][0] / 2
-    out = []
-    for _, _, _, head, u, ln, _ in d["screws"]:
-        out.append(Cylinder(r, ln, align=(Align.CENTER, Align.CENTER, Align.MIN)).moved(Location(Plane(origin=head, z_dir=u))))
-    return Compound(children=out)
+    return Compound(children=[Cylinder(r, ln, align=(Align.CENTER, Align.CENTER, Align.MIN)).moved(Location(Plane(origin=head, z_dir=u)))
+                              for _, _, _, head, u, ln, _ in d["screws"]])
 
 
 def _bbox_touch(a: Part, b: Part, tol: float = 0.5) -> bool:
@@ -72,71 +64,65 @@ def _bbox_touch(a: Part, b: Part, tol: float = 0.5) -> bool:
 def check_bench(parts: dict[str, Part]) -> dict:
     """Geometry and function layers. Raises."""
     d = derive()
-    t, w, s, D, W, H = d["t"], d["w"], d["s"], d["D"], d["W"], d["H"]
+    t, w, s, D, W, H, ply = d["t"], d["w"], d["s"], d["D"], d["W"], d["H"], d["ply"]
     tol = d["bbox_tol"]
     asm = Compound(children=list(parts.values()))
     n = len(d["boards"]) + len(d["prisms"]) + 1
     assert all(p.is_valid for p in parts.values()), "invalid solid"
     expect_solids(asm, n, "bench")
-    # overall: rails stick out t each side; the back panel its thickness behind the back legs
     bb = asm.bounding_box()
-    assert abs(bb.min.X + t) < tol and abs(bb.max.X - (W + t)) < tol, f"bench X {bb.min.X:.2f}..{bb.max.X:.2f}"
-    assert abs(bb.min.Y) < tol and abs(bb.max.Y - (D + d["ply"])) < tol, f"bench Y {bb.min.Y:.2f}..{bb.max.Y:.2f}"
-    assert abs(bb.min.Z) < tol and abs(bb.max.Z - H) < tol, f"bench Z {bb.min.Z:.2f}..{bb.max.Z:.2f}"
-    # every board is its cut, in its place
+    want = ((0, W), (0, D), (0, H + ply))
+    for i, (a, b) in enumerate(want):
+        got = (tuple(bb.min)[i], tuple(bb.max)[i])
+        assert abs(got[0] - a) < tol and abs(got[1] - b) < tol, f"bench extent {'XYZ'[i]} {got}, want {(a, b)}"
     for nm, (_, size, lo) in d["boards"].items():
         b = parts[nm].bounding_box()
         got = (*tuple(b.min), *tuple(b.size))
-        assert all(abs(a - e) < tol for a, e in zip(got, (*lo, *size))), f"{nm} is {got}, params says {(*lo, *size)}"
-    # no two solids overlap (touching faces give zero volume)
+        assert all(abs(x - e) < tol for x, e in zip(got, (*lo, *size))), f"{nm} is {got}, params says {(*lo, *size)}"
+    # nothing overlaps (touching faces give zero volume)
     names = list(parts)
     for i in range(len(names)):
         for j in range(i + 1, len(names)):
             if _bbox_touch(parts[names[i]], parts[names[j]]):
                 v = interference_volume(parts[names[i]], parts[names[j]])
                 assert v < 1e-3, f"{names[i]} and {names[j]} overlap by {v:.3f} mm^3"
-    # load path: the top sits on the work rungs, rails, posts and joist; each rung row sits against the uprights
-    wt = d["work_top"]
+    # load path: top on the front legs, aprons, side rails and joist; shelf on its rails; the hutch on the arms
+    tf, ss = d["top_frame"], d["shelf_top"]
+    xm = d["x_in"] + d["bay"] / 2
     probes = {
-        "top over the front work rung": ((W / 4, w + s / 2, wt + 0.5), True),
-        "front work rung under the top": ((W / 4, w + s / 2, wt - 0.5), True),
-        "top over the left work rail": ((-t / 2, D / 2, wt + 0.5), True),
-        "left work rail under the top": ((-t / 2, D / 2, wt - 0.5), True),
-        "joist under the top": ((d["boards"]["JOIST-1"][2][0] + s / 2, D / 2, wt - 0.5), True),
-        "leg through the top notch": ((t / 2, w / 2, wt + d["ply"] / 2), True),
-        "open front above the work top": ((W / 4, w / 2, (wt + H) / 2), False),
-        "open front below the top tie": ((W / 4, w + s / 2, H - s - 1.0), False),
+        "top over the front-left leg": ((t / 2, w / 2, tf + ply / 2), True),
+        "front-left leg under the top": ((t / 2, w / 2, tf - 1), True),
+        "front apron under the top": ((W / 4, t / 2, tf - 1), True),
+        "top joist under the top": ((xm, D / 2, tf - 1), True),
+        "top side rail under the top": ((1.5 * t, D / 2, tf - 1), True),
+        "back leg through the top": ((t / 2, D - w / 2, tf + ply / 2), True),
+        "shelf on its front rail": ((W / 4, w / 2, ss - 1), True),
+        "shelf on its side rail": ((1.5 * t, D / 2, ss - 1), True),
+        "shelf joist under the shelf": ((xm, D / 2, ss - 1), True),
+        "hutch shelf on the arm": ((1.5 * t, D - d["hutch_shelf_d"] / 2, H - 1), True),
+        "open front under the apron": ((W / 4, t / 2, d["apron"] - 10), False),
+        "open front under the shelf rail": ((W / 4, t / 2, d["shelf_rail"] - 10), False),
+        "open front of the hutch": ((W / 2, D - w - 20, (d["work_surface"] + H) / 2), False),
     }
-    for r, z in enumerate(d["rows"]):
-        probes[f"row {r} front rung at the left leg"] = ((t / 2, w + s / 2, z + s / 2), True)
-        probes[f"row {r} back rung at the post"] = ((W / 2, D - w - s / 2, z + s / 2), True)
     assert_material(asm, probes)
-    # totes: touch nothing, sit on both rungs, pass between leg and post
+    # totes: touch nothing; the floor ones on the floor against the stretcher, the shelf ones on the shelf against the lip
     totes = build_totes()
     for tn, tote in totes.items():
         for bn, p in parts.items():
             if _bbox_touch(tote, p):
                 v = interference_volume(tote, p)
                 assert v < 1e-3, f"{tn} hits {bn} by {v:.3f} mm^3"
-    for tn, (size, lo) in d["totes"].items():
-        lv = int(tn[5]) - 1
-        z = d["tote_base"][lv]
-        yb0, yb1 = d["tote_bottoms"][tn]
-        xc = lo[0] + size[0] / 2
-        for rung, y_in in ((f"RUNG-F{lv}", max(w, yb0) + 1.0), (f"RUNG-B{lv}", min(D - w, yb1) - 1.0)):
-            assert_material(parts[rung], {f"{tn} bottom on {rung}": ((xc, y_in, z - 0.1), True)})
-        # runners: under the bottom across the open span between the rungs, so the tote never spans it on its own
-        for k in (1, 2):
-            rb = parts[f"RUN-{tn[5:7]}{k}"].bounding_box()
-            rx = (rb.min.X + rb.max.X) / 2
-            assert lo[0] + (size[0] - d["tote_Wb"]) / 2 < rb.min.X and rb.max.X < lo[0] + (size[0] + d["tote_Wb"]) / 2, \
-                f"{tn}: runner {k} not under the bottom"
-            assert abs(rb.max.Z - z) < tol, f"{tn}: runner {k} top not flush with the rungs"
-            assert_material(asm, {f"{tn} runner {k} mid-span": ((rx, D / 2, z - 0.5), True)})
-        # the back panel stops the tote over its full height: its front face is the tote's back face
-        pb = parts["BACK"].bounding_box()
-        assert abs(pb.min.Y - (lo[1] + size[1])) < tol, f"{tn}: back panel not at the tote's back face"
-        assert pb.min.Z <= lo[2] + tol and pb.max.Z >= lo[2] + size[2] - tol, f"{tn}: back panel does not cover the tote's height"
+        size, lo = d["totes"][tn]
+        xc, yc = lo[0] + size[0] / 2, lo[1] + size[1] / 2
+        if tn.startswith("TOTE-2"):
+            assert_material(parts["SHELF"], {f"{tn} on the shelf": ((xc, yc, lo[2] - 0.1), True)})
+            assert abs(parts["LIP"].bounding_box().min.Y - (lo[1] + size[1])) < tol, f"{tn} not against the lip"
+        else:
+            assert abs(lo[2]) < tol, f"{tn} not on the floor"
+            assert abs(parts["STRETCHER-B"].bounding_box().min.Y - (lo[1] + size[1])) < tol, f"{tn} not against the stretcher"
+        # the tote's top clears the member above it at the front by the lid gap
+        above = parts["APRON-F"] if tn.startswith("TOTE-2") else parts["SHELF-RAIL-F"]
+        assert above.bounding_box().min.Z - (lo[2] + size[2]) >= d["clear_lid"] - tol, f"{tn} lid gap"
     # screws: each passes through its own member, bites its target by params' penetration, hits nothing else
     screws = build_screws()
     sv = 3.14159265 * (SCREW["d"][0] / 2) ** 2
@@ -161,7 +147,7 @@ if __name__ == "__main__":
     rep = check_bench(parts)
     bb = rep["bbox"]
     print(f"tote_bench: bbox {bb.X / 25.4:.3f} x {bb.Y / 25.4:.3f} x {bb.Z / 25.4:.3f} in, "
-          f"wood+ply {rep['volume'] / 1e6:.1f} L, solids {len(rep['assembly'].solids())}, "
+          f"wood+sheet {rep['volume'] / 1e6:.1f} L, solids {len(rep['assembly'].solids())}, "
           f"totes {len(rep['totes'].solids())}, screws {len(rep['screws'].solids())}")
     export(rep["assembly"], "tote_bench", OUT)
     export(rep["totes"], "tote_bench_totes", OUT)
