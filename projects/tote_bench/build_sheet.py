@@ -33,12 +33,14 @@ JOINT_OF = (
     (("CLEAT-",), ("LEG-",), "cleat->leg"),
     (("ARM-",), ("LEG-",), "arm->leg"),
     (("BRACE-",), ("ARM-",), "brace->arm"),
+    (("ARM-",), ("HUTCH-RAIL",), "arm->hutch rail"),
+    (("BACK",), ("LEG-", "SHELF-RAIL-B", "APRON-B"), "back panel->frame"),
 )
 
 # directions a piece is brought in along: (axis, sign of the motion)
-DOWN, FROM_FRONT, FROM_LEFT, FROM_RIGHT = (2, -1), (1, 1), (0, 1), (0, -1)
+DOWN, FROM_FRONT, FROM_LEFT, FROM_RIGHT, FROM_BACK = (2, -1), (1, 1), (0, 1), (0, -1), (1, -1)
 HOW = {DOWN: "lowered from above", FROM_FRONT: "brought in from the front",
-       FROM_LEFT: "offered up from the left", FROM_RIGHT: "offered up from the right"}
+       FROM_LEFT: "offered up from the left", FROM_RIGHT: "offered up from the right", FROM_BACK: "offered up from behind"}
 
 
 def _is(nm: str, pats) -> bool:
@@ -205,7 +207,7 @@ def steps(d: dict) -> list[dict]:
     sp, toe = d["ply_screws"], d["toe_screws"]
     lp, tl = d["joints"]["ply->frame"][2], SCREW["toe_len"][0]
     jt = ex["JOIST-TOP"][0][0] - ex["APRON-F"][0][0]
-    js = ex["JOIST-SHELF"][0][0] - ex["SHELF-RAIL-F"][0][0]
+    post_x = ex["POST"][0][0]
     lip_in = ex["LIP"][0][0] - ex["SHELF"][0][0]
     diag = math.hypot(W - 2 * t, D)
     over_top = [n for n in ex if n != "TOP" and blocks(d, ex, n, "TOP", DOWN)]
@@ -227,10 +229,6 @@ def steps(d: dict) -> list[dict]:
              text=f"**Shelf frame.** SHELF-RAIL-F and SHELF-RAIL-B lie flat between SIDE-L-SHELF and SIDE-R-SHELF (on edge), "
                   f"outer edges flush with the side rails' ends, tops flush. Screw through each side rail's outer face into "
                   f"the rails' end grain, mid-thickness. Square it: {f(diag)} corner to corner."),
-        dict(key="shelf joist", move=[("JOIST-SHELF", DOWN)], onto=["SHELF-RAIL-F"],
-             counted=[(toe["shelf_joist"], tl, "toe, shelf joist -> shelf rails")],
-             text=f"Drop the 2x2 JOIST-SHELF between the shelf rails' inner edges, its left face {f(js)} from the rails' left "
-                  f"ends, top flush. Toe-screw {toe['shelf_joist'] // 2} per end into the rails."),
         dict(key="shelf panel", move=[("LIP", DOWN)], onto=["SHELF"], counted=[],
              text=f"**Shelf panel, upside down.** Lay the 2x2 LIP on the bench and the SHELF plywood on it, good face down: "
                   f"the panel's back edge flush with the lip's back face, the lip {f(lip_in)} in from each side edge. Screw down "
@@ -239,8 +237,9 @@ def steps(d: dict) -> list[dict]:
              counted=[(sp["shelf"], lp, "ply->frame, shelf")],
              text=f"Lay the shelf panel on the shelf frame, lip up at the back, edges flush with the side rails' outer faces "
                   f"and the frame's ends: the panel squares the frame. Screw down at {f(d['ply_screw_pitch'])} or closer into "
-                  f"both side rails, both shelf rails and the joist; along the back rail keep to the {f(w - s)} strip in front "
-                  f"of the lip."),
+                  f"both side rails and both shelf rails; along the back rail keep to the {f(w - s)} strip in front "
+                  f"of the lip. The panel's face grain runs front to back: it spans the {f(D - 2 * w)} between the rails "
+                  f"on its strong axis, so the shelf needs no joist."),
         dict(key="floor frame", move=[("STRETCHER-B", DOWN)], onto=["SIDE-L-FLOOR", "SIDE-R-FLOOR"], counted=[],
              text=f"**Floor frame.** STRETCHER-B on edge between SIDE-L-FLOOR and SIDE-R-FLOOR (on edge), its outer face "
                   f"flush with the side rails' back ends, bottoms flush. Screw through each side rail's outer face into its end "
@@ -255,6 +254,12 @@ def steps(d: dict) -> list[dict]:
         dict(key="right legs", move=[("LEG-FR", FROM_RIGHT), ("LEG-BR", FROM_RIGHT)],
              onto=["SIDE-R-TOP", "SIDE-R-SHELF", "SIDE-R-FLOOR"], counted=[],
              text="**Right legs.** Turn it over and do the same with LEG-FR and LEG-BR. Stand the bench up on its legs."),
+        dict(key="back panel", move=[("BACK", FROM_BACK)], onto=["LEG-BL"], counted=[],
+             text=f"**Back panel.** The BACK plywood ({f(W)} x {f(d['back_h'])}, the sheet's last strip) against the back "
+                  f"faces of the back legs, SHELF-RAIL-B and APRON-B, top flush with the top frame's top ({f(d['top_frame'])}), "
+                  f"ends flush with the legs' outer faces. Screw it at {f(d['ply_screw_pitch'])} or closer down each back leg "
+                  f"and along the shelf rail and apron, stepping 2 in either side of the joist screws on the apron. This is "
+                  f"what stops the bench racking side to side; square the bench before the last screws."),
         dict(key="top", move=[("TOP", DOWN)], onto=["LEG-BL"], counted=[(sp["top"], lp, "ply->frame, top")],
              text=f"**Top.** Lift the TOP over the back legs and lower it, notches round them, onto the front legs and the "
                   f"top frame, flush at the front and sides (work surface {f(d['work_surface'])}). Screw down at "
@@ -264,6 +269,10 @@ def steps(d: dict) -> list[dict]:
              text=f"**Hutch arms.** ARM-L and ARM-R on edge on the back legs' inner faces, tops flush with the legs' tops "
                   f"({f(H)}), back ends flush with the legs' back faces; they stand {f(d['hutch_shelf_d'] - w)} in front of the "
                   f"legs. Screw from inside through the arm into the leg."),
+        dict(key="hutch rail", move=[("HUTCH-RAIL", DOWN)], onto=["ARM-L", "ARM-R"], counted=[],
+             text=f"**Hutch rail.** The 2x2 HUTCH-RAIL between the arms' front ends, front face flush with theirs, top flush "
+                  f"with their tops. One screw through each arm's outer face into the rail's end grain, before the braces "
+                  f"cover the heads."),
         dict(key="braces", move=[("BRACE-L", FROM_LEFT), ("BRACE-R", FROM_RIGHT)], onto=["LEG-BL"],
              counted=[(toe["brace_feet"], tl, "toe, brace feet -> back legs")],
              text=f"**Braces.** BRACE-L and BRACE-R in the plane of the back legs against the arms' outer faces, outer faces "
@@ -273,13 +282,19 @@ def steps(d: dict) -> list[dict]:
         dict(key="cleats", move=[("CLEAT-L", FROM_FRONT), ("CLEAT-R", FROM_FRONT)], onto=["LEG-BL"], counted=[],
              text=f"**Pegboard cleats.** CLEAT-L and CLEAT-R (2x2, {f(d['peg_h'])}) on the back legs' inner faces, front faces "
                   f"flush with the legs' front faces, bottom ends at {f(peg_z)}. Screw through the cleat into the leg."),
+        dict(key="post", move=[("POST", DOWN)], onto=["TOP"], counted=[(toe["post_foot"], tl, "toe, post foot -> top and joist")],
+             text=f"**Post.** The 2x2 POST ({f(d['H'] - d['work_surface'])}) stands on the top over the joist, between the "
+                  f"cleats' line, its left face {f(post_x)} from the left of the bench and its front face flush with the legs' "
+                  f"front faces. Plumb it, then {toe['post_foot']} toe screws through its foot into the top and joist."),
         dict(key="pegboard", move=[("PEGBOARD", FROM_FRONT)], onto=["CLEAT-L"], counted=[],
-             text=f"**Pegboard** against the cleats' front faces between the back legs, bottom edge at {f(peg_z)} "
-                  f"({f(d['peg_lift'])} over the work surface): {d['peg_screws']} pan-head screws with washers through its "
-                  f"holes, {d['peg_screws'] // 2} per cleat."),
+             text=f"**Pegboard** against the cleats' and the post's front faces between the back legs, bottom edge at "
+                  f"{f(peg_z)} ({f(d['peg_lift'])} over the work surface): {d['peg_screws']} pan-head screws with washers, "
+                  f"4 into each cleat and 4 into the post, driven through solid board between the holes (a screw in a hole "
+                  f"is loose)."),
         dict(key="hutch shelf", move=[("HUTCH", DOWN)], onto=["ARM-L"], counted=[(sp["hutch"], lp, "ply->frame, hutch shelf")],
-             text=f"**Hutch shelf** on the legs, arms and braces, flush with the back and the legs' outer faces. Screw down "
-                  f"into the arms and the leg tops."),
+             text=f"**Hutch shelf** on the legs, arms, braces, rail and post, flush with the back and the legs' outer "
+                  f"faces. Screw down into the arms, the rail, the two leg tops and the post. Then anchor the back legs to a "
+                  f"wall stud with the two L-brackets: the bench tips at {d['tip_force'] / 4.448222:.0f} lb pulled at the top."),
         dict(key="totes", move=[(n, FROM_FRONT) for n in floor_t + shelf_t], onto=["LEG-FL"], counted=[],
              text=f"**Totes.** Slide {' and '.join(floor_t)} in on the floor until they meet STRETCHER-B, and "
                   f"{' and '.join(shelf_t)} in on the shelf until they meet the LIP; parked, their fronts are "

@@ -4,8 +4,8 @@ A workbench that stores four HDX 27 gal totes in one bay (two on the floor,
 two on a plywood shelf) under a 23/32 in plywood work top at about 38-3/8 in,
 with a pegboard hutch and a 12 in shelf on the two back legs at 72 in. Built
 mostly from lumber on hand (four 72 in 2x4s, four 31 in 2x4s, four 45 deg
-braces, 2x2s); three 2x4s, one plywood sheet, a pegboard panel and screws
-are bought. Lumber, not a print: the manufacturability layer is the cut plan
+braces, 2x2s); four 2x4s, one plywood sheet, a pegboard panel, screws
+and two L-brackets are bought. Lumber, not a print: the manufacturability layer is the cut plan
 against the inventory and each joint's screw against the stocked lengths.
 
 ![render](../../docs/img/tote_bench.png)
@@ -20,9 +20,11 @@ Why it is laid out this way (the full rationale is in `params.py`'s docstring):
 - Across the bay only what must be: the top's aprons on edge (a stiff top),
   the shelf rails flat (so two tote levels fit under the top) and a back
   stretcher at the floor that stops the floor totes.
-- The plywood top and shelf square the frame; a 2x2 lip stops the shelf totes.
-- Hutch: pegboard on 2x2 cleats between the back legs; the shelf on 2x4 arms,
-  each held up by one of the 45 deg braces bearing on the leg.
+- Plywood top and shelf; a 2x2 lip stops the shelf totes. A plywood back
+  panel, the sheet's last strip, is the side-to-side bracing.
+- Hutch: pegboard on 2x2 cleats and a middle post; a 12 in shelf on 2x4 arms
+  and a front rail, held up by two of the 45 deg braces. The bench tips at
+  about 38 lb pulled at the top: anchor it to a wall stud (two L-brackets).
 
 ## Status
 
@@ -30,7 +32,10 @@ STATUS is `concept`: modelled and checked (no overlaps, the totes clear
 everything and sit against their stops, every modelled screw bites its member,
 touches nothing else and is driven before anything covers its head, and the
 build sheet's assembly order brings every piece in along a clear path).
-Nothing cut. The FreeCAD view is written but not yet run against FreeCAD.
+Racking (back panel) and tipping (anchor) are checked in `validate()`; the
+screw lateral value behind the racking check is UNVERIFIED (NDS Table 12M as
+read in review). Nothing cut. The FreeCAD view is written but not yet run
+against FreeCAD.
 
 ## Sources
 

@@ -71,7 +71,7 @@ def check_bench(parts: dict[str, Part]) -> dict:
     assert all(p.is_valid for p in parts.values()), "invalid solid"
     expect_solids(asm, n, "bench")
     bb = asm.bounding_box()
-    want = ((0, W), (0, D), (0, H + ply))
+    want = ((0, W), (0, D + ply), (0, H + ply))    # the back panel stands proud of the back legs by its thickness
     for i, (a, b) in enumerate(want):
         got = (tuple(bb.min)[i], tuple(bb.max)[i])
         assert abs(got[0] - a) < tol and abs(got[1] - b) < tol, f"bench extent {'XYZ'[i]} {got}, want {(a, b)}"
@@ -98,8 +98,15 @@ def check_bench(parts: dict[str, Part]) -> dict:
         "back leg through the top": ((t / 2, D - w / 2, tf + ply / 2), True),
         "shelf on its front rail": ((W / 4, w / 2, ss - 1), True),
         "shelf on its side rail": ((1.5 * t, D / 2, ss - 1), True),
-        "shelf joist under the shelf": ((xm, D / 2, ss - 1), True),
         "hutch shelf on the arm": ((1.5 * t, D - d["hutch_shelf_d"] / 2, H - 1), True),
+        "hutch shelf front edge on its rail": ((W / 4, D - d["hutch_shelf_d"] + s / 2, H - 1), True),
+        "hutch shelf middle on the post": ((xm, D - w + s / 2, H - 1), True),
+        "post standing on the top over the joist": ((xm, D - w + s / 2, d["work_surface"] + 1), True),
+        "joist under the post": ((xm, D - w + s / 2, tf - 1), True),
+        "back panel on the back-left leg": ((t / 2, D + ply / 2, (d["shelf_rail"] + tf) / 2), True),
+        "back panel over the back apron": ((W / 4, D + ply / 2, tf - 1), True),
+        "back panel over the back shelf rail": ((W / 4, D + ply / 2, d["shelf_rail"] + t / 2), True),
+        "no shelf joist under the shelf": ((xm, D / 2, ss - 1), False),
         "open front under the apron": ((W / 4, t / 2, d["apron"] - 10), False),
         "open front under the shelf rail": ((W / 4, t / 2, d["shelf_rail"] - 10), False),
         "open front of the hutch": ((W / 2, D - w - 20, (d["work_surface"] + H) / 2), False),

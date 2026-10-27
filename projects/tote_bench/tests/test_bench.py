@@ -18,7 +18,7 @@ def test_geometry_and_function(d, checked):
     assert len(checked["totes"].solids()) == len(d["totes"]) == 4
     assert len(checked["screws"].solids()) == len(d["screws"])
     bb, tol = checked["bbox"], d["bbox_tol"]
-    for got, want in zip((bb.X, bb.Y, bb.Z), (d["W"], d["D"], d["H"] + d["ply"])):
+    for got, want in zip((bb.X, bb.Y, bb.Z), (d["W"], d["D"] + d["ply"], d["H"] + d["ply"])):   # back panel behind the legs
         assert abs(got - want) < tol, (got, want)
 
 
@@ -142,3 +142,17 @@ def test_build_sheet_accounts_for_every_screw(d):
     by_joint = screws_by_joint(d)
     assert sum(len(v) for v in by_joint.values()) == len(d["screws"])
     assert counted_screws(d) == d["screw_counts"]
+
+
+def test_racking_and_tipping(d):
+    """The back panel is the only side-to-side bracing: it must carry the design push, and the bench, which tips at a
+    modest pull on the hutch, must come with its wall anchor."""
+    assert d["rack_capacity"] >= d["rack_load"]
+    assert d["anchor"] and any("L-bracket" in row[0] for row in d["shopping"])
+    with pytest.raises(AssertionError, match="back panel screws carry"):
+        params.validate(rack_load=2000 * params.LBF)
+
+
+def test_no_shelf_joist(d):
+    """The shelf spans front to back on its plywood's strong axis: the old toe-screwed 2x2 joist is gone."""
+    assert "JOIST-SHELF" not in d["boards"]

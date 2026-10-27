@@ -28,7 +28,7 @@ COLOURS = dict(x2x4=(0.55, 0.36, 0.20), x2x2=(0.80, 0.60, 0.38), plywood=(0.90, 
 GROUND = "LEG-FL"
 # Parts the exploded view leaves in place: the frame across the bay. params' moves lift the top, the shelf + lip and
 # the hutch group, and move the legs + side rails out to either side.
-REFERENCE = frozenset(("APRON-F", "APRON-B", "SHELF-RAIL-F", "SHELF-RAIL-B", "STRETCHER-B", "JOIST-TOP", "JOIST-SHELF"))
+REFERENCE = frozenset(("APRON-F", "APRON-B", "SHELF-RAIL-F", "SHELF-RAIL-B", "STRETCHER-B", "JOIST-TOP"))
 SHEETS = dict(plywood="23/32 plywood", pegboard="1/4 pegboard")   # BOM labels for the sheet kinds
 
 IMPORT = r'''

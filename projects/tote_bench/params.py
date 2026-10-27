@@ -14,10 +14,15 @@ How it is laid out, and why:
   aprons on edge (a stiff work top), the shelf's front and back rails flat
   (1-1/2 in, so two tote levels fit under a ~38-1/2 in top), and a back
   stretcher at the floor that stops the floor totes.
-- Plywood top and shelf: totes slide on the shelf; the plywood squares the
-  frame. A 2x2 lip on the shelf's back edge stops the shelf totes.
-- Hutch: pegboard on 2x2 cleats between the back legs; a top shelf on 2x4
-  arms, each held up by one of the 45 deg braces bearing on the leg.
+- Plywood top and shelf: totes slide on the shelf, which spans front to back
+  on its face grain and needs no joist. A 2x2 lip stops the shelf totes.
+- A plywood back panel (the sheet's last strip) on the back legs, shelf rail
+  and apron: the only side-to-side bracing, and the only bracing needed; the
+  horizontal top and shelf stop skew in plan, not sideways lean.
+- Hutch: pegboard on 2x2 cleats and a middle post between the back legs; a top
+  shelf on 2x4 arms and a 2x2 front rail, each arm held up by one of the 45 deg
+  braces bearing on the leg. The bench tips at a modest pull on the hutch, so
+  it is anchored to a wall stud.
 
 Coordinates: origin = floor at the outer corner of the front-left leg; +X to
 the right, +Y toward the back, +Z up. Boards are boxes: name -> (kind, size,
@@ -118,7 +123,14 @@ DESIGN = MappingProxyType(dict(
     point_load=(200 * LBF, "DESIGN", "a 200 lb point load mid-span on a top apron: someone leaning on the front edge"),
     hutch_load=(50 * LBF, "DESIGN", "hutch shelf load, uniform: paint cans and boxes"),
     kerf=(IN / 8, "DESIGN", "material lost per cut: 1/8 in covers a full-kerf 7-1/4 in circular-saw blade"),
-    end_trim=(1 * IN, "DESIGN", "squared off the factory end of every stick or board before the first cut"),
+    end_trim=(2 * IN, "DESIGN", "allowed off EACH end of every stick or board: squares it and drops end splits"),
+    rack_load=(50 * LBF, "DESIGN", "sideways push at the work top: planing or sawing along the bench"),
+    anchor_pull=(50 * LBF, "DESIGN", "forward pull at the hutch top the bench must take; below it, anchor to the wall"),
+    Z_screw=(80 * LBF, "UNVERIFIED", "#8 wood screw lateral value, 3/4 in plywood side member into SPF (G 0.42): "
+                                     "NDS 2018 Table 12M as read in review; check the table"),
+    rho_spf=(0.42 * 1000 * 1.12, "INFERRED", "kg/m3: SPF G 0.42 (NDS 2018 Table 12.3.3A) at 12% moisture"),
+    rho_ply=(545.0, "UNVERIFIED", "kg/m3: softwood plywood, ~34 pcf"),
+    rho_peg=(990.0, "UNVERIFIED", "kg/m3: tempered hardboard, ~62 pcf"),
     notch_clear=(IN / 16, "DESIGN", "plywood notches round the back legs, per side: the top drops on without binding"),
     screw_gap_min=(3.0, "DESIGN", "closest approach of two screw shanks, mm (axis distance minus d)"),
     screw_tip_cover=(0.25 * IN, "DESIGN", "wood left past a screw tip in the member it bites"),
@@ -206,10 +218,10 @@ def derive(**overrides) -> dict:
     b["SHELF-RAIL-F"] = ("x2x4", (bay, w, t), (x_in, 0.0, shelf_rail))
     b["SHELF-RAIL-B"] = ("x2x4", (bay, w, t), (x_in, D - w, shelf_rail))
     b["STRETCHER-B"] = ("x2x4", (bay, t, w), (x_in, D - t, 0.0))
-    # joists down the middle of the bay, where the two totes' gap is
+    # top joist down the middle of the bay, where the two totes' gap is. The shelf needs none: its plywood is laid
+    # with the face grain front to back and spans the 24 in between its rails on the strong axis.
     xm = x_in + bay / 2
     b["JOIST-TOP"] = ("x2x4", (t, D - 2 * t, w), (xm - t / 2, t, apron))
-    b["JOIST-SHELF"] = ("x2x2", (s, D - 2 * w, s), (xm - s / 2, w, shelf_top - s))
     # plywood: the top (notched round the back legs, built from d["top"]) and the shelf between the legs
     b["SHELF"] = ("plywood", (W - 2 * t, D, ply), (t, 0.0, shelf_top))
     b["LIP"] = ("x2x2", (bay, s, s), (x_in, D - s, shelf_surf))
@@ -227,6 +239,16 @@ def derive(**overrides) -> dict:
     for side, x in (("L", t), ("R", W - 2 * t)):
         b[f"ARM-{side}"] = ("x2x4", (t, arm_len, w), (x, D - arm_len, H - w))
     b["HUTCH"] = ("plywood", (W, arm_len, ply), (0.0, D - arm_len, H))
+    # a 2x2 post at the middle, behind the pegboard, from the work top (over the top joist) to the hutch shelf:
+    # halves the pegboard's span and holds up the middle of the hutch shelf
+    b["POST"] = ("x2x2", (s, s, H - work), (xm - s / 2, D - w, work))
+    # a 2x2 under the hutch shelf's front edge, between the arms
+    b["HUTCH-RAIL"] = ("x2x2", (bay, s, s), (x_in, D - arm_len, H - s))
+    # back panel: what the sheet leaves after the top, shelf and hutch shelf, screwed to the back faces of the back
+    # legs, the back shelf rail and the back apron. It is the side-to-side shear wall; nothing else braces that plane.
+    back_h = floor16(STORE_PLY[0][1] - (D + D + arm_len) - 4 * d["kerf"])
+    b["BACK"] = ("plywood", (W, ply, back_h), (0.0, D, top_frame - back_h))
+    d["back_h"] = back_h
     d["boards"] = b
 
     # braces: in the plane of each back leg, plumb end bearing on the leg's front face, top end level with the arm's
@@ -280,6 +302,8 @@ def derive(**overrides) -> dict:
         "cleat->leg": (s, t, pick(s, t)),
         "arm->leg": (t, t, pick(t, t)),
         "brace->arm": (t, t, pick(t, t)),
+        "arm->hutch rail": (t, bay, pick(t, bay)),            # through the arm into the rail's end grain
+        "back panel->frame": (ply, t, pick(ply, t)),          # into the back legs, shelf rail and apron (1-1/2 deep)
     }
     d["joints"] = joints
     scr = []
@@ -325,8 +349,6 @@ def derive(**overrides) -> dict:
     n_lip = int(math.ceil(lsz[0] / d["ply_screw_pitch"])) + 1
     for k in range(n_lip):
         x = llo[0] + 2 * IN + k * (lsz[0] - 4 * IN) / (n_lip - 1)
-        if abs(x - xm) < 1.5 * IN:
-            x += 2 * IN                             # step off the shelf joist's end
         add(f"SHELF>LIP#{k}", "SHELF", "LIP", (x, llo[1] + s / 2, shelf_top), (0, 0, 1), "ply->lip")
     # pegboard cleats into the back legs
     for side in ("L", "R"):
@@ -351,17 +373,67 @@ def derive(**overrides) -> dict:
             y_short = p2[0] + (H - zc)               # short edge at height zc (it falls toward the leg)
             y_long = p3[0] + (H - zc)                # long edge at height zc
             add(f"{br}>{arm}#{k}", br, arm, (bx, y_long + f * (y_short - y_long), zc), ub, "brace->arm")
+    # hutch rail: one screw per end through the arm into the rail's end grain (before the brace covers the head)
+    _, hsz, hlo = b["HUTCH-RAIL"]
+    for side, x_head, u in (("L", t, (1, 0, 0)), ("R", W - t, (-1, 0, 0))):
+        add(f"ARM-{side}>HUTCH-RAIL", f"ARM-{side}", "HUTCH-RAIL", (x_head, hlo[1] + s / 2, hlo[2] + s / 2), u, "arm->hutch rail")
+    # back panel: down each back leg's centre line, and along the back shelf rail and back apron, at <= pitch,
+    # stepping clear of the joist screws' heads on the apron's back face
+    _, bsz, blo = b["BACK"]
+    y_head = blo[1] + bsz[1]
+    z0, z1 = blo[2] + IN, blo[2] + bsz[2] - IN
+    n_leg = int(math.ceil((z1 - z0) / d["ply_screw_pitch"])) + 1
+    for leg in ("LEG-BL", "LEG-BR"):
+        for k in range(n_leg):
+            z = z0 + k * (z1 - z0) / (n_leg - 1)
+            if any(abs(z - zz) < 1.25 * IN for zz in (shelf_rail + t / 2, apron + w / 2)):
+                z += 1.25 * IN if z < (z0 + z1) / 2 else -1.25 * IN   # off the shelf rail and apron rows, inward
+            add(f"BACK>{leg}#{k}", "BACK", leg, (b[leg][2][0] + t / 2, y_head, z), (0, -1, 0), "back panel->frame")
+    n_x = int(math.ceil((bay - 4 * IN) / d["ply_screw_pitch"])) + 1
+    for nm, z in (("SHELF-RAIL-B", shelf_rail + t / 2), ("APRON-B", apron + w / 2)):
+        for k in range(n_x):
+            x = x_in + 2 * IN + k * (bay - 4 * IN) / (n_x - 1)
+            if abs(x - xm) < 2 * IN:
+                x = xm + math.copysign(2 * IN, x - xm or 1.0)
+            add(f"BACK>{nm}#{k}", "BACK", nm, (x, y_head, z), (0, -1, 0), "back panel->frame")
     d["screws"] = scr
+
+    # --- weight, centre of gravity and the pull that tips the bench forward about its front feet (y = 0)
+    rho = dict(x2x4=d["rho_spf"], x2x2=d["rho_spf"], plywood=d["rho_ply"], pegboard=d["rho_peg"])
+    mass, my, mz = 0.0, 0.0, 0.0
+    for kind, size, lo in b.values():
+        m_ = rho[kind] * math.prod(size) * 1e-9
+        mass += m_; my += m_ * (lo[1] + size[1] / 2); mz += m_ * (lo[2] + size[2] / 2)
+    tsz, tlo = d["top"]["size"], d["top"]["lo"]
+    m_ = rho["plywood"] * math.prod(tsz) * 1e-9
+    mass += m_; my += m_ * (tlo[1] + tsz[1] / 2); mz += m_ * (tlo[2] + tsz[2] / 2)
+    for _, _, _, th, pts in pr.values():
+        area = 0.5 * abs(sum(pts[i][0] * pts[i - 1][1] - pts[i - 1][0] * pts[i][1] for i in range(len(pts))))
+        m_ = rho["x2x4"] * area * th * 1e-9
+        mass += m_; my += m_ * sum(p_[0] for p_ in pts) / len(pts); mz += m_ * sum(p_[1] for p_ in pts) / len(pts)
+    d["mass_kg"], d["cg_y"], d["cg_z"] = mass, my / mass, mz / mass
+    d["tip_force"] = mass * 9.80665 * d["cg_y"] / (H + ply)            # N, forward pull at the hutch top, empty
+    d["anchor"] = d["tip_force"] < d["anchor_pull"]
+
+    # --- side-to-side racking: the back panel carries the push from the top to the shelf rail through its screws,
+    # and the two back legs carry it on down to the floor as cantilevers off the panel's bottom edge
+    n_ap = sum(1 for sc in scr if sc[0].startswith("BACK>APRON-B"))
+    n_sr = sum(1 for sc in scr if sc[0].startswith("BACK>SHELF-RAIL-B"))
+    d["rack_capacity"] = d["Z_screw"] * min(n_ap, n_sr)
+    L_c = top_frame - back_h                                              # floor to the panel's bottom edge
+    I_weak, S_weak = w * t ** 3 / 12, w * t ** 2 / 6
+    d["rack_leg_stress"] = d["rack_load"] / 2 * L_c / S_weak
+    d["rack_leg_defl"] = d["rack_load"] / 2 * L_c ** 3 / (3 * SPF["E"][0] * I_weak)
 
     # counted, not modelled: plywood screws at <= pitch along every member under it, and toe screws
     along = lambda n_: int(math.ceil(n_ / d["ply_screw_pitch"])) + 1
     d["ply_screws"] = dict(
-        top=2 * along(W) + 2 * along(D) + along(D),          # aprons, top side rails, joist
-        shelf=2 * along(bay) + 2 * along(D) + along(D),      # shelf rails, shelf side rails, joist
-        hutch=2 * along(arm_len) + along(W) // 2,            # arms, and into the leg tops
+        top=2 * along(bay) + 2 * along(D) + along(D),        # aprons, top side rails, joist
+        shelf=2 * along(bay) + 2 * along(D),                 # shelf rails, shelf side rails
+        hutch=2 * along(arm_len) + along(bay) + 2 + 1,       # arms, front rail, the two back leg tops, the post
     )
-    d["toe_screws"] = dict(shelf_joist=4, brace_feet=2)
-    d["peg_screws"] = 2 * 4                                  # pan-head + washer, 4 per cleat
+    d["toe_screws"] = dict(brace_feet=2, post_foot=2)
+    d["peg_screws"] = 3 * 4                                  # pan-head + washer, 4 per cleat and 4 into the post
 
     # --- cuts against the inventory and the shopping list
     def plen(nm):
@@ -374,10 +446,12 @@ def derive(**overrides) -> dict:
     }
     d["leg_offcut"] = H - top_frame - d["kerf"]
     two_by_two = [(n, plen(n)) for n in b if b[n][0] == "x2x2"]
-    d["plan_2x2"] = cut_plan(two_by_two, INVENTORY["x2x2"][1], d["end_trim"], d["kerf"])
+    d["plan_2x2"] = cut_plan(two_by_two, INVENTORY["x2x2"][1], 2 * d["end_trim"], d["kerf"])
     bought = [(n, plen(n)) for n in b if b[n][0] == "x2x4" and n.startswith(("APRON", "SHELF-RAIL", "STRETCHER", "JOIST", "ARM"))]
-    d["plan_bought_2x4"] = cut_plan(bought, STORE_2X4[0], d["end_trim"], d["kerf"])
-    d["plan_sheet"] = [("TOP", W, D), ("SHELF", W - 2 * t, D), ("HUTCH", W, arm_len)]
+    d["plan_bought_2x4"] = cut_plan(bought, STORE_2X4[0], 2 * d["end_trim"], d["kerf"])
+    # plywood: four pieces across the sheet's width, so the face grain runs front to back in the top and shelf
+    d["plan_sheet"] = [("TOP", W, D), ("SHELF", W - 2 * t, D), ("HUTCH", W, arm_len), ("BACK", W, back_h)]
+    d["plan_peg"] = [("PEGBOARD", W - 2 * t, d["peg_h"])]
     d["spare"] = dict(x2x2=INVENTORY["x2x2"][0] - len(d["plan_2x2"]), braces=INVENTORY["brace45"][0] - len(pr))
 
     counts = {}
@@ -391,13 +465,14 @@ def derive(**overrides) -> dict:
     d["shopping"] = [
         ("2x4 x 8 ft", len(d["plan_bought_2x4"]), "aprons, shelf rails, back stretcher, top joist, hutch arms"),
         ("23/32 in plywood, 4 x 8 ft sheet", 1, f"top {tape(W)} x {tape(D)}, shelf {tape(W - 2 * t)} x {tape(D)}, "
-                                                f"hutch shelf {tape(W)} x {tape(arm_len)}"),
+                                                f"hutch shelf {tape(W)} x {tape(arm_len)}, back {tape(W)} x {tape(back_h)}"),
         ("1/4 in pegboard, 2 x 4 ft", 1, f"cut to {tape(W - 2 * t)} x {tape(d['peg_h'])}"),
     ] + [(f"#8 wood screws {tape(ln)}", n, "") for ln, n in d["screw_counts"].items()] + [
-        ("#8 pan-head screws 1-1/4\" + washers", d["peg_screws"], "pegboard to the cleats"),
-        ("wood glue", 1, "every face joint and every end-grain joint"),
+        ("#8 pan-head screws 1-1/4\" + washers", d["peg_screws"], "pegboard to the cleats and post, through solid board"),
+        ("wood glue", 1, "every face joint"),
         ("HDX 27 gal Tough Storage Tote", 4, "if not already on hand"),
-    ]
+    ] + ([("3 in steel L-bracket + screws into a wall stud", 2,
+           f"the bench tips at {d['tip_force'] / LBF:.0f} lb pulled at the hutch top: anchor the back legs")] if d["anchor"] else [])
 
     # --- exploded view (display only): the frame stays, the plywood lifts, the legs and side rails move out
     m = d["explode"] * w
@@ -408,7 +483,9 @@ def derive(**overrides) -> dict:
         ("shelf up", ["SHELF", "LIP"], (0.0, 0.0, m / 2)),
         ("left legs and rails out", left, (-m, 0.0, 0.0)),
         ("right legs and rails out", right, (m, 0.0, 0.0)),
-        ("hutch forward", ["HUTCH", "ARM-L", "ARM-R", "BRACE-L", "BRACE-R", "PEGBOARD", "CLEAT-L", "CLEAT-R"], (0.0, -m, m)),
+        ("hutch forward", ["HUTCH", "ARM-L", "ARM-R", "BRACE-L", "BRACE-R", "PEGBOARD", "CLEAT-L", "CLEAT-R", "POST", "HUTCH-RAIL"],
+         (0.0, -m, m)),
+        ("back panel back", ["BACK"], (0.0, m, 0.0)),
     ]
     d["explode_moves"] = moves
     d["explode_offset"] = {nm: tuple(sum(v[i] for _, parts, v in moves if nm in parts) for i in range(3))
@@ -455,6 +532,18 @@ def validate(**overrides) -> dict:
     assert d["shelf_rail_defl"] <= d["bay"] / d["defl_limit_shelf"], f"shelf rail sags {mm(d['shelf_rail_defl'])}"
     assert d["apron_stress"] <= d["apron_Fb"], f"apron {d['apron_stress'] / PSI:.0f} psi under the point load"
     assert d["apron_defl"] <= d["bay"] / d["defl_limit_top"], f"apron deflects {mm(d['apron_defl'])} under the point load"
+    # racking and tipping
+    assert d["rack_capacity"] >= d["rack_load"], f"back panel screws carry {d['rack_capacity'] / LBF:.0f} lb sideways"
+    assert d["rack_leg_stress"] <= SPF["Fb"][0] * SPF["CF"][0] * SPF["Cfu"][0] * SPF["CD_work"][0], "back legs below the panel"
+    assert d["back_h"] > 0 and d["boards"]["BACK"][2][2] <= d["shelf_rail"] + t - 0.75 * IN, \
+        f"back panel bottom {mm(d['boards']['BACK'][2][2])} does not lap the back shelf rail"
+    assert d["anchor"] == (d["tip_force"] < d["anchor_pull"]) and (not d["anchor"] or any("L-bracket" in r[0] for r in d["shopping"])), \
+        "the bench tips under the design pull and the anchor is not on the shopping list"
+    # every bought or on-hand board leaves its end allowance at both ends
+    for plan, stock in (("plan_bought_2x4", STORE_2X4[0]), ("plan_2x2", INVENTORY["x2x2"][1])):
+        for st in d[plan]:
+            off = stock - 2 * d["end_trim"] - sum(l + d["kerf"] for _, l in st)
+            assert off >= -1e-6, f"{plan}: {[n for n, _ in st]} overruns by {mm(-off)}"
     # screws: stocked lengths; no two shanks in a shared member closer than screw_gap_min
     for jn, (through, into, ln) in d["joints"].items():
         assert ln is not None, f"{jn}: no stocked #8 screw bites 6D through {mm(through)} and stays inside {mm(into)}"
@@ -482,6 +571,10 @@ def report(d: dict) -> str:
         f"  hutch: pegboard {f(d['W'] - 2 * d['t'])} x {f(d['peg_h'])} from {f(d['work_surface'] + d['peg_lift'])}; "
         f"shelf {f(d['hutch_shelf_d'])} deep at {f(d['H'])}; braces recut to a {f(d['brace_long_point'])} long point "
         f"({d['brace_force'] / LBF:.0f} lb each in compression)",
+        f"  back panel {f(d['W'])} x {f(d['back_h'])} (the sheet's last strip): carries {d['rack_capacity'] / LBF:.0f} lb sideways "
+        f"(design {d['rack_load'] / LBF:.0f}); back legs below it {d['rack_leg_stress'] / PSI:.0f} psi, {d['rack_leg_defl'] / IN:.3f} in",
+        f"  {d['mass_kg'] / 0.45359:.0f} lb empty, CG {d['cg_y'] / IN:.1f} in behind the front feet: tips at "
+        f"{d['tip_force'] / LBF:.0f} lb pulled at the hutch top -> " + ("ANCHOR to a wall stud" if d["anchor"] else "free-standing"),
         "",
         "ON HAND",
         f"  4 x 72\" 2x4    back legs as they are; front legs cut to {f(d['front_leg'])} (offcut {f(d['leg_offcut'])} -> floor side rails, {f(d['D'])})",
@@ -490,15 +583,15 @@ def report(d: dict) -> str:
         f"  2x2            {len(d['plan_2x2'])} of 8 sticks ({d['spare']['x2x2']} spare):",
     ]
     for i, st in enumerate(d["plan_2x2"], start=1):
-        used = d["end_trim"] + sum(l + d["kerf"] for _, l in st)
-        L.append(f"      stick {i}: " + " + ".join(f"{n} {f(l)}" for n, l in st) + f"   offcut {f(INVENTORY['x2x2'][1] - used)}")
+        used = 2 * d["end_trim"] + sum(l + d["kerf"] for _, l in st)
+        L.append(f"      stick {i}: " + " + ".join(f"{n} {f(l)}" for n, l in st) + f"   spare {f(INVENTORY["x2x2"][1] - used)} after trimming both ends")
     L += ["", "TO BUY"]
     for item, n, note in d["shopping"]:
         L.append(f"  {n:>3} x {item}" + (f"   ({note})" if note else ""))
     L.append("  bought 2x4 cut plan:")
     for i, st in enumerate(d["plan_bought_2x4"], start=1):
-        used = d["end_trim"] + sum(l + d["kerf"] for _, l in st)
-        L.append(f"      board {i}: " + " + ".join(f"{n} {f(l)}" for n, l in st) + f"   offcut {f(STORE_2X4[0] - used)}")
+        used = 2 * d["end_trim"] + sum(l + d["kerf"] for _, l in st)
+        L.append(f"      board {i}: " + " + ".join(f"{n} {f(l)}" for n, l in st) + f"   spare {f(STORE_2X4[0] - used)} after trimming both ends")
     L += ["", "SCREWS BY JOINT (#8, 6D bite, tip >= 1/4 in inside)"]
     for jn, (through, into, ln) in d["joints"].items():
         L.append(f"  {jn:22s} {f(ln) if ln else 'NONE':>7}  through {f(through)}")

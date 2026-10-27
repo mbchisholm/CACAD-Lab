@@ -53,7 +53,7 @@ def test_positions_agree_with_params():
     assert fv.check_positions(d, got) == []
 
 
-@pytest.mark.parametrize("name", ["LEG-FL", "SIDE-R-SHELF", "JOIST-SHELF", "BRACE-L", "SHELF", "PEGBOARD", "TOP"])
+@pytest.mark.parametrize("name", ["LEG-FL", "SIDE-R-SHELF", "POST", "BACK", "BRACE-L", "SHELF", "PEGBOARD", "TOP"])
 @pytest.mark.parametrize("axis", [0, 1, 2])
 def test_one_mm_shift_is_reported(name, axis):
     d = _d()
