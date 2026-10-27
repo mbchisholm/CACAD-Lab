@@ -26,7 +26,7 @@ from projects.tote_bench.params import LUMBER, SCREW, derive, tape
 COLOURS = dict(x2x4=(0.55, 0.36, 0.20), x2x2=(0.80, 0.60, 0.38), plywood=(0.90, 0.78, 0.55),
                tote=(0.35, 0.55, 0.80))   # display only
 GROUND = "LEG-FL"
-REFERENCE = ("POST-", "RUNG-", "TIE-", "JOIST-")   # parts the exploded view leaves in place
+REFERENCE = ("POST-", "RUNG-", "TIE-", "JOIST-", "RUN-")   # parts the exploded view leaves in place
 
 IMPORT = r'''
 import FreeCAD as App, Import, json
@@ -243,7 +243,7 @@ def check_exploded(d: dict, ex: dict, tol: float = 0.01):
             got = ex[key][name]
             assert all(abs(g - e) < tol for g, e in zip(got, exp)), f"{name} {key}: FreeCAD {got}, params {exp}"
         moved = any(abs(o) > tol for o in off)
-        assert moved == (not name.startswith(REFERENCE)), f"{name}: moved {moved}"   # posts, rungs, ties, joists stay
+        assert moved == (not name.startswith(REFERENCE)), f"{name}: moved {moved}"   # posts, rungs, ties, joists, runners stay
     assert ex["overlap"] < 1e-3, f"exploded parts overlap by {ex['overlap']:.3f} mm^3"
 
 

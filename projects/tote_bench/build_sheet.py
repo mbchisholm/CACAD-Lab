@@ -24,7 +24,8 @@ JOINT_OF = (
     (("RAIL-",), ("LEG-", "POST-"), "rail->leg/post"),
     (("STR-",), ("LEG-",), "stretcher->leg"),
     (("DIAG-",), ("LEG-",), "diagonal->leg"),
-    (("STOP-",), ("LEG-", "POST-"), "stop->leg/post"),
+    (("BACK",), ("LEG-", "POST-"), "back panel->leg/post"),
+    (("RUNG-",), ("RUN-",), "rung->runner"),
     (("BRACE-S",), ("RAIL-",), "brace->rail"),
     (("BRACE-B",), ("LEG-",), "back brace->leg"),
     (("TIE-",), ("BRACE-B",), "tie->back brace"),
@@ -172,7 +173,7 @@ def render(d: dict) -> str:
     names = lambda pre: [n for n in list(b) + list(pr) if n.startswith(pre)]
     rails_work = [n for n in names("RAIL-") if n.endswith("WORK")]
     rails_top = [n for n in names("RAIL-") if n.endswith("TOP")]
-    posts, joists, stops = names("POST-"), names("JOIST-"), names("STOP-")
+    posts, joists, runners = names("POST-"), names("JOIST-"), names("RUN-")
     rungs_f = [f"RUNG-F{r}" for r in range(len(d["rows"]))]
     rungs_b = [f"RUNG-B{r}" for r in range(len(d["rows"]))]
     lo_b, hi_b = DESIGN["brace_range"][0]
@@ -231,8 +232,8 @@ def render(d: dict) -> str:
             L.append(f"- {face}: " + "; ".join(items))
         L.append("")
     ex = extents(d)
-    along = [(n, ex[n][0][0], ex[n][1][0]) for n in posts + joists]
-    L += [f"On every rung, tie and stop (left end flush with the left leg's outer face): "
+    along = [(n, ex[n][0][0], ex[n][1][0]) for n in posts + joists + runners]
+    L += [f"On every rung and tie (left end flush with the left leg's outer face): "
           + "; ".join(f"{n} from {f(a)} to {f(z)}" for n, a, z in along) + f". Each column is {f(d['col'])} clear between a leg and a post.", ""]
     sb = pr[names("BRACE-S")[0]][4]
     bb = pr[names("BRACE-B")[0]][4]
@@ -246,7 +247,8 @@ def render(d: dict) -> str:
     conflicts = access_conflicts(d)
     buried = buried_heads(d)
     L += ["## 3. Assemble", "",
-          "Drill a pilot for every screw (pine splits near ends) and glue the face joints if you like. "
+          "Drill a pilot for every screw (pine splits near ends) and **glue every face joint**: the rung, rail and panel screws "
+          "sit close to the ends of the wood, and the glue is what carries the load there. "
           "Everything lands on its mark from section 2; ends are flush with the faces they meet unless the step says otherwise.", "",
           f"1. **Left side frame, flat.** Lay LEG-FL and LEG-BL on their inner faces, outer faces up, front face of LEG-FL to back face of "
           f"LEG-BL {f(D)}. Screw on STR-L (bottom edge flush with the floor ends), then RAIL-L-WORK (top at {f(d['work_top'])}), "
@@ -262,11 +264,16 @@ def render(d: dict) -> str:
           f"4. **Middle posts.** Stand {', '.join(posts)} on the floor at their marks on the rungs, in the plane of the legs "
           f"(front face of {posts[0]} flush with the front legs, back face of {posts[-1]} with the back legs): "
           f"2 x {per('rung->leg/post')} per rung, driven from inside through the rung into the post.",
-          f"5. **Joist.** Drop {', '.join(joists)} between the two work rungs {rungs_f[-1]} and {rungs_b[-1]}, in line with the posts, top flush with the rungs' tops: "
+          f"5. **Joist and runners.** Drop {', '.join(joists)} between the two work rungs {rungs_f[-1]} and {rungs_b[-1]}, beside the post, top flush with the rungs' tops: "
           f"{n_j['rung->joist'] // max(1, len(joists))} x {per('rung->joist')} per joist through the rungs into its end grain"
-          + (" (see Open issues: the post is in the way of these)." if conflicts else "."),
-          f"6. **Back stops.** Screw {', '.join(stops)} across the back faces of the back legs and post, bottom edges at "
-          + ", ".join(f(z) for z in d["stop_z"]) + f": 2 x {per('stop->leg/post')} into each leg and post.",
+          + (" (see Open issues: the post is in the way of these)." if conflicts else ".")
+          + f" Then the runners {', '.join(runners)} between the front and back rungs of each tote level, {f(d['runner_offset'])} either side "
+          f"of each column's centre, tops flush with the rung tops (the floor-level ones lie on the floor): 1 x {per('rung->runner')} per end "
+          "through the rung into the runner's end grain, the back ones driven from behind before the back panel goes on. "
+          "The totes slide on these; without them a full tote's bottom spans the 19-5/8 in between the rungs and drops.",
+          f"6. **Back panel.** Screw BACK ({f(W)} x {f(d['work_top'])} plywood) to the back faces of the back legs and post, bottom on the floor, "
+          f"top at the work rungs' top: {n_j['back panel->leg/post']} x {per('back panel->leg/post')} down the centre of each. It braces the bench "
+          "side to side below the top and stops the totes over their full height.",
           f"7. **Top.** Lower the plywood TOP from above over the four legs, notches round the legs, onto the work rungs, work rails and joist "
           f"(work surface {f(d['work_surface'])}). Screw it down at {f(d['top_screw_pitch'])} or closer along each work rung, each work rail "
           f"and the joist: {d['top_screws']} x {per('top->frame')}. It goes on now because the top rails and ties above close off the legs.",
@@ -278,9 +285,11 @@ def render(d: dict) -> str:
           f"brace into the rail, and {d['toe_screws'] // 2} toe screws at the plumb end into the leg. Back braces {', '.join(names('BRACE-B'))}: "
           f"slide in from the front under TIE-B, plumb end on the back leg's front face flush with its outer face; 2 x {per('back brace->leg')} "
           f"through the brace into the leg, then 1 x {per('tie->back brace')} down through the tie into the brace's top end.",
-          f"10. **Totes.** Slide each tote in from the front between a leg and the post until it meets its back stop. It sits on its bottom "
-          f"across the front and back rungs, {d['bearing_front'] / IN:.2f} and {d['bearing_back'] / IN:.2f} in on each "
-          f"(at least {d['bearing_min'] / IN:.2f}).",
+          f"10. **Anchor.** Fix the tops of the back legs to a wall stud with the two L-brackets: a {f(H)} frame on a {f(D)} base "
+          "tips forward with a modest pull at the top.",
+          f"11. **Totes.** Slide each tote in from the front between a leg and the post, on its runners, until it meets the back panel. "
+          f"Parked, its bottom lies across the front and back rungs, {d['bearing_front'] / IN:.2f} and {d['bearing_back'] / IN:.2f} in on each "
+          f"(at least {d['bearing_min'] / IN:.2f}), and on both runners.",
           ""]
 
     # --- screws

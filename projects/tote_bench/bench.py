@@ -9,7 +9,7 @@ from __future__ import annotations
 from build123d import Align, Box, Compound, Cylinder, Location, Part, Plane, Polyline, extrude, make_face
 
 from cacad import assert_bbox, assert_material, expect_solids, interference_volume
-from projects.tote_bench.params import derive
+from projects.tote_bench.params import SCREW, derive
 
 ALIGN_MIN = (Align.MIN, Align.MIN, Align.MIN)
 
@@ -57,7 +57,7 @@ def build_totes() -> dict[str, Part]:
 def build_screws() -> Compound:
     """Shank envelopes, head point to tip, in params' order. Heads sit flush; not modelled."""
     d = derive()
-    r = 0.164 * 25.4 / 2   # #8 shank, params.SCREW
+    r = SCREW["d"][0] / 2
     out = []
     for _, _, _, head, u, ln, _ in d["screws"]:
         out.append(Cylinder(r, ln, align=(Align.CENTER, Align.CENTER, Align.MIN)).moved(Location(Plane(origin=head, z_dir=u))))
@@ -78,10 +78,10 @@ def check_bench(parts: dict[str, Part]) -> dict:
     n = len(d["boards"]) + len(d["prisms"]) + 1
     assert all(p.is_valid for p in parts.values()), "invalid solid"
     expect_solids(asm, n, "bench")
-    # overall: rails stick out t each side; the back stops t behind the back legs
+    # overall: rails stick out t each side; the back panel its thickness behind the back legs
     bb = asm.bounding_box()
     assert abs(bb.min.X + t) < tol and abs(bb.max.X - (W + t)) < tol, f"bench X {bb.min.X:.2f}..{bb.max.X:.2f}"
-    assert abs(bb.min.Y) < tol and abs(bb.max.Y - (D + s)) < tol, f"bench Y {bb.min.Y:.2f}..{bb.max.Y:.2f}"
+    assert abs(bb.min.Y) < tol and abs(bb.max.Y - (D + d["ply"])) < tol, f"bench Y {bb.min.Y:.2f}..{bb.max.Y:.2f}"
     assert abs(bb.min.Z) < tol and abs(bb.max.Z - H) < tol, f"bench Z {bb.min.Z:.2f}..{bb.max.Z:.2f}"
     # every board is its cut, in its place
     for nm, (_, size, lo) in d["boards"].items():
@@ -125,14 +125,21 @@ def check_bench(parts: dict[str, Part]) -> dict:
         xc = lo[0] + size[0] / 2
         for rung, y_in in ((f"RUNG-F{lv}", max(w, yb0) + 1.0), (f"RUNG-B{lv}", min(D - w, yb1) - 1.0)):
             assert_material(parts[rung], {f"{tn} bottom on {rung}": ((xc, y_in, z - 0.1), True)})
-        # the back stop is behind the tote's back face at its top band
-        stop = parts[f"STOP-{lv + 1}"]
-        sb = stop.bounding_box()
-        assert abs(sb.min.Y - (lo[1] + size[1])) < tol, f"{tn}: back stop not at the tote's back face"
-        assert sb.max.Z <= lo[2] + size[2] + tol and sb.max.Z > lo[2] + size[2] - 25.4, f"{tn}: stop not at the rim band"
+        # runners: under the bottom across the open span between the rungs, so the tote never spans it on its own
+        for k in (1, 2):
+            rb = parts[f"RUN-{tn[5:7]}{k}"].bounding_box()
+            rx = (rb.min.X + rb.max.X) / 2
+            assert lo[0] + (size[0] - d["tote_Wb"]) / 2 < rb.min.X and rb.max.X < lo[0] + (size[0] + d["tote_Wb"]) / 2, \
+                f"{tn}: runner {k} not under the bottom"
+            assert abs(rb.max.Z - z) < tol, f"{tn}: runner {k} top not flush with the rungs"
+            assert_material(asm, {f"{tn} runner {k} mid-span": ((rx, D / 2, z - 0.5), True)})
+        # the back panel stops the tote over its full height: its front face is the tote's back face
+        pb = parts["BACK"].bounding_box()
+        assert abs(pb.min.Y - (lo[1] + size[1])) < tol, f"{tn}: back panel not at the tote's back face"
+        assert pb.min.Z <= lo[2] + tol and pb.max.Z >= lo[2] + size[2] - tol, f"{tn}: back panel does not cover the tote's height"
     # screws: each passes through its own member, bites its target by params' penetration, hits nothing else
     screws = build_screws()
-    sv = 3.14159265 * (0.164 * 25.4 / 2) ** 2
+    sv = 3.14159265 * (SCREW["d"][0] / 2) ** 2
     for sc, (sn, thr, into, _, _, ln, pen) in zip(screws.solids(), d["screws"]):
         a = interference_volume(sc, parts[thr])
         b = interference_volume(sc, parts[into])

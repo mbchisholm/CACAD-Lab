@@ -136,7 +136,7 @@ def test_explode_params_shape():
     assert d["explode_offset"]["TOP"][2] > 0
     assert d["explode_offset"]["LEG-FL"][0] < 0 and d["explode_offset"]["LEG-BR"][0] > 0
     assert d["explode_offset"]["BRACE-SL"][0] < 0 and d["explode_offset"]["DIAG-R"][0] > 0
-    assert d["explode_offset"]["STOP-1"][1] > 0 and d["explode_offset"]["BRACE-BL"][1] > 0
+    assert d["explode_offset"]["BACK"][1] > 0 and d["explode_offset"]["BRACE-BL"][1] > 0
 
 
 def test_check_exploded_accepts_params_offsets():

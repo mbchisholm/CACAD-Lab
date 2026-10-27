@@ -33,6 +33,7 @@ import math
 from types import MappingProxyType
 
 from cacad.lumber import cut_plan, seg_dist
+from cacad.registries.reservoirs import HDX_27GAL
 
 STATUS = "concept"   # concept | passes | printed | parked
 
@@ -50,13 +51,17 @@ LUMBER = MappingProxyType(dict(
 ))
 PLY_T = (23 / 32 * IN, "STANDARD", "US DOC PS 1: 23/32 Performance Category, sold as 3/4 in plywood")
 
-# HDX 27 gal Tough Storage Tote (Home Depot 207 585). Two published listings disagree slightly; each value takes the
-# side that is safe for its use (the larger envelope for clearance, the shorter bottom for bearing).
+# HDX 27 gal Tough Storage Tote, from the repo registry (homedepot.com 999-27G-HDX page, archived): exterior at top
+# 28.6 x 19.6 x 15.2 in, interior at bottom 22.98 x 14.02 in. The clearances below cover the 0.01-0.07 in by which
+# other listings differ.
+_TL, _TW, _TH = HDX_27GAL.exterior_top
+_REG = "cacad.registries.reservoirs.HDX_27GAL (homedepot.com 999-27G-HDX)"
 TOTE = MappingProxyType(dict(
-    W=(19.61 * IN, "VENDOR", "exterior width at top: 19.61 in (Home Depot listing via Refinery29); 19.6 on the label"),
-    L=(28.6 * IN, "VENDOR", "exterior length at top: 28.6 in (label, Home Depot spec); 28.55 in another listing"),
-    H=(15.27 * IN, "VENDOR", "exterior height with lid: 15.27 in (listing); 15.2 on the label"),
-    Lb=(22.98 * IN, "VENDOR", "interior length at bottom: 22.98 in (listing); 23.5 in another. Exterior >= interior"),
+    W=(_TW, "VENDOR", f"exterior width at top, {_REG}"),
+    L=(_TL, "VENDOR", f"exterior length at top, {_REG}"),
+    H=(_TH, "VENDOR", f"exterior height at top (with lid on the label), {_REG}"),
+    Lb=(HDX_27GAL.interior_bottom[0], "VENDOR", f"interior length at bottom, {_REG}; the exterior is no shorter"),
+    Wb=(HDX_27GAL.interior_bottom[1], "VENDOR", f"interior width at bottom, {_REG}; the exterior is no narrower"),
     capacity=(75 * LBF, "VENDOR", "weight capacity 75 lb (listing)"),
     bottom_centred=(True, "INFERRED", "the bottom is centred under the rim: the tote is mirror-symmetric front to back"),
 ))
@@ -89,7 +94,7 @@ INVENTORY = MappingProxyType(dict(
     scraps=(None, None, "x2x4", "on hand: several shorter 2x4 scraps, lengths unknown; nothing depends on them"),
 ))
 STORE_2X4 = (96 * IN, "VENDOR", "2x4 x 8 ft, any home centre")
-STORE_PLY = ((48 * IN, 48 * IN), "VENDOR", "23/32 in plywood project panel 4 x 4 ft (or half a 4 x 8 sheet)")
+STORE_PLY = ((48 * IN, 96 * IN), "VENDOR", "23/32 in plywood, 4 x 8 ft sheet: the work top and the back panel")
 
 DESIGN = MappingProxyType(dict(
     cols=(2, "DESIGN", "two tote columns side by side: a 44-3/4 in wide bench"),
@@ -98,7 +103,9 @@ DESIGN = MappingProxyType(dict(
     clear_lid=(0.75 * IN, "DESIGN", "lid top to the rung above: room to slide the tote onto its rungs"),
     D=(29.625 * IN, "DESIGN", "bench depth: tote length + 1 in; the 31 in 2x4s are trimmed to it (see bearing)"),
     bearing_min=(0.75 * IN, "DESIGN", "tote bottom on each rung, minimum, with the tote against its back stop"),
-    stop_below_top=(0.25 * IN, "DESIGN", "back stop top below the tote's lid top: the stop meets the rim/lid band"),
+    runner_offset=(5.0 * IN, "DESIGN", "runner centre from the column centre, each side: under the tote's 14 in bottom"),
+    runner_inset=(0.5 * IN, "DESIGN", "runner outer edge inside the tote bottom's edge, at least"),
+    notch_clear=(IN / 16, "DESIGN", "top's leg notches, per side: the top drops over the legs without binding"),
     brace_long_point=(21 * IN, "UNVERIFIED", "45 deg braces as drawn: mid of the 18-24 in range on hand"),
     brace_range=((18 * IN, 24 * IN), "UNVERIFIED", "every brace check runs at both ends of this range"),
     kerf=(IN / 8, "DESIGN", "material lost per cut: 1/8 in covers a full-kerf 7-1/4 in circular-saw blade"),
@@ -110,7 +117,7 @@ DESIGN = MappingProxyType(dict(
     top_screw_pitch=(8 * IN, "DESIGN", "plywood top screwed down into rails, rungs and joist at <= 8 in"),
     explode_top_lift=(4.0, "DESIGN", "display only, FreeCAD exploded view: the plywood top lifts this many 2x4 widths"),
     explode_side_out=(3.0, "DESIGN", "display only: each side (legs, rails, stretcher, diagonal, side brace) moves out in X by this many 2x4 widths"),
-    explode_back_out=(2.0, "DESIGN", "display only: the back stops and the back braces move back in Y by this many 2x4 widths"),
+    explode_back_out=(2.0, "DESIGN", "display only: the back panel and the back braces move back in Y by this many 2x4 widths"),
     bbox_tol=(0.05, "DESIGN", "mm, geometry checks"),
 ))
 
@@ -198,13 +205,16 @@ def derive(**overrides) -> dict:
     j_y0, j_y1 = w + s, D - w - s
     for i, px in enumerate(post_x, start=1):
         b[f"JOIST-{i}"] = ("x2x2", (s, j_y1 - j_y0, s), (px + t, j_y0, work_top - s))
-    # back stops: 2x2 across the back face of the back legs and posts, top just under each level's lid top
-    stops = []
-    for i, top in enumerate(d["tote_top"], start=1):
-        z0 = top - d["stop_below_top"] - s
-        b[f"STOP-{i}"] = ("x2x2", (W, s, s), (0.0, D, z0))
-        stops.append(z0)
-    d["stop_z"] = stops
+    # runners: 2x2 front to back between the rungs of each tote level, tops flush with the rung tops, two per column.
+    # The tote slides in and out on them; without them its bottom spans 19-5/8 in between the rungs and drops.
+    for lv in range(levels):
+        for c in range(cols):
+            xc = t + c * (col + t) + col / 2
+            for k, sg in enumerate((-1, 1)):
+                b[f"RUN-{lv + 1}{'AB'[c]}{k + 1}"] = ("x2x2", (s, j_y1 - j_y0, s), (xc + sg * d["runner_offset"] - s / 2, j_y0, rows[lv]))
+    # back panel: plywood on the back faces of the back legs and post, floor to the work top. It is the side-to-side
+    # shear wall below the top, and the totes' back stop over their full height.
+    b["BACK"] = ("plywood", (W, ply, work_top), (0.0, D, 0.0))
     d["boards"] = b
 
     # --- prisms: lower side diagonals (2x2 flat on the outer faces, plumb ends over the legs) and the 45 deg braces
@@ -228,9 +238,10 @@ def derive(**overrides) -> dict:
 
     # --- plywood top: over the side rails, notched round the legs (the legs run on up)
     d["top"] = dict(size=(W + 2 * t, D, ply), lo=(-t, 0.0, work_top),
-                    notches=[(lo[0], lo[1], t, w) for nm, (_, _, lo) in b.items() if nm.startswith("LEG-")])
+                    notches=[(lo[0] - d["notch_clear"], lo[1] - d["notch_clear"], t + 2 * d["notch_clear"], w + 2 * d["notch_clear"])
+                             for nm, (_, _, lo) in b.items() if nm.startswith("LEG-")])
 
-    # --- totes, as check envelopes: against the back stops, centred in each column; the bottom is the bearing face
+    # --- totes, as check envelopes: against the back panel, centred in each column; the bottom is the bearing face
     totes, bottoms = {}, {}
     for lv in range(levels):
         for c in range(cols):
@@ -270,7 +281,8 @@ def derive(**overrides) -> dict:
         "rail->leg/post": (t, t, pick(t, t)),       # through the side rail along X into the leg's 1.5
         "stretcher->leg": (s, t, pick(s, t)),
         "diagonal->leg": (s, t, pick(s, t)),
-        "stop->leg/post": (s, w, pick(s, w)),
+        "back panel->leg/post": (ply, w, pick(ply, w)),
+        "rung->runner": (s, j_y1 - j_y0, pick(s, j_y1 - j_y0)),   # through the rung into the runner's end grain
         "rung->joist": (s, j_y1 - j_y0, pick(s, j_y1 - j_y0)),   # into the joist's end grain
         "brace->rail": (t, t, pick(t, t)),          # side brace face against the top rail's inner face
         "back brace->leg": (t, w, pick(t, w)),      # back brace face against the back leg's front face
@@ -311,21 +323,29 @@ def derive(**overrides) -> dict:
         for up in (("LEG-FL", "LEG-BL") if left else ("LEG-FR", "LEG-BR")):
             ulo = uprights[up]
             front = up[-2] == "F"
-            # rung screws bite the 1 in next to the leg's inner Y face, stop screws the 1 in next to the back face:
+            # rung screws bite the 1 in next to the leg's inner Y face, panel screws the 1 in next to the back face:
             # front legs take these in the outer 1/2 of the depth, back legs on the mid line, staggered in Z
             ys = (0.15, 0.43) if front else (0.5, 0.5)
             zs = (0.3, 0.75) if nm.startswith("RAIL") else (0.33, 0.67)
             for k in range(2):
                 add(f"{nm}>{up}#{k}", nm, up, (x_head, ulo[1] + ys[k] * w, lo[2] + zs[k] * size[2]), u, joint)
-    # back stops: into the back face of every back leg and post, staggered
-    for nm, (_, size, lo) in b.items():
-        if not nm.startswith("STOP-"):
+    # back panel: down the centre of every back leg and post at <= top_screw_pitch, clear of the rung rows
+    _, bsz, blo = b["BACK"]
+    n_bp = int(math.ceil((bsz[2] - 2 * IN) / d["top_screw_pitch"])) + 1
+    for up, ulo in uprights.items():
+        if not (up in ("LEG-BL", "LEG-BR") or up.startswith("POST-B")):
             continue
-        for up, ulo in uprights.items():
-            if not (up in ("LEG-BL", "LEG-BR") or up.startswith("POST-B")):
-                continue
-            for k, (fx, fz) in enumerate(((0.3, 0.3), (0.7, 0.7))):
-                add(f"{nm}>{up}#{k}", nm, up, (ulo[0] + fx * t, lo[1] + s, lo[2] + fz * s), (0, -1, 0), "stop->leg/post")
+        for k in range(n_bp):
+            z = IN + k * (bsz[2] - 2 * IN) / (n_bp - 1)
+            add(f"BACK>{up}#{k}", "BACK", up, (ulo[0] + t / 2, blo[1] + bsz[1], z), (0, -1, 0), "back panel->leg/post")
+    # runners: one screw per end, through the rung's open face into the runner's end grain
+    for nm, (_, size, lo) in b.items():
+        if not nm.startswith("RUN-"):
+            continue
+        lv = int(nm[4]) - 1
+        xr = lo[0] + s / 2
+        add(f"RUNG-F{lv}>{nm}", f"RUNG-F{lv}", nm, (xr, w, lo[2] + s / 2), (0, 1, 0), "rung->runner")
+        add(f"RUNG-B{lv}>{nm}", f"RUNG-B{lv}", nm, (xr, D - w, lo[2] + s / 2), (0, -1, 0), "rung->runner")
     # joists: through each work rung into the joist end grain
     for i, px in enumerate(post_x, start=1):
         jn = f"JOIST-{i}"
@@ -341,7 +361,7 @@ def derive(**overrides) -> dict:
         x_head, u = (x0, (1, 0, 0)) if left else (x0 + th, (-1, 0, 0))
         legs = ("LEG-FL", "LEG-BL") if left else ("LEG-FR", "LEG-BR")
         slope = (z_hi - hv - z_lo) / D    # both edges of the strip rise at this slope
-        # same bands as the rail screws: outer half of the front leg, mid line of the back leg (stop screws behind)
+        # same bands as the rail screws: outer half of the front leg, mid line of the back leg (panel screws behind)
         for up, pts in ((legs[0], ((0.15 * w, 0.0), (0.43 * w, 0.0))), (legs[1], ((D - 0.5 * w, -0.25), (D - 0.5 * w, 0.25)))):
             for k, (y, dz) in enumerate(pts):
                 zc = z_lo + slope * y + hv / 2 + dz * hv
@@ -391,6 +411,7 @@ def derive(**overrides) -> dict:
     bought_2x4 = [(n, plen(n)) for n in b if n.startswith("POST-")]
     d["plan_bought_2x4"] = cut_plan(bought_2x4, STORE_2X4[0], 0.0, d["kerf"])
     d["plan_on_hand"] = plan
+    d["plan_sheet"] = ["TOP", "BACK"]               # both cut from the one bought plywood sheet
     d["rail_trim"] = INVENTORY["x2x4_31"][1] - D
 
     # --- shopping list
@@ -404,10 +425,12 @@ def derive(**overrides) -> dict:
     d["screw_counts"] = dict(sorted(sc_count.items()))
     d["shopping"] = [
         (f"2x4 x 8 ft", len(d["plan_bought_2x4"]), "middle posts: " + ", ".join(f"{n} {tape(l)}" for st in d["plan_bought_2x4"] for n, l in st)),
-        ("23/32 in plywood, 4 x 4 ft panel", 1, f"work top {tape(W + 2 * t)} x {tape(D)}, notched {tape(t)} x {tape(w)} at the 4 legs"),
+        ("23/32 in plywood, 4 x 8 ft sheet", 1, f"work top {tape(W + 2 * t)} x {tape(D)}, notched {tape(t + 2 * d['notch_clear'])} x "
+                                              f"{tape(w + 2 * d['notch_clear'])} at the 4 legs; back panel {tape(W)} x {tape(work_top)}"),
     ] + [(f"#8 wood screws {tape(ln)}", n, "") for ln, n in d["screw_counts"].items()] + [
         ("HDX 27 gal Tough Storage Tote", cols * levels, "if not already on hand"),
-        ("wood glue (optional)", 1, "every face joint"),
+        ("wood glue", 1, "required at every face joint: the rung, rail and panel screws sit close to the 2x2 ends"),
+        ("3 in steel L-bracket + screws", 2, "anchor the top of the back legs to a wall stud: the 72 in frame tips forward easily"),
     ]
     d["spare_2x2"] = INVENTORY["x2x2"][0] - len(d["plan_2x2"])
 
@@ -419,13 +442,13 @@ def derive(**overrides) -> dict:
         ("top up", ["TOP"], (0.0, 0.0, d["explode_top_lift"] * w)),
         ("left side out", side("L"), (-d["explode_side_out"] * w, 0.0, 0.0)),
         ("right side out", side("R"), (d["explode_side_out"] * w, 0.0, 0.0)),
-        ("back stops out", [n for n in b if n.startswith("STOP-")], (0.0, d["explode_back_out"] * w, 0.0)),
+        ("back panel out", ["BACK"], (0.0, d["explode_back_out"] * w, 0.0)),
         ("back braces out", [n for n in pr if n.startswith("BRACE-B")], (0.0, d["explode_back_out"] * w, 0.0)),
     ]
     d["explode_moves"] = moves
     d["explode_offset"] = {nm: tuple(sum(v[a] for _, parts, v in moves if nm in parts) for a in range(3))
                            for nm in list(b) + list(pr) + ["TOP"]}
-    d["wood_volume"] = sum(math.prod(sz) for _, sz, _ in b.values())
+    d["wood_volume"] = sum(math.prod(sz) for k, sz, _ in b.values() if k != "plywood")
     return d
 
 
@@ -476,10 +499,13 @@ def validate(**overrides) -> dict:
     lo_h, hi_h = d["work_height_range"]
     assert lo_h <= d["work_surface"] <= hi_h, f"work surface {mm(d['work_surface'])} outside the standing range"
     assert d["work_top"] < d["H"] - w - 12 * IN, "no room above the work top"
-    # the top fits the panel
-    pw, pd = STORE_PLY[0]
+    # the top and the back panel come out of one sheet, both across its width
+    pw, pl = STORE_PLY[0]
     tw, td, _ = d["top"]["size"]
-    assert (tw <= pw and td <= pd) or (tw <= pd and td <= pw), f"top {mm(tw)} x {mm(td)} does not fit the panel"
+    bw, _, bh = d["boards"]["BACK"][1]
+    assert tw <= pw and bw <= pw and td + bh + d["kerf"] <= pl, f"top {mm(tw)} x {mm(td)} + back {mm(bw)} x {mm(bh)} exceed the sheet"
+    # runners sit under the tote's bottom, inside its edge
+    assert d["runner_offset"] + d["s"] / 2 <= d["tote_Wb"] / 2 - d["runner_inset"] + 1e-9, "runners outside the tote bottom"
     # structure: a full tote's share on a rung, and a point load on the work rung
     assert d["rung_stress"] <= d["rung_Fb_allow"], f"rung stress {d['rung_stress'] / PSI:.0f} psi > {d['rung_Fb_allow'] / PSI:.0f}"
     assert d["rung_defl"] <= d["rung_span"] / d["defl_limit"], f"rung sags {mm(d['rung_defl'])}"
@@ -512,7 +538,7 @@ def report(d: dict) -> str:
         f"rung rows (bottom, from the floor) " + ", ".join(f(z) for z in d["rows"]) + f"; top tie {f(d['H'] - d['s'])}",
         f"  tote bottom on each rung: front {d['bearing_front'] / IN:.2f}, back {d['bearing_back'] / IN:.2f} in "
         f"(min {d['bearing_min'] / IN:g}); lid to rung above " + ", ".join(f"{g / IN:.2f}" for g in d["lid_gap"]) + " in",
-        f"  back stops (bottom) " + ", ".join(f(z) for z in d["stop_z"]),
+        f"  runners {f(d['s'])} square, {f(d['runner_offset'])} either side of each column centre; back panel {f(d['W'])} x {f(d['work_top'])}",
         f"  2x2 rung, {f(d['rung_span'])} span: full totes {d['rung_stress'] / PSI:.0f} psi, sag {d['rung_defl'] / IN:.3f} in; "
         f"{d['point_load'] / LBF:.0f} lb point {d['rung_point_stress'] / PSI:.0f} psi; allowed {d['rung_Fb_allow'] / PSI:.0f} psi",
         "",

@@ -50,6 +50,7 @@ def test_cut_plan_fits_inventory(d):
 def test_cut_plan_covers_every_piece_once(d):
     planned = [n for names in d["plan_on_hand"].values() for n in names]
     planned += [n for plan in ("plan_2x2", "plan_bought_2x4") for st in d[plan] for n, _ in st]
+    planned += [n for n in d["plan_sheet"] if n != "TOP"]   # the top is not a board; it is built from d["top"]
     assert sorted(planned) == sorted(list(d["boards"]) + list(d["prisms"]))
 
 
@@ -75,7 +76,7 @@ def test_every_tote_bears_on_both_rungs(d):
 
 
 def test_untrimmed_31s_fail_on_bearing():
-    """Why the 31 in 2x4s are trimmed: at full length the tote, against its back stop, misses the front rung."""
+    """Why the 31 in 2x4s are trimmed: at full length the tote, against the back panel, misses the front rung."""
     with pytest.raises(AssertionError, match="tote bottom on the front rung"):
         params.validate(D=INVENTORY["x2x4_31"][1])
 
