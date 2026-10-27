@@ -66,6 +66,7 @@ SCREW = MappingProxyType(dict(
     d=(0.164 * IN, "STANDARD", "ASME B18.6.1: #8 wood screw shank 0.164 in"),
     lengths=(tuple(x * IN for x in (1.25, 1.625, 1.75, 2.0, 2.5, 3.0)), "VENDOR", "#8 wood screw boxes: 1-1/4, 1-5/8, 1-3/4, 2, 2-1/2, 3 in"),
     min_penetration_d=(6.0, "STANDARD", "AWC NDS 2018 wood screws: 6D minimum penetration into the main member"),
+    toe_len=(3.0 * IN, "DESIGN", "toe screws at the side brace lower ends: driven at ~30 deg, a 3 in reaches the leg"),
 ))
 
 # SPF No.2 reference design values (AWC NDS Supplement 2018, Table 4A, Spruce-Pine-Fir No.2).
@@ -192,10 +193,11 @@ def derive(**overrides) -> dict:
         b[f"RAIL-{side}-WORK"] = ("x2x4", (t, D, w), (x, 0.0, work_top - w))
         b[f"RAIL-{side}-TOP"] = ("x2x4", (t, D, w), (x, 0.0, H - w))
         b[f"STR-{side}"] = ("x2x2", (s, D, s), (x, 0.0, 0.0))
-    # middle joist under the top: 2x4 flat between the work rungs, centred on the middle post
+    # middle joist under the top: 2x2 between the work rungs, beside the middle post (not over it), so the rung->post
+    # screw heads and the rung->joist screw heads each land on an open face
     j_y0, j_y1 = w + s, D - w - s
     for i, px in enumerate(post_x, start=1):
-        b[f"JOIST-{i}"] = ("x2x4", (t, j_y1 - j_y0, t), (px, j_y0, work_top - t))
+        b[f"JOIST-{i}"] = ("x2x2", (s, j_y1 - j_y0, s), (px + t, j_y0, work_top - s))
     # back stops: 2x2 across the back face of the back legs and posts, top just under each level's lid top
     stops = []
     for i, top in enumerate(d["tote_top"], start=1):
@@ -213,7 +215,7 @@ def derive(**overrides) -> dict:
     for side, x in (("L", -t), ("R", W)):
         pr[f"DIAG-{side}"] = ("x2x2", "x", x, s, diag)
     d["diag_len"] = math.hypot(D, z_hi - z_lo - hv)          # either edge of the parallelogram: plumb cut to plumb cut
-    d["diag_cut_angle"] = math.degrees(math.atan2(D, z_hi - z_lo - hv))   # each end off square, for the saw
+    d["diag_cut_angle"] = math.degrees(math.atan2(z_hi - z_lo - hv, D))   # each plumb end, off square: the saw setting
     L = d["brace_long_point"]
     # side braces: in the leg line, against the inner face of the top rail, down onto the back face of the front leg
     sb = brace_polygon((w, H), +1, -1, L, w)
@@ -386,7 +388,7 @@ def derive(**overrides) -> dict:
     plan["45 deg braces (on hand, no cut)"] = [n for n in pr if n.startswith("BRACE-")]
     two_by_two = [(n, plen(n)) for n in list(b) + list(pr) if (n in b and b[n][0] == "x2x2") or (n in pr and pr[n][0] == "x2x2")]
     d["plan_2x2"] = cut_plan(two_by_two, INVENTORY["x2x2"][1], 0.0, d["kerf"])
-    bought_2x4 = [(n, plen(n)) for n in b if n.startswith(("POST-", "JOIST-"))]
+    bought_2x4 = [(n, plen(n)) for n in b if n.startswith("POST-")]
     d["plan_bought_2x4"] = cut_plan(bought_2x4, STORE_2X4[0], 0.0, d["kerf"])
     d["plan_on_hand"] = plan
     d["rail_trim"] = INVENTORY["x2x4_31"][1] - D
@@ -397,10 +399,11 @@ def derive(**overrides) -> dict:
         sc_count[ln] = sc_count.get(ln, 0) + 1
     ln_top = joints["top->frame"][2]
     sc_count[ln_top] = sc_count.get(ln_top, 0) + d["top_screws"]
-    sc_count[3 * IN] = sc_count.get(3 * IN, 0) + d["toe_screws"]
+    toe = SCREW["toe_len"][0]
+    sc_count[toe] = sc_count.get(toe, 0) + d["toe_screws"]
     d["screw_counts"] = dict(sorted(sc_count.items()))
     d["shopping"] = [
-        (f"2x4 x 8 ft", len(d["plan_bought_2x4"]), "middle posts and joist: " + ", ".join(f"{n} {tape(l)}" for st in d["plan_bought_2x4"] for n, l in st)),
+        (f"2x4 x 8 ft", len(d["plan_bought_2x4"]), "middle posts: " + ", ".join(f"{n} {tape(l)}" for st in d["plan_bought_2x4"] for n, l in st)),
         ("23/32 in plywood, 4 x 4 ft panel", 1, f"work top {tape(W + 2 * t)} x {tape(D)}, notched {tape(t)} x {tape(w)} at the 4 legs"),
     ] + [(f"#8 wood screws {tape(ln)}", n, "") for ln, n in d["screw_counts"].items()] + [
         ("HDX 27 gal Tough Storage Tote", cols * levels, "if not already on hand"),

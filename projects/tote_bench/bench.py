@@ -102,7 +102,7 @@ def check_bench(parts: dict[str, Part]) -> dict:
         "front work rung under the top": ((W / 4, w + s / 2, wt - 0.5), True),
         "top over the left work rail": ((-t / 2, D / 2, wt + 0.5), True),
         "left work rail under the top": ((-t / 2, D / 2, wt - 0.5), True),
-        "joist under the top": ((W / 2, D / 2, wt - 0.5), True),
+        "joist under the top": ((d["boards"]["JOIST-1"][2][0] + s / 2, D / 2, wt - 0.5), True),
         "leg through the top notch": ((t / 2, w / 2, wt + d["ply"] / 2), True),
         "open front above the work top": ((W / 4, w / 2, (wt + H) / 2), False),
         "open front below the top tie": ((W / 4, w + s / 2, H - s - 1.0), False),
