@@ -408,7 +408,7 @@ def derive(**overrides) -> dict:
         ("shelf up", ["SHELF", "LIP"], (0.0, 0.0, m / 2)),
         ("left legs and rails out", left, (-m, 0.0, 0.0)),
         ("right legs and rails out", right, (m, 0.0, 0.0)),
-        ("hutch forward", ["HUTCH", "ARM-L", "ARM-R", "BRACE-L", "BRACE-R", "PEGBOARD", "CLEAT-L", "CLEAT-R"], (0.0, -m, m / 2)),
+        ("hutch forward", ["HUTCH", "ARM-L", "ARM-R", "BRACE-L", "BRACE-R", "PEGBOARD", "CLEAT-L", "CLEAT-R"], (0.0, -m, m)),
     ]
     d["explode_moves"] = moves
     d["explode_offset"] = {nm: tuple(sum(v[i] for _, parts, v in moves if nm in parts) for i in range(3))

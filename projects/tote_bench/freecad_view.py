@@ -1,16 +1,16 @@
 """The exported bench as a FreeCAD assembly, for viewing: one Assembly with a
-part per board, brace, diagonal and the plywood top, LEG-FL grounded, parts
-coloured by kind, the tote envelopes as translucent parts, the screws as
-shank envelopes, an exploded view from params, and a BOM spreadsheet from
-params.derive. Nothing is placed or jointed by hand; the STEP carries every
+part per board (2x4, 2x2, plywood shelf and hutch shelf, pegboard), brace and
+the notched plywood top, LEG-FL grounded, parts coloured by kind, the tote
+envelopes as translucent parts, the screws as shank envelopes, an exploded
+view from params, and a BOM spreadsheet from params.derive. Nothing is placed or jointed by hand; the STEP carries every
 position and bench.py checks them.
 
 Before building, every imported part's world bounding box is compared with
 params (F11: a STEP leaf can come in with its offset on a wrapper), and one
 deliberately shifted expectation must disagree, so agreement is not vacuous.
-Boards compare as (min corner, size); braces and diagonals as their polygon's
-extents plus [lo, lo + thickness] on their axis; the top as lo / size (the leg
-notches do not change its box).
+Boards compare as (min corner, size); braces as their polygon's extents plus
+[lo, lo + thickness] on their axis; the top as lo / size (the back-leg notches
+do not change its box).
 
 Needs FreeCAD open with the MCP Addon's RPC server started, and bench.py run first.
 
@@ -24,9 +24,12 @@ from cacad.freecad import FreeCADRPC
 from projects.tote_bench.params import LUMBER, SCREW, derive, tape
 
 COLOURS = dict(x2x4=(0.55, 0.36, 0.20), x2x2=(0.80, 0.60, 0.38), plywood=(0.90, 0.78, 0.55),
-               tote=(0.35, 0.55, 0.80))   # display only
+               pegboard=(0.42, 0.30, 0.20), tote=(0.35, 0.55, 0.80))   # display only
 GROUND = "LEG-FL"
-REFERENCE = ("POST-", "RUNG-", "TIE-", "JOIST-", "RUN-")   # parts the exploded view leaves in place
+# Parts the exploded view leaves in place: the frame across the bay. params' moves lift the top, the shelf + lip and
+# the hutch group, and move the legs + side rails out to either side.
+REFERENCE = frozenset(("APRON-F", "APRON-B", "SHELF-RAIL-F", "SHELF-RAIL-B", "STRETCHER-B", "JOIST-TOP", "JOIST-SHELF"))
+SHEETS = dict(plywood="23/32 plywood", pegboard="1/4 pegboard")   # BOM labels for the sheet kinds
 
 IMPORT = r'''
 import FreeCAD as App, Import, json
@@ -153,12 +156,27 @@ def mins():
 before = mins()
 view.Proxy.saveAssemblyAndExplode(view)
 exploded = mins()
-shapes = [o.Shape for o in by_label.values()]
-overlap = max(shapes[i].common(shapes[j]).Volume for i in range(len(shapes)) for j in range(i + 1, len(shapes)))
+def touch(a, b, tol=0.5):   # bounding boxes within tol on every axis: only these pairs can share volume
+    return (a.XMin <= b.XMax + tol and b.XMin <= a.XMax + tol and a.YMin <= b.YMax + tol and b.YMin <= a.YMax + tol
+            and a.ZMin <= b.ZMax + tol and b.ZMin <= a.ZMax + tol)
+labels = list(by_label)
+shapes = {l: by_label[l].Shape for l in labels}
+bbs = {l: sh.BoundBox for l, sh in shapes.items()}
+overlap, worst, pairs = 0.0, None, 0
+for i in range(len(labels)):
+    for j in range(i + 1, len(labels)):
+        a, b = labels[i], labels[j]
+        if not touch(bbs[a], bbs[b]):
+            continue
+        pairs += 1
+        v = shapes[a].common(shapes[b]).Volume
+        if v > overlap:
+            overlap, worst = v, [a, b]
 view.Proxy.restoreAssembly(view)
 after = mins()
 doc.recompute()
-print("JSON:" + json.dumps(dict(moves=len(view.Group), before=before, exploded=exploded, after=after, overlap=overlap)))
+print("JSON:" + json.dumps(dict(moves=len(view.Group), before=before, exploded=exploded, after=after, overlap=overlap,
+                                worst=worst, pairs=pairs, of=len(labels) * (len(labels) - 1) // 2)))
 '''
 
 BOM = r'''
@@ -243,26 +261,35 @@ def check_exploded(d: dict, ex: dict, tol: float = 0.01):
             got = ex[key][name]
             assert all(abs(g - e) < tol for g, e in zip(got, exp)), f"{name} {key}: FreeCAD {got}, params {exp}"
         moved = any(abs(o) > tol for o in off)
-        assert moved == (not name.startswith(REFERENCE)), f"{name}: moved {moved}"   # posts, rungs, ties, joists, runners stay
-    assert ex["overlap"] < 1e-3, f"exploded parts overlap by {ex['overlap']:.3f} mm^3"
+        assert moved == (name not in REFERENCE), f"{name}: moved {moved}"   # the aprons, shelf rails, stretcher, joists stay
+    assert ex["overlap"] < 1e-3, f"exploded parts {ex.get('worst')} overlap by {ex['overlap']:.3f} mm^3"
+
+
+def _sides(size) -> tuple[float, float]:
+    """A sheet part's two faces' sides, in params' axis order: its size without the thickness (the smallest)."""
+    k = size.index(min(size))
+    return tuple(v for i, v in enumerate(size) if i != k)
 
 
 def bom_rows(d: dict) -> list[list]:
-    """Cut list (every part, its kind and cut length), then the shopping list."""
-    label = lambda kind: LUMBER[kind]["label"] if kind in LUMBER else "23/32 plywood"
+    """Cut list (every part, its kind and cut size), then the shopping list."""
+    label = lambda kind: LUMBER[kind]["label"] if kind in LUMBER else SHEETS[kind]
     rows = [["Part", "Kind", "Cut", "Cut mm", "Note"]]
     for n, (kind, size, _) in d["boards"].items():
-        rows.append([n, label(kind), tape(max(size)), round(max(size), 1), "square ends"])
-    for n, (kind, *_) in d["prisms"].items():
-        if n.startswith("DIAG-"):
-            rows.append([n, label(kind), tape(d["diag_len"]), round(d["diag_len"], 1),
-                         f"plumb ends, {d['diag_cut_angle']:.1f} deg off square"])
+        if kind in SHEETS:
+            a, b = _sides(size)
+            note = "from the 4 x 8 ft sheet" if kind == "plywood" else "from the 2 x 4 ft panel"
+            rows.append([n, label(kind), f"{tape(a)} x {tape(b)}", f"{a:.1f} x {b:.1f}", note])
         else:
-            L = d["brace_long_point"]
-            rows.append([n, label(kind), tape(L), round(L, 1), "on hand, 45 deg both ends, long point (UNVERIFIED)"])
-    sx, sy, _ = d["top"]["size"]
+            rows.append([n, label(kind), tape(max(size)), round(max(size), 1), "square ends"])
+    L = d["brace_long_point"]
+    for n, (kind, *_) in d["prisms"].items():
+        rows.append([n, label(kind), tape(L), round(L, 1), f"recut to a {tape(L)} long point, 45° both ends"])
+    tp = d["top"]
+    sx, sy, _ = tp["size"]
+    nsx, nsy = tp["notches"][0][2:]          # params cuts every notch the same size
     rows.append(["TOP", label("plywood"), f"{tape(sx)} x {tape(sy)}", f"{sx:.1f} x {sy:.1f}",
-                 f"notched {tape(d['t'])} x {tape(d['w'])} at the 4 legs"])
+                 f"from the 4 x 8 ft sheet; notched {tape(nsx)} x {tape(nsy)} at the {len(tp['notches'])} back legs"])
     rows += [[], ["Buy", "Qty", "Note", "", ""]]
     for item, n, note in d["shopping"]:
         rows.append([item, n, note, "", ""])
@@ -312,7 +339,8 @@ def main():
     ex = fc.run(EXPLODE % dict(d=json.dumps(dict(doc=doc, moves=d["explode_moves"]))), "exploded view")
     check_exploded(d, ex)
     print(f"  exploded view: {ex['moves']} moves; every part lands on params' offset, none overlap "
-          f"(max {ex['overlap']:.3g} mm^3), and all return to the assembled position")
+          f"(max {ex['overlap']:.3g} mm^3 over the {ex['pairs']} of {ex['of']} pairs whose boxes touch), "
+          f"and all return to the assembled position")
 
     b = fc.run(BOM % dict(d=json.dumps(dict(doc=doc, rows=bom_rows(d), fcstd=fcstd))), "bom")
     print(f"  BOM: {b['rows']} rows; saved {b['saved']}")
