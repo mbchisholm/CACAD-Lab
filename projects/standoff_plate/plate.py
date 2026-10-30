@@ -19,6 +19,27 @@ from cacad import (ALIGN_MIN_Z, assert_bbox, assert_material, circular_edges, in
 from projects.standoff_plate.params import ACTIVE_PLATES, derive
 
 
+def cut_nut_pockets(d: dict, top_z: float) -> None:
+    """Inside a BuildPart: a hex nut pocket under each hole, open to the bed face with flats perpendicular to X, the
+    stepped bridge over it, and the through bore up to top_z. d needs holes, pocket_r, pocket_s, pocket_depth,
+    bridge_z, bridge_w, bore_d, layer."""
+    with BuildSketch(Plane.XY) as sk:
+        with Locations(*d["holes"]):
+            RegularPolygon(d["pocket_r"], 6, rotation=30)
+    extrude(sk.sketch, amount=d["pocket_depth"], mode=Mode.SUBTRACT)
+    for x, y in d["holes"]:   # stepped bridge: a slot across the pocket (flat to flat), then a square, then the bore
+        z1, z2, _ = d["bridge_z"]
+        with BuildSketch(Plane.XY.offset(z1)) as slot:
+            with Locations((x, y)):
+                RegularPolygon(d["pocket_r"], 6, rotation=30)
+                Rectangle(d["pocket_s"] + 1.0, d["bridge_w"], mode=Mode.INTERSECT)
+        extrude(slot.sketch, amount=d["layer"], mode=Mode.SUBTRACT)
+        with Locations((x, y, z2)):
+            Box(d["bridge_w"], d["bridge_w"], d["layer"], align=ALIGN_MIN_Z, mode=Mode.SUBTRACT)
+    with Locations(*[(x, y, top_z) for x, y in d["holes"]]):
+        Hole(d["bore_d"] / 2)
+
+
 def build_plate(plate: str) -> Part:
     d = derive(plate)
     cx, cy = d["plate_centre"]
@@ -51,22 +72,7 @@ def build_plate(plate: str) -> Part:
         if d["rests"]:   # solid pads under the hole-less end of a board held at one end
             with Locations(*[(*r["xy"], d["plate_t"]) for r in d["rests"]]):
                 Cylinder(d["rest_r"], d["standoff_h"], align=ALIGN_MIN_Z)
-        # nut pockets, open to the bed face; flats perpendicular to X
-        with BuildSketch(Plane.XY) as sk:
-            with Locations(*d["holes"]):
-                RegularPolygon(d["pocket_r"], 6, rotation=30)
-        extrude(sk.sketch, amount=d["pocket_depth"], mode=Mode.SUBTRACT)
-        for x, y in d["holes"]:   # stepped bridge: a slot across the pocket (flat to flat), then a square, then the bore
-            z1, z2, _ = d["bridge_z"]
-            with BuildSketch(Plane.XY.offset(z1)) as slot:
-                with Locations((x, y)):
-                    RegularPolygon(d["pocket_r"], 6, rotation=30)
-                    Rectangle(d["pocket_s"] + 1.0, d["bridge_w"], mode=Mode.INTERSECT)
-            extrude(slot.sketch, amount=d["layer"], mode=Mode.SUBTRACT)
-            with Locations((x, y, z2)):
-                Box(d["bridge_w"], d["bridge_w"], d["layer"], align=ALIGN_MIN_Z, mode=Mode.SUBTRACT)
-        with Locations(*[(x, y, d["z_board_bottom"]) for x, y in d["holes"]]):
-            Hole(d["bore_d"] / 2)
+        cut_nut_pockets(d, d["z_board_bottom"])
         if d["mount_holes"]:   # plain through bores for the screws that hold the plate down
             with Locations(*[(x, y, d["plate_t"]) for x, y in d["mount_holes"]]):
                 Hole(d["mount_bore_d"] / 2)
@@ -129,6 +135,15 @@ def _slot_area(d: dict) -> float:
     return 4 * (h * xk + (r * (s2 - xk) - (s2 ** 2 - xk ** 2) / (2 * math.sqrt(3))))
 
 
+def nut_cut_volume(d: dict, top_z: float) -> float:
+    """Volume cut by cut_nut_pockets: the hex pockets, the stepped bridge beyond the bore, and the bores up to top_z."""
+    n = len(d["holes"])
+    pockets = n * (3 * math.sqrt(3) / 2) * d["pocket_r"] ** 2 * d["pocket_depth"]
+    bore_a = math.pi * (d["bore_d"] / 2) ** 2
+    pockets += n * d["layer"] * (_slot_area(d) - bore_a + d["bridge_w"] ** 2 - bore_a)
+    return pockets + n * bore_a * (top_z - d["pocket_depth"])
+
+
 def expected_volume(d: dict) -> float:
     """Plate box minus corner fillets, plus bosses (and tray walls minus
     openings), minus pockets and bores."""
@@ -144,13 +159,9 @@ def expected_volume(d: dict) -> float:
     bosses = n * math.pi * d["boss_r"] ** 2 * d["standoff_h"]
     f, R = d["boss_root_flare"], d["boss_r"]
     bosses += n * (math.pi * f * (d["flare_r"] ** 2 + d["flare_r"] * R + R ** 2) / 3 - math.pi * R ** 2 * f)   # frustum - cylinder
-    pockets = n * (3 * math.sqrt(3) / 2) * d["pocket_r"] ** 2 * d["pocket_depth"]
-    bore_a = math.pi * (d["bore_d"] / 2) ** 2
-    pockets += n * d["layer"] * (_slot_area(d) - bore_a + d["bridge_w"] ** 2 - bore_a)   # stepped bridge, beyond the bore
-    bores = n * bore_a * (d["plate_t"] + d["standoff_h"] - d["pocket_depth"])
     mount = len(d["mount_holes"]) * math.pi * (d.get("mount_bore_d", 0.0) / 2) ** 2 * d["plate_t"]
     rests = len(d["rests"]) * math.pi * d["rest_r"] ** 2 * d["standoff_h"]
-    return plate + bosses + rests - pockets - bores - mount
+    return plate + bosses + rests - nut_cut_volume(d, d["plate_t"] + d["standoff_h"]) - mount
 
 
 def check_plate(plate: str, part: Part) -> dict:

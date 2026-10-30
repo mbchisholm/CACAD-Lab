@@ -6,6 +6,9 @@ has no mounting holes, in a lip, and the boards that read it, on printed bosses:
   SEN66_BENCH_PEG  the same layout with no screws: each boss carries a plain locating peg through the board's hole, a
                    slip fit. The boards drop on, cannot slide or turn, and lift straight off. A snap pin is not
                    offered: in the breakout's 2.5 hole its two prongs would be 0.6 to 1.0 thick, under min_wall.
+  SEN66_BENCH_SPACER  the same layout on nylon M2 male-female hex spacers (Raogoodcx 360 pc kit, Amazon B01H03WWD2): a flat
+                   plate with plain bores; each spacer's 6 mm male stud goes down its bore and a kit nut in a pocket
+                   under the plate holds it; the board sits on the spacer, held by a short M2 screw from the top.
   SEN66_PI         Raspberry Pi 4B + the breakout, M2 screws and nuts (the breakout's plated holes refuse M2.5).
   SEN66_PERF       an Adafruit 2 x 8 cm proto-board (PID 4783), which carries the breakout and the rest of the
                    owner's circuit, on M1.6 screws and nuts: its 2.0 holes refuse M2 (ISO 273 medium 2.4).
@@ -83,6 +86,13 @@ COMMON = MappingProxyType(dict(
     board_air_gap=1.0,           # peg plate: lowest underside feature (pin tail) to plate top, as standoff_plate
     peg_proud=1.0,               # peg above the board top, so a board cannot slip off it. DESIGN
     peg_tip=0.4,                 # 45 deg lead-in on the peg tip, radial. DESIGN
+    # --- nylon spacers (SEN66_BENCH_SPACER): Raogoodcx B01H03WWD2 listing, "M2 Nylon male-female standoff (6mm + 6mm)" ---
+    spacer_body=6.0,             # body length, the shortest listed (6 / 10 / 15 / 20); must clear the pin tails. DESIGN choice
+    spacer_stud=6.0,             # male thread length, listing: every M-F size is "+6mm"
+    spacer_af=4.0,               # hex across flats. UNVERIFIED: the listing gives none; 4.0 is the usual M2 hex standoff
+    spacer_thread_depth=5.0,     # female thread depth. UNVERIFIED: the listing gives none; a 6 mm body can hold 5
+    hold_screw_len=5,            # the screw that holds a board on a spacer: M2 x 5 ISO 4762, owner's own (the kit's M2 x 20
+                                 # are too long). Stocked length (standoff_plate SCREWS)
     peg_min_d=4 * NOZZLE,        # thinnest peg: two perimeters each side, solid. DESIGN
     # --- manufacturing rules ---
     nozzle_d=NOZZLE,
@@ -115,6 +125,7 @@ SIZES = {
     "SEN66_BENCH": dict(_BENCH, fixing="screw"),
     "SEN66_BENCH_PEG": dict(_BENCH, fixing="peg"),
     # the Pi reads the breakout through a STEMMA QT to female-socket cable on GPIO pins 1/3/5/6, so no QT edge
+    "SEN66_BENCH_SPACER": dict(_BENCH, fixing="spacer"),
     "SEN66_PI": dict(_SENSOR, plate="SEN66_PI", fixing="screw", qt_boards=None, gh=_GH, room=(
         ("PI4B", (0, -1), None, "USB-C/HDMI/audio edge"),   # Pi drawing: y = 0 edge
         ("PI4B", (1, 0), None, "USB-A/Ethernet end"),       # x = 85 end, the jacks overhang it
@@ -128,7 +139,7 @@ SIZES = {
         ("PROTO_2X8", (-1, 0), None, "-X end"))),
 }
 
-ACTIVE_SIZES = ("SEN66_BENCH", "SEN66_BENCH_PEG", "SEN66_PI", "SEN66_PERF")
+ACTIVE_SIZES = ("SEN66_BENCH", "SEN66_BENCH_PEG", "SEN66_BENCH_SPACER", "SEN66_PI", "SEN66_PERF")
 
 _SIDES = {"+X": (1, 0), "-X": (-1, 0), "+Y": (0, 1), "-Y": (0, -1)}
 
@@ -209,9 +220,19 @@ def derive(size: str, **overrides) -> dict:
             finished = b.hole_dia - (c["plating"] if s["plated"][b.name] else 0.0)
             peg_d = math.floor((finished - c["peg_clear"]) * 100 + 1e-6) / 100
             d["pegs"] += [dict(board=b.name, xy=h, d=peg_d, hole=finished) for h in pb["holes"]]
+    if s["fixing"] == "spacer":
+        # the stud goes down the bore and its tip stays screw_tip_min above the bed face, through the nut in its pocket
+        needs = {"plate_min_t": c["plate_min_t"], "groove + floor_web": groove_floor_need,
+                 "nut pocket + web": p["plate_t"], "spacer stud + tip": c["spacer_stud"] + p["screw_tip_min"]}
+        d["plate_governed_by"], t = max(needs.items(), key=lambda kv: kv[1])
+        d["plate_t"] = _round_up(t, c["layer"])
+        d["standoff_h"] = c["spacer_body"]
+        d["stud_tip_z"] = round(d["plate_t"] - c["spacer_stud"], 6)         # above the bed face
+        d["spacer_r"] = c["spacer_af"] / (2 * math.cos(math.radians(30)))   # hex circumradius
+        d["hold_engage"] = c["hold_screw_len"] - p["board_t"]               # screw thread in the spacer
     d["z_board_bottom"] = d["plate_t"] + d["standoff_h"]
     d["z_board_top"] = d["z_board_bottom"] + p["board_t"]
-    z_boards = d["z_board_top"] + c["peg_proud"] if s["fixing"] == "peg" else d["z_board_bottom"]
+    z_boards = {"peg": d["z_board_top"] + c["peg_proud"], "spacer": d["plate_t"]}.get(s["fixing"], d["z_board_bottom"])
     d["boss_r"], d["flare_r"], d["boss_root_flare"] = p["boss_r"], p["flare_r"], p["boss_root_flare"]
 
     # --- lip: pocket = the enclosure's (sensor maximum + fit_clear all round, corner r 3.0); top under the arch
@@ -298,13 +319,14 @@ def derive(size: str, **overrides) -> dict:
         d["room"][f"{name} {label}"] = dict(facing=f, need=c[key] if key else None,
                                             ahead=_ahead(rects[name], mid, f, across, others))
 
+    foot, foot_name = (d["spacer_r"], "spacer hex") if s["fixing"] == "spacer" else (d["flare_r"], "boss root flare")
     d["walls"] = {
         "lip wall": c["lip_wall"],
         "floor under groove": d["z_groove"],
-        "groove to boss root flare": min(_rect_to_point(d["groove_rect"], h) for h in p["holes"]) - d["flare_r"],
-        "lip to boss root flare": min(_rect_to_point(d["lip_rect"], h) for h in p["holes"]) - d["flare_r"],
+        f"groove to {foot_name}": min(_rect_to_point(d["groove_rect"], h) for h in p["holes"]) - foot,
+        f"lip to {foot_name}": min(_rect_to_point(d["lip_rect"], h) for h in p["holes"]) - foot,
     }
-    if s["fixing"] == "screw":
+    if s["fixing"] in ("screw", "spacer"):
         d["walls"]["groove to nut pocket (pocket corner)"] = min(_rect_to_point(d["groove_rect"], h) for h in p["holes"]) - p["pocket_r"]
         d["print_orientation"] = p["print_orientation"]
     else:
@@ -330,6 +352,18 @@ def validate(size: str, **overrides) -> dict:
             tip = t + p["standoff_h"] + p["plate_t"] - p["screw_len"]
             assert tip >= p["screw_tip_min"] - 1e-9, f"{size}: {pb['name']} ({t}) puts the screw tip {tip:.2f} above the bed"
             assert p["pocket_depth"] - sc["nut_m"] - tip >= -1e-9, f"{size}: {pb['name']} ({t}): the screw stops short of the nut"
+    if d["fixing"] == "spacer":
+        sc = p["screw_spec"]
+        assert d["stud_tip_z"] >= p["screw_tip_min"] - 1e-9, f"{size}: spacer stud tip {d['stud_tip_z']:.2f} passes the bed face"
+        assert p["pocket_depth"] - sc["nut_m"] - d["stud_tip_z"] >= -1e-9, f"{size}: spacer stud stops short of the nut"
+        assert d["standoff_h"] >= p["underside_protrusion"] + d["board_air_gap"] - 1e-9, f"{size}: pin tails reach the plate"
+        for pb in p["boards"]:
+            assert d["spacer_r"] <= pb["board"].nearest_pin - p["boss_pin_margin"] + 1e-9, (
+                f"{size}: spacer hex r {d['spacer_r']:.2f} reaches a pin of {pb['board'].name} (nearest {pb['board'].nearest_pin})")
+        assert d["hold_screw_len"] in sc["lengths"], f"{size}: hold screw {d['hold_screw_len']} not stocked"
+        assert 4 * sc["pitch"] <= d["hold_engage"] <= d["spacer_thread_depth"], (
+            f"{size}: hold screw engages {d['hold_engage']:.1f} in a {d['spacer_thread_depth']} deep thread (needs >= 4 pitches)")
+        assert p["bore_d"] >= sc["d"] + 0.2, f"{size}: bore too tight for the stud"
     if d["fixing"] == "peg":
         for pg in d["pegs"]:
             assert pg["d"] >= d["peg_min_d"], f"{size}: {pg['board']} peg {pg['d']:.2f} < {d['peg_min_d']:.2f}"
@@ -379,11 +413,14 @@ def report(size: str) -> str:
     p = d["p"]
     room = ", ".join(f"{k} " + ("to the plate edge" if v["ahead"] is None else f"{v['ahead']:.2f} open") for k, v in d["room"].items())
     fix = (f"{len(p['holes'])} x {p['screw']} x {p['screw_len']} ISO 4762 + ISO 4032 nuts" if d["fixing"] == "screw" else
+           f"{len(p['holes'])} nylon M2 M-F spacers ({d['spacer_body']:.0f} + {d['spacer_stud']:.0f}), {len(p['holes'])} kit nuts under the plate, "
+           f"{len(p['holes'])} x M2 x {d['hold_screw_len']} on top (engage {d['hold_engage']:.1f}); stud tip {d['stud_tip_z']:.1f} above the bed"
+           if d["fixing"] == "spacer" else
            f"no screws: {len(d['pegs'])} locating pegs, " + ", ".join(sorted({f"{pg['board']} d {pg['d']:.2f} in {pg['hole']:.2f}" for pg in d["pegs"]}))
            + f", {d['peg_proud']:.1f} proud")
     return "\n".join([
         f"{size}: plate {p['plate_size'][0]:.2f} x {p['plate_size'][1]:.2f} x {d['plate_t']:.2f} ({d['plate_governed_by']}), "
-        f"boards on bosses at z {d['z_board_bottom']:.2f}, top z {d['z_top']:.2f}",
+        f"boards on {'spacers' if d['fixing'] == 'spacer' else 'bosses'} at z {d['z_board_bottom']:.2f}, top z {d['z_top']:.2f}",
         f"  {fix}",
         f"  boards: " + ", ".join(f"{b['name']} at ({b['xy'][0]:.2f}, {b['xy'][1]:.2f}) rot {b['rot']}" for b in p["boards"]),
         f"  SEN66 at ({d['sensor_xy'][0]:.2f}, {d['sensor_xy'][1]:.2f}) rot {d['sensor_rot']}, max {d['sensor_max'][0]:.1f} x "

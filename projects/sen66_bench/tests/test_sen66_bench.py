@@ -55,6 +55,9 @@ def test_lip_clears_the_outlet_and_groove_takes_the_bend(d):
     ("SEN66_BENCH", dict(header_room=10.0), "POWER/AD header side"),     # the sensor crowds the Metro's rear headers
     ("SEN66_BENCH", dict(cable_edge="+Y"), "cable edge"),                # the STEMMA QT pair no longer faces the edge
     ("SEN66_BENCH_PEG", dict(peg_clear=1.0), "peg"),                     # a breakout peg too thin to print
+    ("SEN66_BENCH_SPACER", dict(spacer_body=3.0), "pin tails"),           # a spacer too short for the Metro's header tails
+    ("SEN66_BENCH_SPACER", dict(spacer_af=8.0), "reaches a pin"),         # a hex that lands on a header pin
+    ("SEN66_BENCH_SPACER", dict(hold_screw_len=8), "engages"),            # a screw that bottoms out in the spacer
     ("SEN66_PI", dict(header_room=10.0), "PI4B GPIO side"),              # the sensor crowds the Pi's GPIO header
     ("SEN66_PI", dict(end_room=20.0), "PI4B microSD end"),               # no room to pull the Pi's microSD card
     ("SEN66_PERF", dict(perf_room=20.0), "PROTO_2X8 rear edge"),         # no GH plug room behind the proto-board
@@ -70,3 +73,9 @@ def test_both_versions_share_the_layout():
     a, b = params.derive("SEN66_BENCH"), params.derive("SEN66_BENCH_PEG")
     assert a["p"]["plate_size"] == b["p"]["plate_size"] and a["sensor_xy"] == b["sensor_xy"]
     assert [pg["xy"] for pg in b["pegs"]] == list(a["p"]["holes"])
+
+
+def test_spacer_version_shares_the_layout():
+    a, b = params.derive("SEN66_BENCH"), params.derive("SEN66_BENCH_SPACER")
+    assert a["p"]["plate_size"] == b["p"]["plate_size"] and a["sensor_xy"] == b["sensor_xy"]
+    assert b["stud_tip_z"] >= b["p"]["screw_tip_min"]   # the stud does not hold the plate off the bed
