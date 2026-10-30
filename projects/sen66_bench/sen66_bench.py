@@ -2,6 +2,7 @@
 
   SEN66_BENCH      the SEN66_BENCH standoff plate (projects/standoff_plate: M2 bosses, nuts captured from the bed face)
   SEN66_BENCH_PEG  no screws: a plain plate whose bosses carry locating pegs through the boards' holes
+  SEN66_BENCH_SPACER  a flat plate, plain bores and nut pockets: nylon M2 male-female spacers stand in it, boards on top
 
 Both add a lip the SEN66 drops into and a groove under its socket for the cable. Every number is from params.derive.
 
@@ -15,11 +16,11 @@ from __future__ import annotations
 import math
 
 from build123d import (Axis, Box, BuildPart, BuildSketch, Compound, Cone, Cylinder, Location, Locations, Mode, Part,
-                       Rectangle, RectangleRounded, add, extrude, fillet)
+                       Plane, Rectangle, RectangleRounded, RegularPolygon, add, extrude, fillet)
 
 from cacad import ALIGN_MIN_Z, assert_bbox, assert_material, interference_volume, is_inside, single_solid
 from projects.sen66_bench.params import ACTIVE_SIZES, derive
-from projects.standoff_plate.plate import build_hardware, build_plate, check_plate
+from projects.standoff_plate.plate import build_hardware, build_plate, check_plate, cut_nut_pockets, nut_cut_volume
 
 
 def _peg_plate(d: dict) -> Part:
@@ -41,10 +42,23 @@ def _peg_plate(d: dict) -> Part:
     return bp.part
 
 
+def _spacer_plate(d: dict) -> Part:
+    """A flat plate: a bore and a bridged nut pocket (standoff_plate's) under each spacer, no bosses."""
+    p = d["p"]
+    with BuildPart() as bp:
+        with Locations((*p["plate_centre"], d["plate_t"] / 2)):
+            Box(*p["plate_size"], d["plate_t"])
+        fillet(bp.edges().filter_by(Axis.Z), radius=p["corner_r"])
+        cut_nut_pockets(p, d["plate_t"])
+    return bp.part
+
+
 def build_base(size: str) -> Part:
-    """The plate under the lip and groove: standoff_plate's for screws, _peg_plate otherwise."""
+    """The plate under the lip and groove: standoff_plate's for screws, _spacer_plate or _peg_plate otherwise."""
     d = derive(size)
-    return build_plate(d["plate"]) if d["fixing"] == "screw" else _peg_plate(d)
+    if d["fixing"] == "screw":
+        return build_plate(d["plate"])
+    return _spacer_plate(d) if d["fixing"] == "spacer" else _peg_plate(d)
 
 
 def build_part(size: str) -> Part:
@@ -82,12 +96,39 @@ def build_hardware_for(size: str) -> dict[str, Compound]:
     if d["fixing"] == "screw":
         return build_hardware(d["plate"])
     p = d["p"]
-    boards = []
+    boards, spacers, nuts, screws = [], [], [], []
     for pb in p["boards"]:
         slab = Box(*pb["size"], p["board_t"], align=ALIGN_MIN_Z).moved(Location((*pb["xy"], d["z_board_bottom"])))
         for hx, hy in pb["holes"]:
             slab -= Cylinder(pb["board"].hole_dia / 2, p["board_t"], align=ALIGN_MIN_Z).moved(Location((hx, hy, d["z_board_bottom"])))
         boards.append(slab)
+    if d["fixing"] == "spacer":   # purchased-part envelopes: hex body + stud + female thread, nut, screw
+        sc = p["screw_spec"]
+        for x, y in p["holes"]:
+            with BuildPart() as sp:
+                with BuildSketch(Plane.XY.offset(d["plate_t"])):
+                    with Locations((x, y)):
+                        RegularPolygon(d["spacer_r"], 6, rotation=30)
+                extrude(amount=d["standoff_h"])
+                with Locations((x, y, d["stud_tip_z"])):
+                    Cylinder(sc["d"] / 2, d["spacer_stud"], align=ALIGN_MIN_Z)
+                with Locations((x, y, d["z_board_bottom"] - d["spacer_thread_depth"])):
+                    Cylinder(sc["d"] / 2, d["spacer_thread_depth"], align=ALIGN_MIN_Z, mode=Mode.SUBTRACT)
+            spacers.append(sp.part)
+            with BuildPart() as nt:
+                with BuildSketch(Plane.XY.offset(p["pocket_depth"] - sc["nut_m"])):
+                    with Locations((x, y)):
+                        RegularPolygon(sc["nut_s"] / (2 * math.cos(math.radians(30))), 6, rotation=30)
+                extrude(amount=sc["nut_m"])
+                with Locations((x, y, p["pocket_depth"] - sc["nut_m"])):
+                    Cylinder(sc["d"] / 2, sc["nut_m"], align=ALIGN_MIN_Z, mode=Mode.SUBTRACT)
+            nuts.append(nt.part)
+            shank = Cylinder(sc["d"] / 2, d["hold_screw_len"], align=ALIGN_MIN_Z).moved(
+                Location((x, y, d["z_board_top"] - d["hold_screw_len"])))
+            head = Cylinder(sc["head_dk"] / 2, sc["head_k"], align=ALIGN_MIN_Z).moved(Location((x, y, d["z_board_top"])))
+            screws.append(shank + head)
+        return dict(boards=Compound(children=boards), spacers=Compound(children=spacers),
+                    nuts=Compound(children=nuts), screws=Compound(children=screws))
     return dict(boards=Compound(children=boards))
 
 
@@ -122,6 +163,8 @@ def expected_volume(size: str, base: Part) -> float:
         return w * h - (4 - math.pi) * r * r
     if d["fixing"] == "screw":
         vol = base.volume
+    elif d["fixing"] == "spacer":
+        vol = rr(*p["plate_size"], p["corner_r"]) * d["plate_t"] - nut_cut_volume(p, d["plate_t"])
     else:
         n, R, f = len(p["holes"]), d["boss_r"], d["boss_root_flare"]
         vol = rr(*p["plate_size"], p["corner_r"]) * d["plate_t"]
@@ -182,6 +225,16 @@ def check_part(size: str, part: Part) -> dict:
         "side lip stays low at mid length": ((sx, far_y, d["z_lip_top"] + 0.1), False),
         "tall lip wraps the corner": ((sx + d["pocket"][0] / 2 - d["pocket_r"] - 0.5, far_y, d["z_end_top"] - 0.2), True),
     }
+    if d["fixing"] == "spacer":
+        s2 = p["pocket_s"] / 2
+        for i, (x, y) in enumerate(p["holes"]):
+            probes.update({
+                f"bore{i} open": ((x, y, d["plate_t"] - 0.5), False),
+                f"web{i} solid": ((x + p["bore_d"] / 2 + 0.3, y, d["plate_t"] - 0.5), True),
+                f"pocket{i} air at flat": ((x + s2 - 0.1, y, p["pocket_depth"] / 2), False),
+                f"pocket{i} wall past flat": ((x + s2 + 0.15, y, p["pocket_depth"] / 2), True),
+                f"no boss{i}": ((x + p["bore_d"] / 2 + 0.3, y, d["plate_t"] + 0.1), False),
+            })
     if d["fixing"] == "peg":
         zb = d["z_board_bottom"]
         for i, pg in enumerate(d["pegs"]):
@@ -209,6 +262,13 @@ def check_part(size: str, part: Part) -> dict:
             continue
         v = interference_volume(other, env["sensor"])
         assert v < 1e-6, f"{label}: {name} hit the sensor by {v:.4f} mm^3"
+    if d["fixing"] == "spacer":
+        for name in ("boards", "spacers", "nuts", "screws"):
+            v = interference_volume(part, hw[name])
+            assert v < 1e-6, f"{label}: the part hits the {name} by {v:.4f} mm^3"
+        for a, b in (("screws", "boards"), ("spacers", "boards"), ("screws", "nuts"), ("spacers", "nuts")):
+            v = interference_volume(hw[a], hw[b])
+            assert v < 1e-6, f"{label}: {a} hit {b} by {v:.4f} mm^3"
     if d["fixing"] == "peg":
         v = interference_volume(part, hw["boards"])
         assert v < 1e-6, f"{label}: a peg or boss hits a board by {v:.4f} mm^3"

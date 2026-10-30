@@ -8,6 +8,7 @@ Not enclosures.
 |---|---|---|---|
 | `SEN66_BENCH` | Metro ESP32-S3 + SEN6x breakout | 8 × M2 × 10 + nuts | 107.4 × 93.0 |
 | `SEN66_BENCH_PEG` | the same | no screws: locating pegs | 107.4 × 93.0 |
+| `SEN66_BENCH_SPACER` | the same | 8 nylon M2 M-F spacers (6 + 6), 8 kit nuts, 8 × M2 × 5 | 107.4 × 93.0 |
 | `SEN66_PI` | Raspberry Pi 4B + SEN6x breakout | 8 × M2 × 10 + nuts | 123.8 × 95.7 |
 | `SEN66_PERF` | Adafruit 2 × 8 cm proto-board | 4 × M1.6 × 10 + nuts | 86.0 × 68.7 |
 
@@ -26,6 +27,12 @@ cable of 162 mm or more hangs off it in a U. USB-C and DC jack face the right
 edge. The peg version's boards drop onto plain pegs and lift off: steady a
 board while you pull a plug. Snap pins would be under the 1.2 mm minimum wall.
 
+**Nylon spacers.** A flat 6.4 mm plate with a plain 2.6 bore and a bridged nut
+pocket under each hole. Each spacer's 6 mm stud goes down its bore, a kit nut in
+the pocket holds it, and the board sits on the spacer, held by an M2 × 5 screw
+from the top. The screws are not in the kit (its M2 × 20 are too long) and the
+board is at 12.4. Plate 6.4 so the stud tip stays 0.4 above the bed.
+
 **Pi 4B.** USB-C/HDMI/audio face the front edge, USB-A/Ethernet the right. The
 microSD end has 15 mm, the GPIO side 8 mm. The breakout's rear STEMMA QT feeds
 GPIO pins 1/3/5/6 (3V3, SDA, SCL, GND) through a STEMMA QT to female-socket
@@ -43,14 +50,14 @@ calculation, with no overhang beyond the nut-pocket bridges. The owner found the
 twisted GH cable moves the sensor in a 2 mm lip (2026-10-24); the tall ends
 answer that, and no print has confirmed them. UNVERIFIED: board thickness (1.6; Pi 1.4),
 the proto-board's grid position and pads, plating 0.1, the breakout's GH mouth
-(1.0 past its edge), cable lengths. No vendor STEP checks yet.
+(1.0 past its edge), cable lengths, the spacers' hex (4.0) and female thread depth (5.0): the listing gives neither. No vendor STEP checks yet.
 
 ## Sources
 
 Metro and breakout: Adafruit's Eagle files via `tools/board_from_eagle.py`. Pi
 4B: Raspberry Pi's mechanical drawing and HAT spec. Proto-board: Adafruit 4783
 technical details (2 mm holes, 76 × 16, 6 × 28 at 2.54). All in
-`cacad/registries/boards.py`. Layouts and screw plates: `projects/standoff_plate`
+`cacad/registries/boards.py`. Spacers: Raogoodcx 360 pc nylon kit, Amazon B01H03WWD2 (lengths, 6 mm stud). Layouts and screw plates: `projects/standoff_plate`
 rows of the same names. Sensor, arch, socket, plug, groove:
 `projects/sen6x_enclosure` (Sensirion datasheet and STEP, JST eGH). Fits: ISO 273
 + the DESIGN FDM allowance, `materials.FIT_CLEAR`. Placements are DESIGN, and
